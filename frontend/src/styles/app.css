@@ -1154,6 +1154,237 @@ td.num {
   flex: none;
 }
 
+/* ------------------------------------------------ auditoria de arquivos --
+   Peças do módulo portado do Auditer (Configuração › Nomenclaturas). Tudo
+   sai dos tokens do protótipo: o módulo veio de um design system diferente
+   (Tailwind/shadcn) e nada de lá atravessou — só o comportamento. */
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 44px 20px;
+  text-align: center;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  margin-bottom: 16px;
+}
+.dropzone:hover,
+.dropzone.sobre {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.dropzone.off {
+  pointer-events: none;
+  opacity: 0.5;
+}
+.dropzone b {
+  font-size: 14px;
+}
+.dropzone span {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.aud-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.aud-kpi {
+  padding: 12px 14px;
+}
+.aud-kpi-rot {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-3);
+}
+.aud-kpi-num {
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+.aud-kpi-num.ok {
+  color: var(--ok);
+}
+.aud-kpi-num.ruim {
+  color: var(--bad);
+}
+.aud-kpi-num.alerta {
+  color: var(--wait);
+}
+
+.aud-item {
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.aud-cab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+.aud-cab:hover {
+  background: var(--panel-2);
+}
+.aud-seta {
+  flex: none;
+}
+.aud-nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.aud-selos {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.aud-corpo {
+  border-top: 1px solid var(--line);
+  padding: 12px 16px 16px;
+}
+/* O primeiro título de seção dentro do corpo não precisa da margem de cima
+   que separa seções irmãs. */
+.aud-corpo .sectitle:first-child {
+  margin-top: 0;
+}
+
+.aud-lista {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.aud-lista li {
+  padding: 3px 0;
+}
+.aud-bom {
+  color: var(--ok);
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.aud-ruim {
+  color: var(--bad);
+}
+
+.aud-orto-lista {
+  max-height: 380px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.aud-orto {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 9px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+.aud-orto:last-child {
+  border-bottom: 0;
+}
+.aud-orto-local {
+  flex: none;
+  width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.aud-marca {
+  background: var(--bad-bg);
+  color: var(--bad);
+  font-weight: 600;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+.aud-seg {
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--panel-2);
+}
+.aud-seg-sep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.aud-seg-cab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.aud-seg-num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.aud-padrao-cab {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.aud-previa {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.aud-previa-par {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.aud-regex {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--ink-2);
+  overflow-x: auto;
+}
+
 @media (max-width: 820px) {
   .app {
     grid-template-columns: 1fr;
