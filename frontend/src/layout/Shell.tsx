@@ -61,7 +61,11 @@ export default function Shell() {
         )}
 
         <nav>
-          {ITENS_NAV.map((item) => (
+          {ITENS_NAV.filter(
+            // `permissoes` do /auth/me já vem resolvido: o backend aplica o
+            // padrão do papel quando o usuário não tem lista própria.
+            (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
+          ).map((item) => (
             <NavLink
               key={item.rota}
               to={item.rota}

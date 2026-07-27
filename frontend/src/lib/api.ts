@@ -145,6 +145,13 @@ export const api = {
 
   health: () => requisitar<{ status: string; versao: string }>('/health'),
 
+  // --------------------------------------------------------- administração
+  organizacao: {
+    resumo: () => requisitar<T.ResumoOrganizacao>('/organizacao'),
+    atualizar: (corpo: { nome?: string; slug?: string }) =>
+      escrever<T.Organizacao>('/organizacao', 'PATCH', corpo),
+  },
+
   // ------------------------------------------------------------- projetos
   projetos: {
     listar: () => requisitar<T.Page<T.Projeto>>('/projetos'),

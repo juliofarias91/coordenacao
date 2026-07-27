@@ -8,6 +8,10 @@ export type ItemNav = {
   path: string
   /** Fase do roadmap em que a tela é implementada de verdade. */
   fase: number
+  /** Some do menu para quem não administra cadastros. É conveniência de
+   *  navegação, não segurança: quem barra de verdade é o `requer_permissao`
+   *  de cada rota da API. */
+  exigePermissao?: string
 }
 
 export const ITENS_NAV: ItemNav[] = [
@@ -66,5 +70,16 @@ export const ITENS_NAV: ItemNav[] = [
     en: 'Reports · NCR',
     path: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',
     fase: 2,
+  },
+  // A administração fica por último e separada das sete do protótipo: ela é o
+  // andar de cima (organização, projetos, usuários), não mais uma tela do
+  // fluxo de auditoria.
+  {
+    rota: '/admin',
+    pt: 'Administração',
+    en: 'Administration',
+    path: 'M12 1v6M12 17v6M4.2 4.2l4.3 4.3M15.5 15.5l4.3 4.3M1 12h6M17 12h6M4.2 19.8l4.3-4.3M15.5 8.5l4.3-4.3',
+    fase: 1,
+    exigePermissao: 'admin_cadastro',
   },
 ]

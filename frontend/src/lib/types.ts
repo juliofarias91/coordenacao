@@ -12,6 +12,23 @@ export type Page<T> = { itens: T[]; proximo_cursor: string | null }
 
 type Base = { id: string; created_at: string; updated_at: string; org_id: string }
 
+/** A organização não carrega `org_id`: ela própria é o tenant. */
+export type Organizacao = {
+  id: string
+  created_at: string
+  updated_at: string
+  nome: string
+  slug: string | null
+}
+
+export type ResumoOrganizacao = {
+  organizacao: Organizacao
+  projetos: number
+  usuarios: number
+  usuarios_ativos: number
+  empresas: number
+}
+
 export type Projeto = Base & {
   codigo: string
   nome: string

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthContext'
 import { useI18n } from '@/i18n'
 import Shell from '@/layout/Shell'
+import Admin from '@/pages/admin'
 import Apontamentos from '@/pages/Apontamentos'
 import Configuracao from '@/pages/configuracao'
 import Criterios from '@/pages/Criterios'
@@ -72,6 +73,7 @@ export default function App() {
           <Route path="relatorios" element={<Relatorios />} />
           <Route path="integracoes" element={<Integracoes />} />
           <Route path="configuracao" element={<Configuracao />} />
+          <Route path="admin" element={<Admin />} />
           <Route path="criterios" element={<Criterios />} />
           {PENDENTES.map((t) => (
             <Route

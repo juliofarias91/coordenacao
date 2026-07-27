@@ -27,6 +27,7 @@ from app.api.v1 import (
     kpis,
     modelos,
     notificacoes,
+    organizacao,
     painel,
     portal,
     projetos,
@@ -40,6 +41,7 @@ api_router.include_router(health.router)
 api_router.include_router(auth.router)
 
 # Fase 1 — cadastro
+api_router.include_router(organizacao.router)
 api_router.include_router(projetos.router)
 api_router.include_router(empresas.router)
 api_router.include_router(usuarios.router)

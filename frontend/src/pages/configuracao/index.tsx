@@ -13,7 +13,9 @@ import AbaDisciplinas from '@/pages/configuracao/Disciplinas'
 import AbaNomenclaturas from '@/pages/configuracao/Nomenclaturas'
 import AbaProjeto from '@/pages/configuracao/Projeto'
 import AbaProjetistas from '@/pages/configuracao/Projetistas'
-import AbaUsuarios from '@/pages/configuracao/Usuarios'
+// O CRUD de usuário é de nível de organização e mora em `pages/admin`; esta
+// aba é um atalho para ele, não uma segunda implementação.
+import AbaUsuarios from '@/pages/admin/Usuarios'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
 type Aba = 'projeto' | 'projetistas' | 'nomenclaturas' | 'disciplinas' | 'cores' | 'usuarios' | 'cliente'
