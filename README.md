@@ -41,23 +41,37 @@ spbim-auditoria/
 │   ├── scripts/        seed e importador de projeto (onboarding)
 │   └── tests/
 ├── frontend/           React + TypeScript (Vite)
+│   ├── scripts/        copy-dict (dicionários) e a suíte de nomenclatura
 │   └── src/
 │       ├── auth/       sessão
 │       ├── components/ gráficos e peças de UI
 │       ├── i18n/       PT/EN
 │       ├── layout/     shell e navegação
 │       ├── lib/        cliente HTTP
+│       │   └── auditer/  motor de nomenclatura e corretor (portado, JS)
 │       ├── pages/      telas
+│       │   └── admin/    organização, projetos e usuários
 │       ├── styles/     tokens do protótipo
-│       └── theme/      claro/escuro
+│       ├── theme/      claro/escuro
+│       └── workers/    corretor ortográfico (Hunspell/WebAssembly)
 ├── infra/
 │   ├── postgres/       init SQL (papel de aplicação e RLS)
 │   └── backup/         dump, espelho do bucket, restauração e verificação
 ├── docs/               plano técnico, especificação, backlog, protótipo,
 │                       runbook de operação e roteiro do piloto
+├── auditer/            o app Auditer original — ainda roda e ainda deploya
+├── bases/              as planilhas de controle reais (LOD300/400/500, 4D)
+├── referencias/        vídeos, links e o histórico git do Auditer (fora do git)
+├── ui-kit-export/      kit de design (tokens e componentes) — ainda não aplicado
 ├── docker-compose.yml       desenvolvimento
 └── docker-compose.prod.yml  produção (SP-501)
 ```
+
+`auditer/` é o aplicativo de onde veio o módulo de auditoria de arquivos. Ele
+foi preservado inteiro em vez de apagado: continua rodando sozinho
+(`npm run dev` lá dentro) e tem o próprio Dockerfile de deploy. O histórico
+git dele está em `referencias/auditer-historico.git` — para reativá-lo, mova
+a pasta de volta para `auditer/.git`.
 
 ---
 

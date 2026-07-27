@@ -37,6 +37,43 @@ Princípio central: **a auditoria é a única fonte de dado. Painel de controle,
 - Inicialize git cedo e faça commits por etapa.
 - Ao replicar uma tela, use o protótipo HTML como referência direta de layout e comportamento.
 
+## Módulo de auditoria de arquivos (portado do Auditer)
+
+`Configuração › Nomenclaturas & padrões` tem quatro sub-abas, de **duas
+origens**, e elas convivem porque respondem a perguntas diferentes:
+
+- **Padrão do projeto** — backend. Vale para o time, gera penalidade,
+  notificação e trilha. Audita o **modelo** entregue.
+- **Auditoria de arquivos · Padrões avançados · Palavras aceitas** — vieram do
+  `auditer/` e rodam 100% no navegador, sem tocar na API. Auditam a **pasta**:
+  PDF de spec, planilha de controle, relatório.
+
+O que só existe aqui: separador por bloco e segmento tipado (data/número/
+texto), duplicidade por **conteúdo** (SHA-256 — a cópia salva com outro nome),
+higiene de nome e ortografia de planilha (Hunspell/wasm, pt-BR + inglês).
+
+**Regras que já custaram caro — não reverta:**
+- `src/lib/auditer/*.js` e `src/workers/spell.worker.js` são **JavaScript de
+  propósito**: vieram inteiros do Auditer, sem uma linha alterada. Os tipos
+  entram por `.d.ts` ao lado — não há `allowJs`. Antes de mexer neles, rode
+  `npm test` (suíte de nomenclatura, 28 casos: mês 13, 29/02 em ano não
+  bissexto, extensão dupla, duplicidade).
+- O alias `hunspell-asm → dist/cjs/index.js` no `vite.config.ts`. O build ESM
+  importa um arquivo CommonJS e o interop do Vite entrega um namespace no
+  lugar da função (`runtimeModule is not a function`).
+- As três abas entram por **lazy import**. Estaticamente, o SheetJS vai para o
+  chunk principal e o bundle inicial pula de 290 kB para 814 kB — toda a
+  plataforma pagando pelo peso de uma aba.
+- Os dicionários (5,7 MB) **não são fonte**: o `scripts/copy-dict.mjs` os gera
+  no `npm install` a partir de `dictionary-pt`/`dictionary-en`. Ficam em
+  `public/dictionaries/`, fora do bundle, e são lidos por `fetch` no worker.
+- Uma palavra só é erro quando falha nos **dois** idiomas, e todo token em
+  CAPS é ignorado — nas planilhas do ACC, CAPS é sigla/código, nunca prosa.
+  Auditar CAPS gerava mais de 600 falsos positivos numa planilha só.
+
+O app original segue em `auditer/`, rodando e deployável. Ver o `CLAUDE.md`
+de lá para as decisões internas do corretor.
+
 ## Estado atual
 
 **As seis fases do roadmap estão implementadas.** Ver `README.md` para como rodar e para as decisões de arquitetura, `docs/OPERACAO.md` para o runbook de produção e `docs/PILOTO.md` para o roteiro do piloto assistido.
@@ -48,6 +85,8 @@ Princípio central: **a auditoria é a única fonte de dado. Painel de controle,
 - **Fase 4** — colaboração: central de notificações, KPIs com gráficos, placar de conformidade por fornecedor, apontamentos, portal do cliente com visibilidade por campo e trilha de auditoria automática.
 
 - **Fase 5** — piloto: imagens e compose de produção, guarda que recusa segredo de desenvolvimento, log em JSON, backup do banco e do bucket com restauração verificada, workflow de publicação e o importador de projeto por YAML.
+
+- **Administração** (`/admin`, fora do roadmap original) — organização, projetos e usuários no nível do tenant. `GET/PATCH /organizacao` é a única rota nova; projetos e usuários já tinham API desde a Fase 1 e só não tinham tela: até aqui um projeto novo só nascia por `scripts/seed.py` ou pelo importador YAML. Aparece no menu só para quem tem `admin_cadastro`; a guarda real continua no `requer_permissao` de cada rota. **Não existe listagem nem criação de organização** de propósito — listar é o que o isolamento multi-tenant impede, e criar é provisionamento, sai do seed.
 
 72 endpoints; 190 testes contra Postgres, MinIO e arquivos IFC reais.
 
