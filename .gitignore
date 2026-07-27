@@ -44,8 +44,11 @@ public/dictionaries/
 frontend/public/dictionaries/
 
 # Material de referência: vídeos de instrução (287 MB) e o histórico git do
-# Auditer preservado antes da reorganização. Nada aqui é código.
-/referencias/
+# Auditer preservado antes da reorganização. Nada aqui é código — mas as notas
+# em texto são pequenas e valem versionar (o link da planilha base, por ex.).
+/referencias/*
+!/referencias/*.txt
+!/referencias/*.md
 *.mp4
 
 # Editores / SO
