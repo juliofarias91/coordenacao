@@ -1,0 +1,12 @@
+# Reduz o contexto de build e força o npm ci a regerar tudo do zero.
+node_modules
+dist
+public/dictionaries
+.git
+.gitignore
+*.local
+.DS_Store
+
+# Artefatos locais que não pertencem à imagem
+iniciar.bat
+*.lnk

@@ -1,0 +1,28 @@
+# Contexto de build da imagem única (Dockerfile na raiz).
+
+**/.venv/
+**/venv/
+**/node_modules/
+**/dist/
+**/.vite/
+
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/htmlcov/
+**/.coverage
+
+# Segredos nunca entram na imagem: em produção vêm do ambiente.
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+.git/
+.github/
+docs/
+backend/tests/
+infra/
+*.md

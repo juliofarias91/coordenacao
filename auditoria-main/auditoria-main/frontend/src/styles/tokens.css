@@ -1,0 +1,70 @@
+/* Tokens de design copiados do protótipo (docs/prototipo_auditoria_bim.html).
+   O protótipo é a referência visual: manter estes valores idênticos é o que
+   faz as telas em React saírem iguais às aprovadas. */
+
+:root {
+  --canvas: #eef1f5;
+  --panel: #ffffff;
+  --panel-2: #f6f8fb;
+  --ink: #171b22;
+  --ink-2: #586071;
+  --ink-3: #8e97a6;
+  --line: #e1e6ee;
+  --line-2: #ced6e2;
+  --accent: #2547b0;
+  --accent-soft: #e8edfb;
+  --ok: #127a52;
+  --ok-bg: #e4f3ec;
+  --bad: #b5322f;
+  --bad-bg: #fbe9e7;
+  --wait: #9a6410;
+  --wait-bg: #fbf0dc;
+  --na: #8e97a6;
+  --na-bg: #eef1f5;
+  --purple: #6a3dae;
+  --purple-bg: #f0e9fb;
+
+  /* Cores por macrodisciplina — A=ARCH, C=CIVIL/ESTRUT, M=MEP, S=SITE.
+     Paleta categórica validada para o fundo claro: banda de luminosidade,
+     piso de saturação, separação sob daltonismo e contraste.
+     O teal do MEP subiu de #0E7C6B para #0A8A72 — no valor do protótipo a
+     saturação ficava abaixo do piso e a barra lia como cinza. */
+  --macro-A: #2547b0;
+  --macro-C: #a85b12;
+  --macro-M: #0a8a72;
+  --macro-S: #6a3dae;
+
+  --mono: ui-monospace, 'SF Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+html[data-theme='dark'] {
+  --canvas: #0e1420;
+  --panel: #161c28;
+  --panel-2: #1b2230;
+  --ink: #e6eaf1;
+  --ink-2: #a3adbe;
+  --ink-3: #6e7a8c;
+  --line: #26303f;
+  --line-2: #33404f;
+  --accent: #6e8cf2;
+  --accent-soft: #1e2a45;
+  --ok: #3fbe86;
+  --ok-bg: #16281f;
+  --bad: #e8736e;
+  --bad-bg: #2e1b1b;
+  --wait: #d9a441;
+  --wait-bg: #2c2416;
+  --na: #8894a6;
+  --na-bg: #1e2531;
+  --purple: #a98ce0;
+  --purple-bg: #241c36;
+
+  /* Passos próprios para o fundo escuro, não um inverso automático do claro:
+     a mesma paleta clara reprova aqui em luminosidade e contraste. Estes
+     quatro foram validados contra a superfície escura. */
+  --macro-A: #5c7ce0;
+  --macro-C: #c07830;
+  --macro-M: #2fa98a;
+  --macro-S: #9478d0;
+}

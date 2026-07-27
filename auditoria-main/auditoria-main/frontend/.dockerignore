@@ -1,0 +1,11 @@
+# `npm ci` reinstala tudo dentro da imagem; o node_modules local só atrasa o
+# build e pode carregar binários da plataforma errada.
+node_modules/
+dist/
+.vite/
+
+.env
+.env.*
+!.env.example
+
+*.md

@@ -1,0 +1,52 @@
+server {
+  listen 80;
+  server_name _;
+  root /usr/share/nginx/html;
+
+  # O TLS termina no proxy de borda (Caddy, ALB, Cloudflare). Este container
+  # só serve HTTP interno — ver docs/OPERACAO.md.
+
+  # Modelos IFC/RVT sobem por aqui. O limite casa com o do backend (512 MB);
+  # o padrão do nginx (1 MB) rejeitaria qualquer entrega real.
+  client_max_body_size 512M;
+
+  # Upload de modelo grande e auditoria síncrona levam minutos.
+  proxy_connect_timeout 30s;
+  proxy_send_timeout    600s;
+  proxy_read_timeout    600s;
+
+  gzip on;
+  gzip_types text/css application/javascript application/json image/svg+xml;
+  gzip_min_length 1024;
+
+  add_header X-Content-Type-Options nosniff always;
+  add_header X-Frame-Options SAMEORIGIN always;
+  add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+  location /api/ {
+    # Substituído na subida do container pelo envsubst da imagem oficial do
+    # nginx. O hostname da API muda conforme onde se hospeda: `api` no
+    # docker-compose, `projeto_serviço` no Easypanel, um Service no Kubernetes.
+    # Deixar fixo obrigaria a reconstruir a imagem para cada destino.
+    proxy_pass ${API_UPSTREAM};
+    proxy_http_version 1.1;
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_request_buffering off;   # streaming do upload, sem encher o disco
+  }
+
+  # Os assets levam hash no nome, então podem ser cacheados para sempre.
+  location /assets/ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+  }
+
+  # SPA: qualquer rota desconhecida devolve o index — inclusive /portal/<token>,
+  # que é a URL que o cliente recebe.
+  location / {
+    try_files $uri $uri/ /index.html;
+    add_header Cache-Control "no-cache";
+  }
+}

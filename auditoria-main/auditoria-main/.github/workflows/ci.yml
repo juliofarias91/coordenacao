@@ -1,0 +1,231 @@
+# SP-001 · CA: PR roda os testes; merge na main gera o artefato de build.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend · migrations + testes
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: spbim
+          POSTGRES_PASSWORD: spbim
+          POSTGRES_DB: spbim_auditoria
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U spbim"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      # A partir da Fase 2 há upload de modelo, evidência e logo. Sem storage
+      # no CI esses testes se pulariam sozinhos — e o caminho do S3 nunca
+      # seria exercitado.
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports: ['9000:9000']
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_USER: spbim
+      POSTGRES_PASSWORD: spbim
+      POSTGRES_DB: spbim_auditoria
+      APP_DB_USER: spbim_app
+      APP_DB_PASSWORD: spbim_app
+      JWT_SECRET: chave-de-teste-do-ci
+      S3_ENDPOINT_URL: http://localhost:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: spbim-auditoria-ci
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          # `bim` traz o IfcOpenShell: sem ele os testes da Fase 3 se pulariam,
+          # e a automação — a maior prova de valor do piloto — ficaria sem CI.
+          pip install -e ".[dev,bim]"
+
+      - name: Criar o papel de aplicação (sujeito ao RLS)
+        env:
+          PGPASSWORD: spbim
+        run: |
+          psql -h localhost -U spbim -d spbim_auditoria -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE spbim_app LOGIN PASSWORD 'spbim_app';" \
+            -c "GRANT CONNECT ON DATABASE spbim_auditoria TO spbim_app;"
+
+      - name: Migrations (up)
+        run: alembic upgrade head
+
+      - name: Migrations (down/up — prova que o downgrade é limpo)
+        run: |
+          alembic downgrade base
+          alembic upgrade head
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Testes
+        run: pytest -q
+
+      # Um teste pulado por falta de infraestrutura passa silenciosamente.
+      # Aqui a infraestrutura existe, então pular é falha.
+      - name: Nenhum teste pode ter sido pulado
+        run: pytest -q --no-header -rs 2>&1 | tee saida.txt && ! grep -q "skipped" saida.txt
+
+  # A suíte roda no código-fonte; isto roda na IMAGEM. São coisas diferentes:
+  # um empacotamento errado passa em todos os 207 testes e mesmo assim o
+  # container não sobe. Foi exatamente o que aconteceu — o `pip install` com
+  # apenas o `app/__init__.py` presente produzia um pacote de um arquivo só, e
+  # `uvicorn app.main:app` não encontrava o módulo. O teste existia, mas só
+  # disparava em tag; agora roda em todo push.
+  imagem:
+    name: A imagem sobe e responde
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: spbim
+          POSTGRES_PASSWORD: spbim
+          POSTGRES_DB: spbim_auditoria
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U spbim"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir a imagem da API
+        run: docker build -t spbim/api:teste ./backend
+
+      - name: O pacote instalado está completo
+        run: |
+          docker run --rm spbim/api:teste python -c "
+          import importlib.util as u
+          faltando = [m for m in (
+              'app.main', 'app.api.router', 'app.services.automacao.executor',
+              'app.workers.tasks', 'app.db.trilha',
+          ) if u.find_spec(m) is None]
+          assert not faltando, f'módulos ausentes na imagem: {faltando}'
+          print('pacote completo')
+          "
+
+      - name: Migrations aplicam a partir da imagem
+        run: |
+          docker run --rm --network host \
+            -e POSTGRES_HOST=localhost -e POSTGRES_USER=spbim \
+            -e POSTGRES_PASSWORD=spbim -e POSTGRES_DB=spbim_auditoria \
+            spbim/api:teste alembic upgrade head
+
+      - name: A API sobe e o banco responde
+        run: |
+          docker run -d --name api --network host \
+            -e POSTGRES_HOST=localhost -e POSTGRES_USER=spbim \
+            -e POSTGRES_PASSWORD=spbim -e POSTGRES_DB=spbim_auditoria \
+            -e JWT_SECRET=$(openssl rand -base64 48) \
+            spbim/api:teste
+          for _ in $(seq 1 30); do
+            curl -fsS http://localhost:8000/api/v1/health >/dev/null && break
+            sleep 2
+          done
+          curl -fsS http://localhost:8000/api/v1/health/ready | tee /dev/stderr | grep -q '"banco":"ok"'
+          docker logs api | tail -20
+          docker rm -f api
+
+      - name: A imagem do frontend constrói e serve
+        run: |
+          docker build -t spbim/web:teste ./frontend
+          docker run -d --name web -p 8080:80 -e API_UPSTREAM=http://localhost:8000 spbim/web:teste
+          for _ in $(seq 1 20); do
+            curl -fsS http://localhost:8080/ >/dev/null && break
+            sleep 2
+          done
+          # O envsubst precisa ter escrito a config; sem isso o nginx nem sobe.
+          docker exec web grep -q "proxy_pass http://localhost:8000" /etc/nginx/conf.d/default.conf
+          docker rm -f web
+
+      # A imagem da raiz é a que as plataformas de deploy constroem. Ela serve
+      # a aplicação E a API no mesmo processo, e é aí que a rota curinga da SPA
+      # pode engolir as rotas da API — o sintoma seria receber HTML onde se
+      # espera JSON.
+      - name: A imagem única serve a aplicação e a API
+        run: |
+          docker build -t spbim/tudo:teste .
+          docker run -d --name tudo --network host \
+            -e POSTGRES_HOST=localhost -e POSTGRES_USER=spbim \
+            -e POSTGRES_PASSWORD=spbim -e POSTGRES_DB=spbim_auditoria \
+            -e JWT_SECRET=$(openssl rand -base64 48) \
+            spbim/tudo:teste
+          for _ in $(seq 1 30); do
+            curl -fsS http://localhost:8000/api/v1/health >/dev/null && break
+            sleep 2
+          done
+          echo "-- a raiz devolve a aplicação --"
+          curl -fsS http://localhost:8000/ | grep -qi "<!doctype html"
+          echo "-- /portal/<token> também (é o link que o cliente recebe) --"
+          curl -fsS http://localhost:8000/portal/qualquer-token | grep -qi "<!doctype html"
+          echo "-- a API continua respondendo JSON --"
+          curl -fsS http://localhost:8000/api/v1/health | grep -q '"status":"ok"'
+          echo "-- rota de API inexistente é 404 JSON, não HTML --"
+          curl -s http://localhost:8000/api/v1/nao-existe | grep -q '"detail"'
+          docker logs tudo | tail -20
+          docker rm -f tudo
+
+  frontend:
+    name: Frontend · lint + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: frontend-dist
+          path: frontend/dist

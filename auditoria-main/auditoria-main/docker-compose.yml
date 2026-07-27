@@ -1,0 +1,104 @@
+# SPBIM · Plataforma de Auditoria BIM — ambiente de desenvolvimento
+#
+#   docker compose up -d db redis minio     # só a infraestrutura (backend rodando local)
+#   docker compose --profile app up -d      # infraestrutura + api + worker em container
+#
+# A infraestrutura sozinha é o suficiente para desenvolver: rode a API com
+# `uvicorn app.main:app --reload` a partir de backend/.
+
+name: spbim-auditoria
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: spbim-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-spbim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spbim}
+      POSTGRES_DB: ${POSTGRES_DB:-spbim_auditoria}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-spbim} -d ${POSTGRES_DB:-spbim_auditoria}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: spbim-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Storage S3-compatível para modelos (.ifc/.rvt), evidências e exports.
+  minio:
+    image: minio/minio:latest
+    container_name: spbim-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # console web
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    profiles: ["app"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: spbim-api
+    env_file: [.env]
+    environment:
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      S3_ENDPOINT_URL: http://minio:9000
+    ports:
+      - "8000:8000"
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    profiles: ["app"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: spbim-worker
+    env_file: [.env]
+    environment:
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      S3_ENDPOINT_URL: http://minio:9000
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    volumes:
+      - ./backend:/app
+    command: celery -A app.workers.celery_app.celery worker -l info
+
+volumes:
+  db_data:
+  minio_data:

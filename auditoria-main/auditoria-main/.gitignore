@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Ambiente. O padrão é ignorar TODO .env e liberar só os exemplos: um
+# `.env.prod` esquecido no commit vaza o banco e o JWT_SECRET de produção.
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+# Backups gerados localmente
+/backups/
+*.dump
+
+# A aplicação compilada que a API serve no modo container único. É artefato
+# de build: o Dockerfile a produz a partir de `frontend/`.
+backend/static/
+
+# Arquivos de modelo / uploads locais
+storage/
+*.ifc
+*.rvt
+!docs/**/*.ifc
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

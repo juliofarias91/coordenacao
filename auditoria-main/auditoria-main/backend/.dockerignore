@@ -1,0 +1,20 @@
+# O `.venv` local carrega binários de Windows e centenas de MB. Sem esta
+# linha ele entra no contexto de build e vai parar dentro da imagem.
+.venv/
+venv/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Segredos nunca entram na imagem: em produção vêm do ambiente.
+.env
+.env.*
+!.env.example
+
+tests/
+*.md

@@ -1,0 +1,215 @@
+"""Regras de negócio da execução da auditoria.
+
+Este módulo concentra o que a especificação chama de *dado de origem*. Painel,
+matriz, relatório e KPIs derivam daqui — nada disso é mantido à mão.
+
+Três regras merecem destaque, porque não são óbvias no schema:
+
+1. **Abrir uma auditoria materializa os resultados.** Ao abrir, cada item do
+   checklist vira uma linha `resultado_check` com status `pendente`. Sem isso,
+   "quantos itens faltam" seria uma conta entre tabelas diferentes a cada
+   consulta, e um item acrescentado ao checklist depois mudaria o resultado de
+   um round já fechado.
+
+2. **N/A sai do denominador.** A aprovação é `ok / (analisados − na)`. Um
+   critério que não se aplica àquela disciplina não pode contar como falha nem
+   inflar o percentual — é o mesmo cálculo do protótipo.
+
+3. **Versão nova desatualiza o round anterior.** Quando chega uma versão nova
+   do modelo, as auditorias publicadas das versões anteriores passam a
+   `desatualizado`. É o estado que o painel usa para dizer "isto já foi
+   aprovado, mas sobre um arquivo que não é mais o vigente".
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.models import (
+    Auditoria,
+    ChecklistItem,
+    Disciplina,
+    Modelo,
+    ResultadoCheck,
+    VersaoModelo,
+)
+from app.models.enums import AuditoriaEstado, ChecklistTipo, CheckStatus
+
+
+def checklists_da_versao(db: Session, versao: VersaoModelo) -> list[ChecklistTipo]:
+    """Auditorias aplicáveis, definidas na disciplina do modelo (SP-105)."""
+    disciplina = db.execute(
+        select(Disciplina)
+        .join(Modelo, Modelo.disciplina_id == Disciplina.id)
+        .where(Modelo.id == versao.modelo_id)
+    ).scalar_one_or_none()
+    return list(disciplina.checklists) if disciplina else []
+
+
+def areas_da_versao(db: Session, versao: VersaoModelo) -> list[str]:
+    disciplina = db.execute(
+        select(Disciplina)
+        .join(Modelo, Modelo.disciplina_id == Disciplina.id)
+        .where(Modelo.id == versao.modelo_id)
+    ).scalar_one_or_none()
+    return list(disciplina.areas) if disciplina else []
+
+
+def proximo_round(db: Session, modelo_id: uuid.UUID, checklist: ChecklistTipo) -> int:
+    """Rounds são contados por modelo × checklist, não por versão.
+
+    O round é a rodada de conversa com o fornecedor: V1 reprovada, V2
+    corrigida e V3 aprovada são os rounds 1, 2 e 3 do mesmo checklist.
+    """
+    maior = db.execute(
+        select(func.max(Auditoria.round))
+        .join(VersaoModelo, VersaoModelo.id == Auditoria.versao_id)
+        .where(VersaoModelo.modelo_id == modelo_id, Auditoria.checklist == checklist)
+    ).scalar()
+    return (maior or 0) + 1
+
+
+def abrir_auditoria(
+    db: Session,
+    *,
+    org_id: uuid.UUID,
+    versao: VersaoModelo,
+    checklist: ChecklistTipo,
+    area: str | None = None,
+    auditor_id: uuid.UUID | None = None,
+) -> Auditoria:
+    """Abre a auditoria e materializa um resultado por item do checklist.
+
+    Idempotente: chamar de novo para a mesma (versão, checklist, área)
+    devolve a auditoria existente em vez de duplicar o round.
+    """
+    existente = db.execute(
+        select(Auditoria).where(
+            Auditoria.versao_id == versao.id,
+            Auditoria.checklist == checklist,
+            Auditoria.area.is_(None) if area is None else Auditoria.area == area,
+        )
+    ).scalar_one_or_none()
+    if existente is not None:
+        return existente
+
+    modelo = db.get(Modelo, versao.modelo_id)
+    projeto_id = modelo.projeto_id if modelo else None
+
+    auditoria = Auditoria(
+        org_id=org_id,
+        versao_id=versao.id,
+        checklist=checklist,
+        area=area,
+        round=proximo_round(db, versao.modelo_id, checklist),
+        estado=AuditoriaEstado.NAO_PUBLICADO,
+        auditor_id=auditor_id,
+        data_inicio=datetime.now(UTC),
+    )
+    db.add(auditoria)
+    db.flush()
+
+    itens = db.execute(
+        select(ChecklistItem)
+        .where(ChecklistItem.projeto_id == projeto_id, ChecklistItem.checklist == checklist)
+        .order_by(ChecklistItem.ordem.nulls_last(), ChecklistItem.created_at)
+    ).scalars()
+
+    for item in itens:
+        db.add(
+            ResultadoCheck(
+                org_id=org_id,
+                auditoria_id=auditoria.id,
+                criterio_id=item.criterio_id,
+                status=CheckStatus.PENDENTE,
+            )
+        )
+    db.flush()
+
+    recalcular_aprovacao(db, auditoria)
+    return auditoria
+
+
+def recalcular_aprovacao(db: Session, auditoria: Auditoria) -> Decimal | None:
+    """`aprovado / (total − na)`, em porcentagem.
+
+    Devolve None quando todos os itens são N/A ou não há item: nesse caso não
+    existe percentual a mostrar, e 0% mentiria.
+    """
+    # A sessão roda com autoflush desligado, e quem chama aqui acabou de mexer
+    # num status. Sem este flush a consulta abaixo leria o valor anterior e o
+    # percentual sairia sempre um passo atrás.
+    db.flush()
+
+    linhas = db.execute(
+        select(ResultadoCheck.status).where(ResultadoCheck.auditoria_id == auditoria.id)
+    ).scalars()
+    considerados = [s for s in linhas if s != CheckStatus.NA]
+    if not considerados:
+        auditoria.aprovacao_pct = None
+        db.flush()
+        return None
+
+    aprovados = sum(1 for s in considerados if s == CheckStatus.APROVADO)
+    pct = (Decimal(aprovados) / Decimal(len(considerados)) * 100).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
+    auditoria.aprovacao_pct = pct
+    db.flush()
+    return pct
+
+
+def publicar(db: Session, auditoria: Auditoria, revisor_id: uuid.UUID) -> Auditoria:
+    """Fecha o round. O revisor é registrado — é a trilha de quem assinou."""
+    recalcular_aprovacao(db, auditoria)
+    auditoria.estado = AuditoriaEstado.PUBLICADO
+    auditoria.revisado_por = revisor_id
+    auditoria.publicado_em = datetime.now(UTC)
+    auditoria.data_fim = auditoria.data_fim or datetime.now(UTC)
+    db.flush()
+    return auditoria
+
+
+def itens_pendentes(db: Session, auditoria: Auditoria) -> int:
+    return (
+        db.execute(
+            select(func.count())
+            .select_from(ResultadoCheck)
+            .where(
+                ResultadoCheck.auditoria_id == auditoria.id,
+                ResultadoCheck.status == CheckStatus.PENDENTE,
+            )
+        ).scalar_one()
+        or 0
+    )
+
+
+def marcar_versoes_anteriores_como_desatualizadas(
+    db: Session, nova_versao: VersaoModelo
+) -> int:
+    """Chamado quando entra versão nova. Devolve quantas auditorias mudaram.
+
+    Só mexe no que estava `publicado`: um round ainda em andamento continua em
+    andamento — quem decide abandoná-lo é a coordenação, não o upload.
+    """
+    alvos = db.execute(
+        select(Auditoria)
+        .join(VersaoModelo, VersaoModelo.id == Auditoria.versao_id)
+        .where(
+            VersaoModelo.modelo_id == nova_versao.modelo_id,
+            VersaoModelo.id != nova_versao.id,
+            Auditoria.estado == AuditoriaEstado.PUBLICADO,
+        )
+    ).scalars()
+
+    mudadas = 0
+    for auditoria in alvos:
+        auditoria.estado = AuditoriaEstado.DESATUALIZADO
+        mudadas += 1
+    db.flush()
+    return mudadas

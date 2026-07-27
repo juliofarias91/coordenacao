@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Ambiente. O padrão é ignorar TODO .env e liberar só os exemplos: um
+# `.env.prod` esquecido no commit vaza o banco e o JWT_SECRET de produção.
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+# Backups gerados localmente
+/backups/
+*.dump
+
+# A aplicação compilada que a API serve no modo container único. É artefato
+# de build: o Dockerfile a produz a partir de `frontend/`.
+backend/static/
+
+# Arquivos de modelo / uploads locais
+storage/
+*.ifc
+*.rvt
+!docs/**/*.ifc
+
+# Dicionários do corretor ortográfico (5,7 MB). Não são fonte: o
+# `scripts/copy-dict.mjs` os gera no `npm install` a partir dos pacotes
+# `dictionary-pt` e `dictionary-en`.
+public/dictionaries/
+frontend/public/dictionaries/
+
+# Material de referência: vídeos de instrução (287 MB) e o histórico git do
+# Auditer preservado antes da reorganização. Nada aqui é código.
+/referencias/
+*.mp4
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.local

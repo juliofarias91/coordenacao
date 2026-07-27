@@ -1,0 +1,97 @@
+# SP-501 · publicação das imagens de produção.
+#
+# O workflow **constrói e publica**; ele não entra no servidor. Puxar a imagem
+# e reiniciar é um comando só (ver docs/OPERACAO.md), e manter o segredo de
+# SSH fora do CI é uma superfície a menos enquanto o piloto tem um servidor só.
+#
+# Para automatizar o passo final depois, acrescente um job com o `ssh-action`
+# rodando `docker compose -f docker-compose.prod.yml pull && ... up -d`.
+
+name: Deploy
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      etiqueta:
+        description: 'Etiqueta da imagem (padrão: sha curto)'
+        required: false
+
+env:
+  REGISTRO: ghcr.io
+
+jobs:
+  imagens:
+    name: Construir e publicar
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - nome: api
+            contexto: ./backend
+          - nome: web
+            contexto: ./frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRO }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRO }}/${{ github.repository }}/${{ matrix.nome }}
+          tags: |
+            type=ref,event=tag
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.contexto }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # O teste de fumaça da imagem mudou-se para o `ci.yml`, onde roda em todo
+  # push. Aqui ele só disparava em tag — e por isso não pegou o empacotamento
+  # quebrado do backend, que impedia o container de subir.
+  #
+  # O que resta aqui é a checagem que só faz sentido no momento de publicar.
+  guarda:
+    name: A imagem publicada recusa segredo de desenvolvimento
+    needs: imagens
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: docker build -t spbim/api:teste ./backend
+
+      - name: Subir com APP_ENV=prod e JWT padrão tem de falhar
+        run: |
+          set +e
+          saida=$(docker run --rm -e APP_ENV=prod -e JWT_SECRET=troque-este-valor-em-producao \
+            spbim/api:teste python -c "import app.main" 2>&1)
+          codigo=$?
+          set -e
+          echo "$saida"
+          if [ $codigo -eq 0 ]; then
+            echo "::error::a API subiu em prod com JWT_SECRET padrão"
+            exit 1
+          fi
+          echo "$saida" | grep -q "JWT_SECRET" || {
+            echo "::error::falhou, mas não pelo motivo esperado"; exit 1; }

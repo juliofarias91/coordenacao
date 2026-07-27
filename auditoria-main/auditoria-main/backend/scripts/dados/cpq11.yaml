@@ -1,0 +1,500 @@
+# Definição do projeto CPQ11 — o de referência do piloto.
+#
+# Serve de modelo para onboardar um projeto novo (SP-502): copie, troque o
+# código e as empresas, e ajuste a biblioteca de critérios ao PEB do contrato.
+#
+#   python -m scripts.onboarding scripts/dados/cpq11.yaml
+#
+# O importador é idempotente: rodar de novo atualiza o que mudou e não duplica
+# nada. Dá para editar este arquivo e reimportar quantas vezes for preciso.
+
+organizacao:
+  nome: SPBIM
+  slug: spbim
+
+projeto:
+  codigo: CPQ11
+  nome: CPQ11 — Data Center
+  cliente: Microsoft
+  coordenacao: SPBIM
+  bep_ref: A5.3.2 · Construction BEP
+  status: ativo
+
+# PROJETO-MACRO-DISC-SUB-SETOR-SW. O sufixo de software é opcional porque
+# entregas de Navisworks vêm sem ele (especificação, seção 2.1).
+nomenclatura:
+  - k: PROJETO
+    vals: [CPQ11]
+  - k: MACRO
+    vals: [A, C, M, S]
+  - k: DISC
+    vals: []
+  - k: SUB
+    vals: []
+  - k: SETOR
+    vals: []
+  - k: SW
+    vals: [R22, R24, RX3]
+    opcional: true
+
+standards:
+  - nome: Nomenclatura de arquivos
+    tipo: nomenclatura
+    referencia: PROJETO-MACRO-DISC-SUB-SETOR-SW
+  - nome: Workset List
+    tipo: conjunto_esperado
+    referencia: DISCIPLINA_LOCALIZACAO_…
+  - nome: Dicionário IFC Assembly
+    tipo: vocabulario
+    referencia: IfcElementAssembly
+    conteudo:
+      termos: [ANCHOR, BEAM, COLUMN, BRACE, PLATE, RAILING, STAIR, TRUSS]
+  - nome: Mapa Revit/Tekla/IFC
+    tipo: mapeamento
+    referencia: Category ↔ Class IFC
+  - nome: Nomenclatura de folhas
+    tipo: nomenclatura
+    referencia: ACC · Nomenclatures
+
+empresas:
+  - nome: Mendes Holler
+    tipo: terceirizada
+    papeis: [trade, bim]
+    ferramenta: Revit
+    departamento: Instalações
+    disciplinas: FPRT / FALM
+    contatos:
+      - nome: Carlos Mendes
+        cargo: Coordenador BIM
+        email: carlos@mendesholler.com
+        disciplina: FPRT-FPRT
+  - nome: Ideia Drywall
+    tipo: terceirizada
+    papeis: [trade]
+    departamento: Drywall
+    disciplinas: ARCH-CEIL
+  - nome: T2B
+    tipo: terceirizada
+    papeis: [bim]
+    contratada_por: Ideia Drywall
+    ferramenta: Revit
+    departamento: Modelagem
+    disciplinas: ARCH
+    contatos:
+      - nome: Ana Torres
+        cargo: Projetista BIM
+        email: ana@t2b.com
+        disciplina: ARCH-CEIL
+  - nome: Racional
+    tipo: propria
+    papeis: [trade, bim]
+    ferramenta: Revit
+    departamento: Estruturas
+    disciplinas: STRC / ARCH
+  - nome: METASA
+    tipo: terceirizada
+    papeis: [trade, bim]
+    ferramenta: Tekla
+    departamento: Estrutura metálica
+    disciplinas: STRC-STEEL
+  - nome: Ominitrade
+    tipo: terceirizada
+    papeis: [trade, bim]
+    ferramenta: Revit
+    departamento: Fachada
+    disciplinas: ARCH-FACD
+  - nome: Modax
+    tipo: terceirizada
+    papeis: [bim]
+    ferramenta: Revit
+    departamento: Modelagem
+    disciplinas: STRC-FLOO
+  - nome: FM Security
+    tipo: terceirizada
+    papeis: [trade, bim]
+    ferramenta: Revit
+    departamento: Segurança
+    disciplinas: SCTY
+  - nome: SPBIM
+    tipo: propria
+    papeis: [coordenacao]
+    departamento: Coordenação
+    disciplinas: Todas
+
+# ---------------------------------------------------------------------------
+# Biblioteca de critérios, derivada do PEB e do A5.37.
+#
+# `automacao`:
+#   auto              → nível 1: extração de propriedades (IFC grátis, APS pago)
+#   design_automation → nível 2: exige abrir o Revit; fora do piloto
+#   manual            → nível 3: julgamento humano
+#
+# `parametro_esperado` é o que faz um critério rodar sozinho sem código novo:
+# o verificador genérico confere a presença desses parâmetros por elemento.
+# ---------------------------------------------------------------------------
+criterios:
+  - codigo: MODEL_NAME
+    pt: Nome do modelo
+    en: Model name
+    categoria: Aspectos gerais
+    nivel: modelo
+    automacao: auto
+    standard: Nomenclatura de arquivos
+    instrucao: Verificar se o nome do arquivo está correto.
+  - codigo: START_VIEW
+    pt: Vista inicial
+    en: Start up view
+    categoria: Aspectos gerais
+    nivel: modelo
+    automacao: manual
+    instrucao: Info do projeto e tabela de revisões preenchidas.
+  - codigo: SHARED_COORD
+    pt: Coordenadas compartilhadas
+    en: Shared coordinates
+    categoria: Aspectos gerais
+    nivel: modelo
+    automacao: manual
+    instrucao: Ponto base nos eixos A/0.01; conferir com Construction BIM.
+  - codigo: DESIGN_AXES
+    pt: Eixos
+    en: Design axes
+    categoria: Aspectos gerais
+    nivel: modelo
+    automacao: manual
+    instrucao: Eixos nomeados e posicionados corretamente.
+  - codigo: FILTER_PHASE
+    pt: Filtro de fase
+    en: Filter phase
+    categoria: Aspectos gerais
+    nivel: modelo
+    automacao: design_automation
+    instrucao: Todos os elementos em uma fase única (tabela multicategoria).
+  - codigo: DESIGN_OPTIONS
+    pt: Opções de desenho
+    en: Design options
+    categoria: Aspectos gerais
+    nivel: modelo
+    automacao: design_automation
+    instrucao: Manage → Design Options vazio.
+  - codigo: BROWSER_SCHED
+    pt: Navegador — tabelas
+    en: Browser org. — schedules
+    categoria: Organização do navegador
+    nivel: modelo
+    automacao: manual
+    instrucao: Tabelas nomeadas em inglês e organizadas.
+  - codigo: BROWSER_VIEWS
+    pt: Navegador — vistas
+    en: Browser org. — views
+    categoria: Organização do navegador
+    nivel: modelo
+    automacao: manual
+    instrucao: Vistas de trabalho agrupadas em "WORK VIEW"; sem duplicatas.
+  - codigo: BROWSER_SHEETS
+    pt: Navegador — folhas
+    en: Browser org. — sheets
+    categoria: Organização do navegador
+    nivel: modelo
+    automacao: manual
+    standard: Nomenclatura de folhas
+    instrucao: Padrão de nomenclatura de folhas.
+  - codigo: WORKSETS
+    pt: Worksets
+    en: Worksets
+    categoria: Aspectos gerais
+    nivel: modelo
+    automacao: design_automation
+    standard: Workset List
+    instrucao: Nomenclatura conforme WORKSET LIST por disciplina.
+  - codigo: GENERIC_MODELS
+    pt: Modelos genéricos
+    en: Generic models
+    categoria: Aspectos gerais
+    nivel: modelo
+    automacao: design_automation
+    instrucao: Sem modelos genéricos (tabela multicategoria).
+  - codigo: SATELLITE
+    pt: Elementos satélite
+    en: Satellite elements
+    categoria: Aspectos gerais
+    nivel: elemento
+    automacao: auto
+    instrucao: Sem elementos soltos flutuando no modelo.
+  - codigo: FILES_LINKED
+    pt: Arquivos vinculados
+    en: Files linked
+    categoria: Aspectos gerais
+    nivel: modelo
+    automacao: design_automation
+    instrucao: Sem links inseridos no projeto.
+  - codigo: ON_SITE
+    pt: Modelagem no local
+    en: On-site modeling
+    categoria: Aspectos gerais
+    nivel: modelo
+    automacao: design_automation
+    instrucao: Sem modelagem no local (plugin BIMprove).
+  - codigo: DUPLICATE
+    pt: Elementos duplicados
+    en: Duplicate elements
+    categoria: Aspectos gerais
+    nivel: elemento
+    automacao: design_automation
+    instrucao: Sem elementos duplicados (Model Checker RVT).
+  - codigo: OVERLAPPED
+    pt: Elementos sobrepostos
+    en: Overlapped elements
+    categoria: Aspectos gerais
+    nivel: elemento
+    automacao: design_automation
+    instrucao: Sem sobreposições (aba Warnings).
+  - codigo: CAT_SHARED_PARAMS
+    pt: Categorias com parâmetros compartilhados
+    en: Category info w/ shared params
+    categoria: Parâmetros
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: 4D_DISCIPLINE, 4D_AREA
+    instrucao: Parâmetros 4D presentes nas categorias.
+  - codigo: CATEGORY_IFC
+    pt: Categoria de IFC
+    en: Category of IFC
+    categoria: IFC
+    nivel: elemento
+    automacao: auto
+    standard: Dicionário IFC Assembly
+    instrucao: Categorias de IfcElementAssembly conforme o dicionário.
+  - codigo: INCONSISTENCY
+    pt: Inconsistências
+    en: Inconsistency
+    categoria: IFC
+    nivel: modelo
+    automacao: manual
+    instrucao: Inconsistências de modelagem, elementos faltando.
+
+  # --- 4D de parâmetros: é a auditoria de maior volume manual hoje ---------
+  - codigo: 4D_DISCIPLINE
+    pt: Parâmetro 4D — disciplina
+    en: 4D parameter — discipline
+    categoria: 4D
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: 4D_DISCIPLINE
+  - codigo: 4D_AREA
+    pt: Parâmetro 4D — área
+    en: 4D parameter — area
+    categoria: 4D
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: 4D_AREA
+  - codigo: 4D_SUBAREA
+    pt: Parâmetro 4D — subárea
+    en: 4D parameter — subarea
+    categoria: 4D
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: 4D_SUBAREA
+  - codigo: 4D_CELL
+    pt: Parâmetro 4D — célula
+    en: 4D parameter — cell
+    categoria: 4D
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: 4D_CELL
+
+  # --- LOI (LOD 400), do BIM Forum / A5.37 --------------------------------
+  - codigo: LOI_URL
+    pt: URL
+    en: URL
+    categoria: LOI · LOD 400
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: BF_URL
+    instrucao: Manufacturer details.
+  - codigo: LOI_MODEL
+    pt: Modelo
+    en: Model
+    categoria: LOI · LOD 400
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: BF_MODEL
+  - codigo: LOI_MODEL_NUMBER
+    pt: Número do modelo
+    en: Model number
+    categoria: LOI · LOD 400
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: BF_MODEL NUMBER
+  - codigo: LOI_FINISH
+    pt: Acabamento
+    en: Finish
+    categoria: LOI · LOD 400
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: BF_FINISH
+  - codigo: LOI_CODE
+    pt: Conformidade normativa
+    en: Code compliance
+    categoria: LOI · LOD 400
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: BF_CODE COMPLIANCE
+  - codigo: LOI_FIRE
+    pt: Resistência ao fogo
+    en: Fire rating
+    categoria: LOI · LOD 400
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: BF_FIRE RATING
+  - codigo: LOI_WARRANTY
+    pt: Garantia
+    en: Warranty description
+    categoria: LOI · LOD 400
+    nivel: elemento
+    automacao: auto
+    parametro_esperado: BF_WARRANTY DESCRIPTION
+
+# Critérios compartilhados entre checklists são o ponto da biblioteca: MODEL_NAME
+# aparece no Geral e no IFC, e é um registro só.
+checklists:
+  geral:
+    - MODEL_NAME
+    - START_VIEW
+    - SHARED_COORD
+    - DESIGN_AXES
+    - FILTER_PHASE
+    - DESIGN_OPTIONS
+    - BROWSER_SCHED
+    - BROWSER_VIEWS
+    - BROWSER_SHEETS
+    - WORKSETS
+    - GENERIC_MODELS
+    - SATELLITE
+    - FILES_LINKED
+    - ON_SITE
+    - DUPLICATE
+    - OVERLAPPED
+    - CAT_SHARED_PARAMS
+  ifc:
+    - MODEL_NAME
+    - SHARED_COORD
+    - SATELLITE
+    - DUPLICATE
+    - CAT_SHARED_PARAMS
+    - CATEGORY_IFC
+    - INCONSISTENCY
+  "4d":
+    - 4D_DISCIPLINE
+    - 4D_AREA
+    - 4D_SUBAREA
+    - 4D_CELL
+  lod400:
+    - LOI_URL
+    - LOI_MODEL
+    - LOI_MODEL_NUMBER
+    - LOI_FINISH
+    - LOI_CODE
+    - LOI_FIRE
+    - LOI_WARRANTY
+
+disciplinas:
+  - macro: M
+    disc: FPRT
+    sub: FPRT
+    projetista: Mendes Holler
+    checklists: [geral, ifc]
+    areas: [ADMIN, SITE]
+  - macro: A
+    disc: ARCH
+    sub: CEIL
+    projetista: Ideia Drywall
+    checklists: [geral, ifc, lod400]
+    areas: [ADMIN, COLO1, COLO2, COLO3]
+  - macro: C
+    disc: STRC
+    sub: CONC
+    projetista: Racional
+    checklists: [geral, ifc, lod400]
+    areas: [ADMIN, COLO1, COLO2, COLO3, SITE]
+  - macro: C
+    disc: STRC
+    sub: STEEL
+    projetista: METASA
+    checklists: [ifc, "4d", lod400]
+    areas: [COLO1, COLO2, COLO3]
+  - macro: A
+    disc: ARCH
+    sub: FACD
+    projetista: Ominitrade
+    checklists: [geral, ifc, lod400]
+    areas: [ADMIN, COLO1, COLO2, COLO3]
+  - macro: C
+    disc: STRC
+    sub: FLOO
+    projetista: Modax
+    checklists: [geral, lod400]
+    areas: [SITE]
+  - macro: M
+    disc: SCTY
+    sub: GATE
+    projetista: FM Security
+    checklists: [geral]
+    areas: [ADMIN, SITE]
+  - macro: M
+    disc: FALM
+    sub: FALM
+    projetista: Mendes Holler
+    checklists: [geral, ifc]
+    areas: [SITE]
+  - macro: A
+    disc: ARCH
+    sub: WOOD
+    projetista: Racional
+    checklists: [geral, ifc]
+    areas: [ADMIN]
+  - macro: A
+    disc: ARCH
+    sub: ARCH
+    projetista: Racional
+    checklists: [geral, ifc, lod400]
+    areas: [SITE]
+
+# Modelos com a nomenclatura do projeto. As versões chegam depois, pelo ACC
+# ou por upload — o importador não inventa entrega.
+modelos:
+  - codigo: CPQ11-M-FPRT-FPRT-ADMIN-R22
+    disciplina: FPRT-FPRT
+    instaladora: Mendes Holler
+    modeladora: Mendes Holler
+  - codigo: CPQ11-A-ARCH-CEIL-ADMIN-R22
+    disciplina: ARCH-CEIL
+    instaladora: Ideia Drywall
+    modeladora: T2B
+  - codigo: CPQ11-C-STRC-CONC-ADMIN-R22
+    disciplina: STRC-CONC
+    instaladora: Racional
+    modeladora: Racional
+  - codigo: CPQ11-C-STRC-STEEL-COLO1-RX3
+    disciplina: STRC-STEEL
+    instaladora: METASA
+    modeladora: METASA
+  - codigo: CPQ11-A-ARCH-FACD-ADMIN-R22
+    disciplina: ARCH-FACD
+    instaladora: Ominitrade
+    modeladora: Ominitrade
+
+# Usuários. A senha **não** vai no arquivo: o importador cria sem senha (só
+# SSO) e imprime o comando para definir uma, ou lê de variável de ambiente.
+usuarios:
+  - login: coord@spbim.com.br
+    nome: Coordenação SPBIM
+    papel: coordenador
+    empresa: SPBIM
+  - login: carlos@mendesholler.com
+    nome: Carlos Mendes
+    papel: fornecedor
+    empresa: Mendes Holler
+  - login: ana@t2b.com
+    nome: Ana Torres
+    papel: auditor
+    empresa: T2B

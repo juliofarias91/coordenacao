@@ -1,0 +1,14 @@
+# Normaliza finais de linha. Arquivos de texto vão para LF no repositório e no
+# checkout — importante porque Dockerfile, nginx.conf e os scripts rodam dentro
+# do container Linux, onde CRLF pode causar problema.
+* text=auto eol=lf
+
+# Arquivos que SÓ rodam no Windows precisam de CRLF.
+*.bat text eol=crlf
+
+# Binários / não-texto: git não deve mexer.
+*.lnk binary
+*.aff binary
+*.dic binary
+*.wasm binary
+*.xlsx binary

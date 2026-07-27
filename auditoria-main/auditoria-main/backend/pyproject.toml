@@ -1,0 +1,73 @@
+[project]
+name = "spbim-auditoria-api"
+version = "0.1.0"
+description = "API da plataforma de auditoria BIM da SPBIM"
+# 3.12 e não 3.13/3.14: IfcOpenShell (Fase 3) e psycopg ainda distribuem
+# wheels só até 3.12 no Windows.
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic[email]>=2.9",   # `email` traz o email-validator usado nos EmailStr
+  "pydantic-settings>=2.6",
+  "sqlalchemy>=2.0.36",
+  "alembic>=1.14",
+  "psycopg[binary]>=3.2",
+  "python-jose[cryptography]>=3.3",   # JWT
+  "argon2-cffi>=23.1",                # hash de senha
+  "python-multipart>=0.0.12",         # uploads
+  "httpx>=0.27",                      # OIDC / APS
+  "celery[redis]>=5.4",
+  "redis>=5.2",
+  "boto3>=1.35",                      # S3 / MinIO
+  "reportlab>=4.2",                   # relatório de RNC em PDF
+  "openpyxl>=3.1",                    # controle em .xlsx
+  "pyyaml>=6.0",                      # definição de projeto do importador
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "ruff>=0.8",
+  "mypy>=1.13",
+]
+# Instalado só a partir da Fase 3 (worker de auditoria automatizada).
+bim = [
+  "ifcopenshell>=0.8",
+]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.flake8-bugbear]
+# `Depends(...)` no valor padrão é o jeito do FastAPI declarar dependência —
+# não é o bug que o B008 procura.
+extend-immutable-calls = [
+  "fastapi.Depends", "fastapi.Query", "fastapi.Path",
+  "fastapi.Body", "fastapi.Header", "fastapi.Form", "fastapi.File",
+  # Fábricas de guarda de rota — existem justamente para serem chamadas
+  # dentro de `Depends(...)` na assinatura.
+  "app.core.deps.requer_permissao", "app.core.deps.requer_papel",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
