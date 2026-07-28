@@ -16,9 +16,12 @@ pytestmark = requer_banco
 
 # ------------------------------------------------------------- SP-101 projeto
 def test_criar_projeto_e_ler_de_volta(autenticado: TestClient) -> None:
+    # Cliente é entidade desde a 0003: o projeto aponta por `cliente_id`, e a
+    # leitura devolve `cliente_nome` resolvido pelo relacionamento.
+    cliente = autenticado.post(f"{API}/clientes", json={"nome": "Microsoft"}).json()
     r = autenticado.post(
         f"{API}/projetos",
-        json={"codigo": "cpq99", "nome": "CPQ99 — Data Center", "cliente": "Microsoft"},
+        json={"codigo": "cpq99", "nome": "CPQ99 — Data Center", "cliente_id": cliente["id"]},
     )
     assert r.status_code == 201, r.text
     criado = r.json()
@@ -27,7 +30,7 @@ def test_criar_projeto_e_ler_de_volta(autenticado: TestClient) -> None:
 
     r = autenticado.get(f"{API}/projetos/{criado['id']}")
     assert r.status_code == 200
-    assert r.json()["cliente"] == "Microsoft"
+    assert r.json()["cliente_nome"] == "Microsoft"
 
 
 def test_codigo_de_projeto_e_unico_na_organizacao(autenticado: TestClient) -> None:
@@ -39,12 +42,13 @@ def test_codigo_de_projeto_e_unico_na_organizacao(autenticado: TestClient) -> No
 
 
 def test_patch_so_altera_o_que_foi_enviado(autenticado: TestClient, cenario: Cenario) -> None:
+    cliente = autenticado.post(f"{API}/clientes", json={"nome": "Prologis"}).json()
     r = autenticado.patch(
-        f"{API}/projetos/{cenario.projeto.id}", json={"cliente": "Prologis"}
+        f"{API}/projetos/{cenario.projeto.id}", json={"cliente_id": cliente["id"]}
     )
     assert r.status_code == 200
     corpo = r.json()
-    assert corpo["cliente"] == "Prologis"
+    assert corpo["cliente_nome"] == "Prologis"
     assert corpo["nome"] == "Projeto de teste", "o nome não foi enviado e não podia mudar"
 
 

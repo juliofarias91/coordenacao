@@ -17,6 +17,12 @@ FROM node:22-alpine AS web
 
 WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./
+# `scripts/` ANTES do install: o postinstall do frontend roda
+# `node scripts/copy-dict.mjs`, que gera os dicionários do corretor a partir
+# do dictionary-pt/dictionary-en. Sem esta linha o `npm ci` morre com
+# "Cannot find module /web/scripts/copy-dict.mjs" — o COPY do restante do
+# frontend só acontece depois, e o postinstall não espera por ele.
+COPY frontend/scripts ./scripts
 RUN npm ci
 
 COPY frontend/ ./
