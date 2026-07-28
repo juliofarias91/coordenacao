@@ -46,6 +46,20 @@ def test_conexao_direta_nao_e_pooler(url: str) -> None:
     assert _cfg(app_database_url=url).usa_pooler_de_transacao is False
 
 
+def test_mesmo_host_de_pooler_na_5432_e_modo_sessao() -> None:
+    """O Supavisor atende os dois modos no mesmo host — só a porta distingue.
+
+    É por onde as migrations passam quando a conexão direta
+    (`db.<ref>.supabase.co`) não é alcançável: ela só publica AAAA, e o IPv4
+    dedicado é add-on pago. Detectar pelo host marcaria essa conexão como
+    pooler de transação e desligaria o preparo de statements sem motivo.
+    """
+    sessao = "postgresql+psycopg://postgres.ref:s@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
+    transacao = "postgresql+psycopg://app.ref:s@aws-1-us-west-2.pooler.supabase.com:6543/postgres"
+    assert _cfg(app_database_url=sessao).usa_pooler_de_transacao is False
+    assert _cfg(app_database_url=transacao).usa_pooler_de_transacao is True
+
+
 def test_sobrescrita_explicita_vence_a_deteccao() -> None:
     """Nem todo pooler se anuncia na URL — um proxy interno na 5432, por
     exemplo. A variável existe para esse caso."""

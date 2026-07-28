@@ -43,16 +43,28 @@ O Supavisor atende em **duas portas, e elas não são intercambiáveis**:
 | Porta | Modo | Para quê |
 |---|---|---|
 | `6543` | transação | a API e o worker |
-| `5432` | sessão / direta | **as migrations** |
+| `5432` | sessão | **as migrations** e a autenticação |
+
+⚠️ **Não use `db.<ref>.supabase.co`.** O host da conexão direta só publica
+registro **AAAA** — é IPv6, e o IPv4 dedicado é add-on pago. De uma rede sem
+IPv6 o DNS resolve e a conexão TCP nunca fecha (confirmado nesta máquina em
+28/07/2026: `db.pilyrmvxytuwoiwjxgdv.supabase.co:5432` inalcançável, o pooler
+respondendo nas duas portas). O sintoma é um *timeout* na porta 5432 que
+parece firewall e não é.
+
+O substituto é o **mesmo pooler, na 5432** — modo sessão, IPv4 normal. Serve
+para DDL; o que não serve para DDL é a 6543. O usuário do dono também leva o
+`project_ref` como sufixo: `postgres.<ref>`.
 
 O psycopg3 prepara statements a partir da 5ª execução da mesma query. Num
 pooler de transação a conexão física muda entre execuções, e o servidor
 responde *"prepared statement não existe"* — intermitente, só sob carga.
 
 A aplicação detecta isso sozinha (`usa_pooler_de_transacao` em
-`app/core/config.py`) e desliga o preparo. A detecção olha a URL: host
-`*.pooler.supabase.com`, porta `6543` ou `6432`. Para um proxy que não se
-anuncia, force com `DB_POOLER_TRANSACAO=true`.
+`app/core/config.py`) e desliga o preparo. A detecção olha a **porta** —
+`6543` ou `6432` —, não o host: o mesmo `*.pooler.supabase.com` atende os dois
+modos, e marcar a conexão de sessão como transação desligaria o preparo à toa.
+Para um proxy que não se anuncia, force com `DB_POOLER_TRANSACAO=true`.
 
 **As migrations vão pela conexão direta.** DDL em pooler de transação é
 pedido de problema.
@@ -68,21 +80,43 @@ tenant de um cliente vazaria para a requisição seguinte através do pool.
 # API e worker — pooler, modo transação
 APP_DATABASE_URL=postgresql+psycopg://spbim_app.pilyrmvxytuwoiwjxgdv:<SENHA_APP>@aws-1-us-west-2.pooler.supabase.com:6543/postgres
 
-# Migrations e autenticação — conexão direta
-DATABASE_URL=postgresql+psycopg://postgres:<SENHA_POSTGRES>@db.pilyrmvxytuwoiwjxgdv.supabase.co:5432/postgres
+# Migrations e autenticação — pooler, modo sessão
+DATABASE_URL=postgresql+psycopg://postgres.pilyrmvxytuwoiwjxgdv:<SENHA_POSTGRES>@aws-1-us-west-2.pooler.supabase.com:5432/postgres
 ```
 
-> O usuário do pooler leva o `project_ref` como sufixo
-> (`spbim_app.pilyrmvxytuwoiwjxgdv`) — é assim que o Supavisor sabe para qual
-> projeto rotear.
+> Os dois usuários levam o `project_ref` como sufixo
+> (`spbim_app.pilyrmvxytuwoiwjxgdv`, `postgres.pilyrmvxytuwoiwjxgdv`) — é assim
+> que o Supavisor sabe para qual projeto rotear. O papel real no Postgres
+> continua sendo `spbim_app`, e é ele que vai em `APP_DB_USER`.
 
 ### Aplicar o schema
+
+Com as duas URLs no `.env`, um comando faz tudo — papel, migration e
+conferência, nessa ordem:
+
+```bash
+cd backend
+python -m scripts.supabase_bootstrap             # cria o papel, migra, confere
+python -m scripts.supabase_bootstrap --conferir  # só diagnostica, não escreve
+```
+
+Ele existe porque o roteiro manual abaixo pressupõe `psql`, que não está em
+toda máquina, e porque **a ordem não perdoa** (ver o aviso adiante). A senha
+do papel ele extrai da própria `APP_DATABASE_URL` — é o que impede o papel
+criado no banco e a URL que a API usa de divergirem.
+
+O `--conferir` também serve de diagnóstico depois: lista tabelas, policies e,
+o que mais importa, **qualquer tabela sem row-level security** — um vazamento
+que a contagem de policies não denuncia.
+
+<details>
+<summary>O mesmo passo a passo, à mão, com psql</summary>
 
 ```bash
 cd backend
 
-# 1. o papel de aplicação e o RLS (pela conexão direta)
-psql "$DATABASE_URL" -f ../infra/postgres/init/01-app-role.sql
+# 1. o papel de aplicação (pela conexão de sessão)
+psql "$DATABASE_URL" -v senha_app="'<SENHA_APP>'" -f ../infra/supabase/01-app-role.sql
 
 # 2. as 23 tabelas, 12 enums e 23 policies
 alembic upgrade head
@@ -94,8 +128,33 @@ psql "$DATABASE_URL" -c "
 # esperado: 25 tabelas (23 + alembic_version + a de verificação) e 23 policies
 ```
 
-⚠️ **O `01-app-role.sql` cria o papel com senha fixa.** Troque antes de rodar
-em produção, ou rode o `CREATE ROLE` à mão com a senha real.
+O passo 1 usa `infra/supabase/01-app-role.sql`, **não** o
+`infra/postgres/init/01-app-role.sql`: aquele é do docker-compose, tem senha
+fixa no arquivo e faz `GRANT CONNECT ON DATABASE spbim_auditoria`, banco que
+no Supabase não existe — lá o banco chama `postgres`.
+
+Sem `psql` à mão, o **SQL Editor** do painel faz o mesmo (só troque a senha —
+lá não há variável de psql):
+
+```sql
+CREATE ROLE spbim_app LOGIN PASSWORD '<SENHA_APP>';
+GRANT CONNECT ON DATABASE postgres TO spbim_app;
+GRANT USAGE ON SCHEMA public TO spbim_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO spbim_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO spbim_app;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+```
+
+</details>
+
+**A ordem não é negociável.** A migration 0001 só emite os GRANTs nas 23
+tabelas se o papel já existir (ela consulta `pg_roles`). Rodar o Alembic antes
+deixa a API conectando e levando `permission denied` em toda tabela — e o
+`alembic upgrade head` não repara isso, porque a revisão já consta aplicada.
+O `supabase_bootstrap` acima existe em boa parte para não deixar essa ordem
+depender de quem está executando.
 
 ### Conferir que o isolamento pegou
 
@@ -204,8 +263,9 @@ Um dump próprio, versionado e testado pelo `verificar-restauracao.sh`, é o
 que permite voltar uma tabela sem voltar tudo — e o que sobrevive a um
 problema na conta.
 
-Aponte o serviço de backup para a conexão direta (`5432`), nunca para o
-pooler.
+Aponte o serviço de backup para o `DATABASE_URL` — a **5432**, modo sessão.
+Nunca para a 6543: um `pg_dump` atravessa muitas queries numa transação longa,
+que é exatamente o que o pooler de transação não sustenta.
 
 ---
 

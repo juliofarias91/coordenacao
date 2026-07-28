@@ -43,6 +43,11 @@ def _config(**kw: Any) -> Settings:
         "s3_access_key": "chave-real",
         "s3_secret_key": "segredo-real",
         "cors_origins": "https://auditoria.spbim.com.br",
+        # Zeradas de propósito: sem isto, o `.env` da raiz vaza para dentro do
+        # teste. Uma DATABASE_URL preenchida lá desliga a cobrança de
+        # POSTGRES_PASSWORD e o teste passa a depender da máquina em que roda.
+        "database_url": "",
+        "app_database_url": "",
     }
     return Settings(**{**base, **kw})
 
@@ -79,6 +84,24 @@ def test_jwt_curto_tambem_reprova() -> None:
 def test_cada_segredo_de_desenvolvimento_e_apontado(campo, valor, trecho) -> None:
     problemas = _config(**{campo: valor}).problemas_de_producao()
     assert any(trecho in p for p in problemas), problemas
+
+
+@pytest.mark.parametrize("campo", ["database_url", "app_database_url"])
+def test_senha_de_dev_embutida_na_url_e_apontada(campo: str) -> None:
+    """Num banco gerenciado a senha vive dentro da URL, e as variáveis avulsas
+    deixam de ser lidas — é como o Supabase é configurado. A guarda tem que
+    olhar onde a senha realmente está."""
+    url = "postgresql+psycopg://spbim_app.ref:spbim_app@aws-1-us-west-2.pooler.supabase.com:6543/postgres"
+    cfg = _config(**{campo: url})
+    assert any(campo.upper() in p for p in cfg.problemas_de_producao())
+    with pytest.raises(RuntimeError, match=campo.upper()):
+        verificar_producao(cfg)
+
+
+@pytest.mark.parametrize("campo", ["database_url", "app_database_url"])
+def test_url_gerenciada_com_senha_real_passa(campo: str) -> None:
+    url = "postgresql+psycopg://postgres.ref:Xk7-senha-real@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
+    assert _config(**{campo: url}).problemas_de_producao() == []
 
 
 def test_fora_de_producao_nao_reclama() -> None:
@@ -282,7 +305,11 @@ def test_reimportar_aplica_o_que_mudou(importado, db: Session, definicao: dict) 
     db.commit()
     db.refresh(projeto)
 
-    assert projeto.cliente == "Cliente Y"
+    # O YAML traz o cliente como texto; o importador resolve para a entidade
+    # criada na 0003 — mudar o nome no arquivo passa a apontar para outro
+    # cliente, não a reescrever o registro do anterior.
+    assert projeto.cliente is not None
+    assert projeto.cliente.nome == "Cliente Y"
     crit = db.execute(
         select(Criterio).where(
             Criterio.projeto_id == projeto.id, Criterio.codigo == "MODEL_NAME"

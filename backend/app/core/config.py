@@ -2,12 +2,17 @@
 
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> backend/app/core -> backend/app -> backend -> raiz
 REPO_ROOT = Path(__file__).resolve().parents[3]
+
+# Senhas que só existem em desenvolvimento: o docker-compose e o
+# infra/postgres/init/01-app-role.sql as fixam.
+SENHAS_DE_DEV = frozenset({"spbim", "spbim_app", "postgres", ""})
 
 
 class Settings(BaseSettings):
@@ -131,14 +136,29 @@ class Settings(BaseSettings):
         as execuções — o servidor então responde "prepared statement não
         existe" de forma intermitente, só sob carga.
 
-        A detecção é pela URL (Supavisor do Supabase atende na 6543, com host
-        `*.pooler.supabase.com`; o PgBouncer costuma usar 6432). `DB_POOLER_
-        TRANSACAO` sobrescreve quando o endereço não denuncia o pooler.
+        A detecção é pela **porta**, não pelo host: o Supavisor atende os dois
+        modos no mesmo `*.pooler.supabase.com` — 6543 é transação, 5432 é
+        sessão. Olhar o host marcaria a conexão de sessão como transação e
+        desligaria o preparo à toa. O PgBouncer costuma usar 6432.
+
+        `DB_POOLER_TRANSACAO` sobrescreve quando o endereço não denuncia o
+        pooler.
         """
         if self.db_pooler_transacao is not None:
             return self.db_pooler_transacao
+
         url = self.sqlalchemy_url
-        return "pooler.supabase.com" in url or ":6543/" in url or ":6432/" in url
+        try:
+            partes = urlsplit(url)
+            porta, host = partes.port, partes.hostname or ""
+        except ValueError:  # porta não numérica: URL malformada, cai no literal
+            return "pooler.supabase.com" in url or ":6543/" in url or ":6432/" in url
+
+        if porta in (6543, 6432):
+            return True
+        # Sem porta explícita, o host do pooler significa o de transação — é o
+        # modo que o Supabase apresenta como padrão.
+        return porta is None and "pooler.supabase.com" in host
 
     def problemas_de_producao(self) -> list[str]:
         """Segredos que ficaram no valor de desenvolvimento.
@@ -154,10 +174,32 @@ class Settings(BaseSettings):
                 "um token de admin. Gere com "
                 "`python -c \"import secrets; print(secrets.token_urlsafe(48))\"`"
             )
-        if self.postgres_password in ("spbim", "postgres", "") and not self.database_url:
+        # As variáveis avulsas só são lidas quando a URL correspondente está
+        # vazia — ver `sqlalchemy_url` e `owner_url`. Cobrá-las fora disso
+        # reprovaria uma configuração correta.
+        if self.postgres_password in SENHAS_DE_DEV and not self.database_url:
             problemas.append("POSTGRES_PASSWORD no valor de desenvolvimento")
-        if self.app_db_password in ("spbim_app", ""):
+        if self.app_db_password in SENHAS_DE_DEV and not (
+            self.app_database_url or self.database_url
+        ):
             problemas.append("APP_DB_PASSWORD no valor de desenvolvimento")
+
+        # Com banco gerenciado (o Supabase é o caso), a senha viaja *dentro* da
+        # URL e as variáveis acima deixam de ser lidas. Sem esta checagem, a
+        # única configuração que produção realmente usa seria a única que a
+        # guarda não olha.
+        for nome, url in (
+            ("DATABASE_URL", self.database_url),
+            ("APP_DATABASE_URL", self.app_database_url),
+        ):
+            if not url:
+                continue
+            try:
+                senha = urlsplit(url).password
+            except ValueError:  # URL malformada: o engine reclama com mais contexto
+                continue
+            if senha is not None and senha in SENHAS_DE_DEV:
+                problemas.append(f"{nome} com senha de desenvolvimento embutida")
         if self.s3_access_key == "minioadmin" or self.s3_secret_key == "minioadmin":
             problemas.append("credenciais do S3 nos valores padrão do MinIO")
         if self.app_debug:
