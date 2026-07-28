@@ -38,6 +38,33 @@ class Organizacao(TimestampMixin, Base):
     projetos: Mapped[list[Projeto]] = relationship(back_populates="organizacao")
 
 
+class Cliente(OrgMixin, TimestampMixin, Base):
+    """Quem CONTRATA a auditoria — a Microsoft do CPQ11.
+
+    Não confundir com `Empresa`, que é quem PRODUZ o modelo (projetista,
+    instaladora, modeladora) e responde por não-conformidade e penalidade. São
+    lados opostos da mesa: o cliente recebe o relatório, a empresa é auditada
+    nele. Misturar os dois numa tabela só faria a penalidade de uma virar
+    histórico do outro.
+
+    Era um campo de texto em `projeto` até a migration 0003. Virou entidade
+    porque texto livre não agrupa — 'Microsoft', 'microsoft' e 'MS' seriam três
+    pastas na home — e porque o cliente precisa de dados próprios (contato,
+    e-mail) que não cabem repetidos em cada projeto dele.
+    """
+
+    __tablename__ = "cliente"
+    __table_args__ = (UniqueConstraint("org_id", "nome", name="uq_cliente_org_nome"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    nome: Mapped[str] = mapped_column(Text, nullable=False)
+    contato: Mapped[str | None] = mapped_column(Text)
+    email: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'ativo'"))
+
+    projetos: Mapped[list[Projeto]] = relationship(back_populates="cliente")
+
+
 class Projeto(OrgMixin, TimestampMixin, Base):
     __tablename__ = "projeto"
     __table_args__ = (UniqueConstraint("org_id", "codigo", name="uq_projeto_org_codigo"),)
@@ -45,13 +72,17 @@ class Projeto(OrgMixin, TimestampMixin, Base):
     id: Mapped[uuid.UUID] = uuid_pk()
     codigo: Mapped[str] = mapped_column(Text, nullable=False)          # 'CPQ11'
     nome: Mapped[str] = mapped_column(Text, nullable=False)
-    cliente: Mapped[str | None] = mapped_column(Text)
-    cliente_contato: Mapped[str | None] = mapped_column(Text)
+    # SET NULL, e não CASCADE: apagar um cliente não pode levar junto o
+    # histórico de auditoria dos projetos dele.
+    cliente_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("cliente.id", ondelete="SET NULL"), index=True
+    )
     coordenacao: Mapped[str | None] = mapped_column(Text)
     bep_ref: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'config'"))
 
     organizacao: Mapped[Organizacao] = relationship(back_populates="projetos")
+    cliente: Mapped[Cliente | None] = relationship(back_populates="projetos")
     disciplinas: Mapped[list[Disciplina]] = relationship(back_populates="projeto")
 
 

@@ -250,7 +250,8 @@ def portal(token: str, auth_db: Session = Depends(get_auth_db)) -> PortalOut:
             projeto={
                 "codigo": projeto.codigo,
                 "nome": projeto.nome,
-                "cliente": projeto.cliente,
+                # `cliente` virou entidade na 0003; o portal mostra o nome.
+                "cliente": projeto.cliente.nome if projeto.cliente else None,
                 "bep_ref": projeto.bep_ref,
             },
             secoes=secoes,

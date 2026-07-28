@@ -16,11 +16,12 @@ from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.db.session import AuthSessionLocal
-from app.models import NomenclaturaPadrao, Organizacao, Projeto, Usuario
+from app.models import Cliente, NomenclaturaPadrao, Organizacao, Projeto, Usuario
 from app.models.enums import PapelUsuario
 
 ORG_SLUG = "spbim"
 ORG_NOME = "SPBIM"
+CLIENTE_NOME = "Microsoft"
 PROJETO_CODIGO = "CPQ11"
 
 # Segmentos de PROJETO-MACRO-DISC-SUB-SETOR-SW (especificação, seção 2.1).
@@ -58,6 +59,16 @@ def main() -> int:
         else:
             print(f"organizacao já existia: {org.nome} ({org.id})")
 
+        # Cliente é entidade desde a 0003 — o projeto aponta para ele.
+        cliente = db.execute(
+            select(Cliente).where(Cliente.org_id == org.id, Cliente.nome == CLIENTE_NOME)
+        ).scalar_one_or_none()
+        if cliente is None:
+            cliente = Cliente(org_id=org.id, nome=CLIENTE_NOME)
+            db.add(cliente)
+            db.flush()
+            print(f"cliente criado: {cliente.nome} ({cliente.id})")
+
         projeto = db.execute(
             select(Projeto).where(
                 Projeto.org_id == org.id, Projeto.codigo == PROJETO_CODIGO
@@ -68,7 +79,7 @@ def main() -> int:
                 org_id=org.id,
                 codigo=PROJETO_CODIGO,
                 nome="CPQ11 — Data Center",
-                cliente="Microsoft",
+                cliente_id=cliente.id,
                 coordenacao="SPBIM",
                 bep_ref="A5.3.2 · Construction BEP",
                 status="ativo",

@@ -11,6 +11,7 @@ from app.models.auditoria import (
     ResultadoCheck,
 )
 from app.models.cadastro import (
+    Cliente,
     Contato,
     Disciplina,
     Empresa,
@@ -33,7 +34,7 @@ from app.models.modelos import Modelo, VersaoModelo
 __all__ = [
     "Base",
     # cadastro
-    "Organizacao", "Projeto", "Empresa", "Contato", "Usuario",
+    "Organizacao", "Cliente", "Projeto", "Empresa", "Contato", "Usuario",
     "Standard", "NomenclaturaPadrao", "Disciplina",
     # critérios
     "Criterio", "ChecklistItem",
@@ -47,8 +48,11 @@ __all__ = [
 ]
 
 # Tabelas de negócio sujeitas a row-level security (todas menos organizacao,
-# que é a raiz do tenant). A migration 0001 usa esta lista.
+# que é a raiz do tenant). A migration 0001 usa esta lista; `cliente` nasceu
+# depois e ganha a policy na 0003 — quem entrar aqui a partir de agora precisa
+# de RLS na própria migration que cria a tabela.
 TENANT_TABLES: tuple[str, ...] = (
+    "cliente",
     "projeto", "empresa", "contato", "usuario", "standard", "nomenclatura_padrao",
     "disciplina", "criterio", "checklist_item", "modelo", "versao_modelo",
     "auditoria", "resultado_check", "ocorrencia", "evidencia", "nao_conformidade",

@@ -18,6 +18,7 @@ from app.api.v1 import (
     auditorias,
     auth,
     automacao,
+    clientes,
     criterios,
     disciplinas,
     empresas,
@@ -42,6 +43,7 @@ api_router.include_router(auth.router)
 
 # Fase 1 — cadastro
 api_router.include_router(organizacao.router)
+api_router.include_router(clientes.router)
 api_router.include_router(projetos.router)
 api_router.include_router(empresas.router)
 api_router.include_router(usuarios.router)

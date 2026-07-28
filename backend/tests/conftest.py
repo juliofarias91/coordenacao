@@ -23,6 +23,7 @@ from app.models import (
     Apontamento,
     Auditoria,
     ChecklistItem,
+    Cliente,
     ComentarioFornecedor,
     Contato,
     ConviteCliente,
@@ -157,6 +158,10 @@ _TABELAS_LIMPEZA = (
     Usuario,
     Empresa,
     Projeto,
+    # Depois de Projeto: é ele que referencia cliente. Sem esta linha a
+    # organização não pode ser apagada no teardown — a FK segura — e o erro
+    # aparece como IntegrityError num teste que já tinha passado.
+    Cliente,
 )
 
 

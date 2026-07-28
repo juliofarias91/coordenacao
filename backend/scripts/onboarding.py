@@ -25,13 +25,14 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
 from app.db.session import AuthSessionLocal
 from app.models import (
     ChecklistItem,
+    Cliente,
     Contato,
     Criterio,
     Disciplina,
@@ -101,6 +102,24 @@ def importar(db: Session, definicao: dict[str, Any], rel: Relatorio) -> Projeto:
     else:
         rel.atualizou("organização")
 
+    # ----------------------------------------------------------------- cliente
+    # No YAML o cliente continua sendo uma linha de texto — é o que quem
+    # escreve a definição sabe informar. Aqui ele é resolvido para a entidade
+    # criada na 0003: encontra pelo nome (sem diferenciar caixa, senão
+    # 'Microsoft' e 'microsoft' virariam dois) ou cria.
+    cliente = None
+    if nome_cliente := (definicao["projeto"].get("cliente") or "").strip():
+        cliente = db.execute(
+            select(Cliente).where(
+                Cliente.org_id == org.id, func.lower(Cliente.nome) == nome_cliente.lower()
+            )
+        ).scalar_one_or_none()
+        if cliente is None:
+            cliente = Cliente(org_id=org.id, nome=nome_cliente)
+            db.add(cliente)
+            db.flush()
+            rel.criou("cliente")
+
     # ---------------------------------------------------------------- projeto
     proj_def = definicao["projeto"]
     projeto = db.execute(
@@ -110,7 +129,7 @@ def importar(db: Session, definicao: dict[str, Any], rel: Relatorio) -> Projeto:
     ).scalar_one_or_none()
     campos_projeto = {
         "nome": proj_def["nome"],
-        "cliente": proj_def.get("cliente"),
+        "cliente_id": cliente.id if cliente else None,
         "coordenacao": proj_def.get("coordenacao"),
         "bep_ref": proj_def.get("bep_ref"),
         "status": proj_def.get("status", "config"),
