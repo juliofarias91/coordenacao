@@ -13,17 +13,24 @@ import { useCallback, useEffect, useState } from 'react'
 import { Campo, Editor, Erro } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
-import type { Projeto } from '@/lib/types'
+import type { Cliente, Projeto } from '@/lib/types'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
 const STATUS = ['config', 'ativo', 'pausado', 'encerrado'] as const
+
+/** Valor do seletor que abre o campo de cliente novo. Não é um id, então nunca
+ *  colide com um cliente de verdade. */
+const NOVO_CLIENTE = '__novo__'
 
 type Rascunho = {
   id?: string
   codigo: string
   nome: string
-  cliente: string
-  cliente_contato: string
+  /** Id do cliente, '' para nenhum, ou NOVO_CLIENTE enquanto se digita um novo.
+   *  Deixou de ser texto livre na migration 0003 — ver `docs/SUPABASE.md`. */
+  cliente_id: string
+  /** Só usado quando `cliente_id === NOVO_CLIENTE`: o nome a cadastrar. */
+  cliente_novo: string
   coordenacao: string
   bep_ref: string
   status: string
@@ -32,8 +39,8 @@ type Rascunho = {
 const VAZIO: Rascunho = {
   codigo: '',
   nome: '',
-  cliente: '',
-  cliente_contato: '',
+  cliente_id: '',
+  cliente_novo: '',
   coordenacao: '',
   bep_ref: '',
   status: 'config',
@@ -43,12 +50,15 @@ export default function AbaProjetos() {
   const { L } = useI18n()
   const { projeto: corrente, selecionar, recarregar } = useProjeto()
   const [projetos, setProjetos] = useState<Projeto[]>([])
+  const [clientes, setClientes] = useState<Cliente[]>([])
   const [rascunho, setRascunho] = useState<Rascunho | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
 
   const carregar = useCallback(async () => {
-    setProjetos((await api.projetos.listar()).itens)
+    const [ps, cs] = await Promise.all([api.projetos.listar(), api.clientes.listar()])
+    setProjetos(ps.itens)
+    setClientes(cs.itens)
   }, [])
 
   useEffect(() => {
@@ -62,15 +72,24 @@ export default function AbaProjetos() {
     // Campo de texto vazio é ausência, não string vazia: o backend guarda
     // null e a tela mostra "—".
     const opcional = (v: string) => v.trim() || null
-    const base = {
-      nome: rascunho.nome.trim(),
-      cliente: opcional(rascunho.cliente),
-      cliente_contato: opcional(rascunho.cliente_contato),
-      coordenacao: opcional(rascunho.coordenacao),
-      bep_ref: opcional(rascunho.bep_ref),
-      status: rascunho.status,
-    }
     try {
+      // Cliente novo digitado no formulário: cadastra antes, para o projeto já
+      // nascer apontando para ele. Se falhar (nome repetido, por exemplo), o
+      // projeto não é criado e a mensagem explica o porquê — melhor do que
+      // gravar o projeto sem cliente e deixar a correção para depois.
+      let clienteId: string | null = rascunho.cliente_id || null
+      if (rascunho.cliente_id === NOVO_CLIENTE) {
+        const nome = rascunho.cliente_novo.trim()
+        clienteId = nome ? (await api.clientes.criar({ nome })).id : null
+      }
+
+      const base = {
+        nome: rascunho.nome.trim(),
+        cliente_id: clienteId,
+        coordenacao: opcional(rascunho.coordenacao),
+        bep_ref: opcional(rascunho.bep_ref),
+        status: rascunho.status,
+      }
       if (rascunho.id) {
         await api.projetos.atualizar(rascunho.id, base)
       } else {
@@ -128,20 +147,34 @@ export default function AbaProjetos() {
               onChange={(e) => setRascunho({ ...rascunho, nome: e.target.value })}
             />
           </Campo>
+          {/* Seletor, e não campo livre: é o que impede 'Microsoft' e
+              'microsoft' de virarem dois clientes — e duas pastas na home. */}
           <Campo rotulo={L('Cliente', 'Client')}>
-            <input
+            <select
               className="f"
-              value={rascunho.cliente}
-              onChange={(e) => setRascunho({ ...rascunho, cliente: e.target.value })}
-            />
+              value={rascunho.cliente_id}
+              onChange={(e) => setRascunho({ ...rascunho, cliente_id: e.target.value })}
+            >
+              <option value="">{L('— sem cliente —', '— no client —')}</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+              <option value={NOVO_CLIENTE}>{L('+ novo cliente…', '+ new client…')}</option>
+            </select>
           </Campo>
-          <Campo rotulo={L('Contato do cliente', 'Client contact')}>
-            <input
-              className="f"
-              value={rascunho.cliente_contato}
-              onChange={(e) => setRascunho({ ...rascunho, cliente_contato: e.target.value })}
-            />
-          </Campo>
+          {rascunho.cliente_id === NOVO_CLIENTE && (
+            <Campo rotulo={L('Nome do novo cliente', 'New client name')}>
+              <input
+                className="f"
+                autoFocus
+                placeholder="Microsoft"
+                value={rascunho.cliente_novo}
+                onChange={(e) => setRascunho({ ...rascunho, cliente_novo: e.target.value })}
+              />
+            </Campo>
+          )}
           <Campo rotulo={L('Coordenação', 'Coordination')}>
             <input
               className="f"
@@ -191,7 +224,7 @@ export default function AbaProjetos() {
                   <b className="code">{p.codigo}</b>
                   <div className="mmeta">{p.nome}</div>
                 </td>
-                <td className="co">{p.cliente ?? '—'}</td>
+                <td className="co">{p.cliente_nome ?? '—'}</td>
                 <td className="co">{p.coordenacao ?? '—'}</td>
                 <td>
                   <span className={`pill${p.status === 'ativo' ? ' ok' : ''}`}>{p.status}</span>
@@ -213,8 +246,8 @@ export default function AbaProjetos() {
                         id: p.id,
                         codigo: p.codigo,
                         nome: p.nome,
-                        cliente: p.cliente ?? '',
-                        cliente_contato: p.cliente_contato ?? '',
+                        cliente_id: p.cliente_id ?? '',
+                        cliente_novo: '',
                         coordenacao: p.coordenacao ?? '',
                         bep_ref: p.bep_ref ?? '',
                         status: p.status,

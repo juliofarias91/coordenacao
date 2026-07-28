@@ -29,11 +29,28 @@ export type ResumoOrganizacao = {
   empresas: number
 }
 
+/** Quem contrata a auditoria. Virou entidade na migration 0003 — antes era um
+ *  campo de texto em `projeto`, o que fazia 'Microsoft' e 'microsoft' virarem
+ *  duas pastas na home e não tinha onde guardar contato. */
+export type Cliente = Base & {
+  nome: string
+  contato: string | null
+  email: string | null
+  status: string
+}
+
+/** Cliente com a contagem de projetos — o formato de `GET /clientes/pastas`. */
+export type ClientePasta = Cliente & {
+  projetos: number
+}
+
 export type Projeto = Base & {
   codigo: string
   nome: string
-  cliente: string | null
-  cliente_contato: string | null
+  cliente_id: string | null
+  /** Derivado do relacionamento — a API resolve o nome para a tabela não
+   *  precisar de uma consulta por linha. Quem escreve manda `cliente_id`. */
+  cliente_nome: string | null
   coordenacao: string | null
   bep_ref: string | null
   status: string

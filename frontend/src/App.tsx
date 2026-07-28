@@ -7,6 +7,7 @@ import Admin from '@/pages/admin'
 import Apontamentos from '@/pages/Apontamentos'
 import Configuracao from '@/pages/configuracao'
 import Criterios from '@/pages/Criterios'
+import Home from '@/pages/Home'
 import Integracoes from '@/pages/Integracoes'
 import Kpis from '@/pages/Kpis'
 import Login from '@/pages/Login'
@@ -64,8 +65,10 @@ export default function App() {
       <Routes>
         <Route path="/portal/:token" element={<Portal />} />
         <Route element={<Shell />}>
-          {/* Com a Fase 2 no ar, o painel de controle volta a ser a porta de entrada. */}
-          <Route index element={<Navigate to="/painel" replace />} />
+          {/* A porta de entrada é a home: os projetos por cliente. O painel
+              exige um projeto escolhido, e escolher é justamente o que a home
+              faz — entrar direto nele obrigava a adivinhar qual. */}
+          <Route index element={<Home />} />
           <Route path="painel" element={<Painel />} />
           <Route path="modelos/:modeloId" element={<ModeloView />} />
           <Route path="kpis" element={<Kpis />} />
@@ -82,7 +85,7 @@ export default function App() {
               element={<Placeholder titulo={t.titulo} descricao={t.descricao} fase={t.fase} />}
             />
           ))}
-          <Route path="*" element={<Navigate to="/painel" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </ProjetoProvider>

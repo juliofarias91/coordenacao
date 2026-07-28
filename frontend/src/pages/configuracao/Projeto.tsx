@@ -4,15 +4,19 @@ import { useEffect, useState } from 'react'
 import { Campo, Erro } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { api, ApiError } from '@/lib/api'
+import type { Cliente } from '@/lib/types'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
 export default function AbaProjeto() {
   const { projeto, recarregar } = useProjeto()
   const { L } = useI18n()
+  const [clientes, setClientes] = useState<Cliente[]>([])
   const [form, setForm] = useState({
     nome: '',
-    cliente: '',
-    cliente_contato: '',
+    // Id, não texto: o cliente virou entidade na migration 0003. O contato
+    // mudou de lugar junto — é atributo do cliente, e editá-lo aqui gravaria
+    // uma cópia por projeto.
+    cliente_id: '',
     coordenacao: '',
     bep_ref: '',
     status: 'config',
@@ -22,11 +26,17 @@ export default function AbaProjeto() {
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
+    api.clientes
+      .listar()
+      .then((r) => setClientes(r.itens))
+      .catch(() => setClientes([]))
+  }, [])
+
+  useEffect(() => {
     if (!projeto) return
     setForm({
       nome: projeto.nome,
-      cliente: projeto.cliente ?? '',
-      cliente_contato: projeto.cliente_contato ?? '',
+      cliente_id: projeto.cliente_id ?? '',
       coordenacao: projeto.coordenacao ?? '',
       bep_ref: projeto.bep_ref ?? '',
       status: projeto.status,
@@ -41,7 +51,12 @@ export default function AbaProjeto() {
     setSalvo(false)
     setSalvando(true)
     try {
-      await api.projetos.atualizar(projeto.id, form)
+      // "sem cliente" é o valor '' do <select>, e a API espera UUID ou null —
+      // mandar string vazia volta 422.
+      await api.projetos.atualizar(projeto.id, {
+        ...form,
+        cliente_id: form.cliente_id || null,
+      })
       await recarregar()
       setSalvo(true)
     } catch (e) {
@@ -83,10 +98,14 @@ export default function AbaProjeto() {
           </select>
         </Campo>
         <Campo rotulo={L('Cliente', 'Client')}>
-          <input {...campo('cliente')} />
-        </Campo>
-        <Campo rotulo={L('Contato do cliente', 'Client contact')}>
-          <input {...campo('cliente_contato')} />
+          <select {...campo('cliente_id')}>
+            <option value="">{L('— sem cliente —', '— no client —')}</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
         </Campo>
         <Campo rotulo={L('Coordenação', 'Coordination')}>
           <input {...campo('coordenacao')} />

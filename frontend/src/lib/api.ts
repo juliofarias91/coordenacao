@@ -152,6 +152,19 @@ export const api = {
       escrever<T.Organizacao>('/organizacao', 'PATCH', corpo),
   },
 
+  // ------------------------------------------------------------- clientes
+  clientes: {
+    listar: () => requisitar<T.Page<T.Cliente>>('/clientes'),
+    /** Clientes com a contagem de projetos — as pastas da home, numa consulta. */
+    pastas: () => requisitar<T.ClientePasta[]>('/clientes/pastas'),
+    obter: (id: string) => requisitar<T.Cliente>(`/clientes/${id}`),
+    criar: (corpo: { nome: string; contato?: string | null; email?: string | null }) =>
+      escrever<T.Cliente>('/clientes', 'POST', corpo),
+    atualizar: (id: string, corpo: Partial<T.Cliente>) =>
+      escrever<T.Cliente>(`/clientes/${id}`, 'PATCH', corpo),
+    remover: (id: string) => requisitar<void>(`/clientes/${id}`, { method: 'DELETE' }),
+  },
+
   // ------------------------------------------------------------- projetos
   projetos: {
     listar: () => requisitar<T.Page<T.Projeto>>('/projetos'),
