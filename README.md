@@ -4,7 +4,7 @@ Plataforma SaaS que audita modelos BIM (Revit/IFC) contra os critérios de um PE
 
 > **Princípio central:** a auditoria é a única fonte de dado. Painel de controle, matriz, relatório e KPIs são visões derivadas.
 
-Documentação de origem em [docs/](docs/) — o [plano técnico](docs/Plano_Tecnico_Piloto_SPBIM.md) é o documento mestre; o [protótipo navegável](docs/prototipo_auditoria_bim.html) é a referência visual do frontend.
+Documentação de origem em [docs/](docs/) — o [plano técnico](docs/Plano_Tecnico_Piloto_SPBIM.md) é o documento mestre; o [protótipo navegável](docs/prototipo_auditoria_bim.html) define as telas e os fluxos, e o [ui-kit](ui-kit-export/README.md) define a linguagem visual.
 
 ---
 
@@ -51,7 +51,7 @@ spbim-auditoria/
 │       │   └── auditer/  motor de nomenclatura e corretor (portado, JS)
 │       ├── pages/      telas
 │       │   └── admin/    organização, projetos e usuários
-│       ├── styles/     tokens do protótipo
+│       ├── styles/     tokens e sistema visual (o ui-kit aplicado)
 │       ├── theme/      claro/escuro
 │       └── workers/    corretor ortográfico (Hunspell/WebAssembly)
 ├── infra/
@@ -59,19 +59,43 @@ spbim-auditoria/
 │   └── backup/         dump, espelho do bucket, restauração e verificação
 ├── docs/               plano técnico, especificação, backlog, protótipo,
 │                       runbook de operação e roteiro do piloto
-├── auditer/            o app Auditer original — ainda roda e ainda deploya
 ├── bases/              as planilhas de controle reais (LOD300/400/500, 4D)
 ├── referencias/        vídeos, links e o histórico git do Auditer (fora do git)
-├── ui-kit-export/      kit de design (tokens e componentes) — ainda não aplicado
+├── ui-kit-export/      kit de design — aplicado em src/styles/ (ver CLAUDE.md)
+├── dev.ps1             sobe a plataforma para desenvolvimento
+├── Dockerfile               imagem única: aplicação + API num container só
 ├── docker-compose.yml       desenvolvimento
 └── docker-compose.prod.yml  produção (SP-501)
 ```
 
-`auditer/` é o aplicativo de onde veio o módulo de auditoria de arquivos. Ele
-foi preservado inteiro em vez de apagado: continua rodando sozinho
-(`npm run dev` lá dentro) e tem o próprio Dockerfile de deploy. O histórico
-git dele está em `referencias/auditer-historico.git` — para reativá-lo, mova
-a pasta de volta para `auditer/.git`.
+## Um sistema, não três
+
+A plataforma é **uma aplicação**. A separação `backend/` e `frontend/` é de
+código-fonte, não de produto: o [`Dockerfile`](Dockerfile) da raiz compila o
+React e o entrega dentro da imagem da API, que o serve na mesma porta — sem
+CORS, sem proxy entre containers, sem hostname de serviço para acertar. É a
+presença de `backend/static/` que liga esse comportamento (ver
+`backend/app/spa.py`); sem ele, a API responde só a API.
+
+```powershell
+.\dev.ps1            # API :8000 + Vite :5173, com hot-reload — o de todo dia
+.\dev.ps1 -Unico     # só :8000, servindo o build — igual à produção
+.\dev.ps1 -Parar     # encerra as duas
+```
+
+O `-Unico` existe para conferir o que de fato vai para produção: é o mesmo
+arranjo da imagem, numa porta só. No dia a dia vale o outro, porque o Vite
+troca o módulo editado sem recarregar a página.
+
+O **Auditer** foi aposentado em 28/07/2026. O motor dele (nomenclatura,
+duplicidade por SHA-256, corretor Hunspell) vive em `frontend/src/lib/auditer/`
+e `src/workers/` — byte a byte o mesmo código, sem uma linha alterada — e as
+telas viraram três sub-abas de *Configuração › Nomenclaturas & padrões*.
+Manter o app separado significava manter dois deploys, dois `package.json` e
+duas cópias do mesmo motor para entregar o que a plataforma já entrega. O
+histórico git dele continua em `referencias/auditer-historico.git`, e há um
+`backup-auditer-2026-07-27.zip` ao lado; o código também segue recuperável no
+histórico deste repositório (`git log -- auditer/`).
 
 ---
 

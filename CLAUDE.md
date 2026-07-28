@@ -17,7 +17,8 @@ Princípio central: **a auditoria é a única fonte de dado. Painel de controle,
 - `docs/Plano_Tecnico_Piloto_SPBIM.md` — **arquitetura, schema PostgreSQL (DDL), endpoints da API, estratégia de automação, roadmap por fases.** É o documento mestre.
 - `docs/Especificacao_Plataforma_Auditoria_BIM.md` — modelo de dados conceitual e regras de negócio.
 - `docs/Backlog_Piloto_SPBIM.md` — backlog do piloto (se precisar de tarefas granularizadas).
-- `docs/prototipo_auditoria_bim.html` — **protótipo navegável**: define a UI, os fluxos e os estados. É a referência visual do frontend. Abra no navegador para ver as telas.
+- `docs/prototipo_auditoria_bim.html` — **protótipo navegável**: define os fluxos, as telas e os estados. Continua sendo a referência de **o que cada tela mostra**. Não é mais a referência de **como ela parece** — ver a seção "Sistema visual" abaixo.
+- `ui-kit-export/README.md` — **a linguagem visual**: as cinco regras, as escalas e a régua do esqueleto.
 
 ## Ordem de construção (roadmap — ver plano técnico, seção 8)
 
@@ -35,7 +36,68 @@ Princípio central: **a auditoria é a única fonte de dado. Painel de controle,
 - Bilíngue (PT/EN) na UI — o protótipo já traz os textos nos dois idiomas.
 - Nomenclatura de arquivos do domínio: `PROJETO-MACRO-DISC-SUB-SETOR-SW` (ex.: `CPQ11-C-STRC-CONCR-ADMIN-R22`).
 - Inicialize git cedo e faça commits por etapa.
-- Ao replicar uma tela, use o protótipo HTML como referência direta de layout e comportamento.
+- Ao replicar uma tela, tire do protótipo HTML **o conteúdo e o comportamento**; a aparência sai do sistema visual abaixo.
+
+## Sistema visual (`ui-kit-export/` aplicado)
+
+A linguagem visual da plataforma é a do `ui-kit-export/` (extraído do VDCity).
+A marca continua SPBIM: o accent é o azul `#2547b0` / `#6e8cf2` e as quatro
+cores de macrodisciplina não mudaram — o kit dá estrutura e régua, não cor.
+
+O transplante foi feito **sem Tailwind**. As classes semânticas de sempre
+(`.card`, `.btn`, `.pill`, `.seg`, `.chip`…) continuam valendo e as 25 telas
+não foram tocadas: `src/styles/tokens.css` e `src/styles/app.css` é que passaram
+a expressar a linguagem do kit. Para mudar o visual de algo, mexa nesses dois —
+não espalhe estilo pelas páginas.
+
+**As cinco regras. Uma tela nova que as siga "parece do sistema"; que as
+ignore, não:**
+
+1. **Ativo é cor + peso, nunca pílula colorida.** Item de sidebar, aba,
+   breadcrumb atual: tinta cheia e negrito, sem fundo. Numa coluna de nove
+   itens o retângulo colorido do ativo vira o elemento mais pesado da tela —
+   sendo que ele só precisa responder "onde eu estou".
+2. **Cor é significado, não decoração.** Ela entra em três lugares e só: métrica
+   que se varre a tela procurando, estado semântico (sempre **translúcido**, a
+   /10–/13) e destrutivo. Corolário: em KPI o tom vai no marcador e o **número
+   fica em `--ink`** — uma fileira de números coloridos vira semáforo e
+   perde-se qual valor é grande.
+3. **Rótulos que crescem** (`.pillact`) — a microinteração-assinatura. O botão
+   nasce redondo e o rótulo expande no hover. É o que põe várias ferramentas na
+   topbar sem virar uma fileira de ícones mudos.
+4. **Só a esquerda empurra.** A sidebar empurra o conteúdo; painel da direita,
+   quando houver, sobrepõe — se empurrasse, abri-lo reflowaria a tabela e o
+   usuário perderia de vista a linha que acabou de abrir.
+5. **Escuro é preto neutro** — `#0f0f0f` / `#1c1c1c` / borda `#242424`,
+   saturação zero. O azul-ardósia de antes saiu. O espaçamento entre os três
+   níveis é o que produz a hierarquia de superfície; se mexer, preserve os
+   degraus.
+
+**Escalas — não invente um sexto degrau.** Raio: `--r-md` controle pequeno,
+`--r-lg` input/botão, `--r-xl` card interno/popover, `--r-2xl` **card de página
+e modal** (a superfície de página tem raio próprio, acima do dos controles).
+Sombra: card `--sh-sm`, dropdown `--sh-md`, popover/dock `--sh-xl`, modal
+`--sh-2xl`. Esqueleto: sidebar 240px ↔ 52px, topbar 56px, header de seção 48px,
+barra interna 40px — a diferença 56↔48 é hierarquia proposital, chrome externo
+acima de header de ferramenta. Movimento: **duas** curvas (`--dur`/`--ease`
+domina; em dúvida é ela).
+
+**Armadilhas deste transplante:**
+- Realce de linha de tabela é `--hover-ink` (a própria tinta a 3–4%), **nunca
+  zebra**. Zebra fixa uma cor que acerta em um tema e erra no outro.
+- Topbar, dock e cabeçalho do portal declaram `background` **duas vezes**: a
+  opaca antes do `color-mix`. Navegador sem `color-mix` descarta a segunda e
+  fica com a barra sólida; sem o fallback ela ficaria transparente e o conteúdo
+  passaria por baixo ao rolar.
+- O bloco do usuário saiu do rodapé da sidebar e virou `.usermenu` na topbar
+  (28/07/2026): avatar no lugar do ícone de uma `.pillact`, com o nome
+  crescendo no hover, e nome/papel/**Sair** num painel igual ao do sino. Sair
+  não fica exposto na barra — é destrutivo, e um clique errado derrubaria a
+  sessão no meio de uma auditoria. As classes `.userbox/.av/.nm/.rl` continuam
+  valendo: o que mudou foi onde o bloco é montado, não do que ele é feito.
+- A sidebar nasce **expandida**, ao contrário do padrão do kit. Lá o padrão é
+  recolhida porque as telas são full-bleed; aqui `main` é limitado a 1180px e
+  recolher não devolve espaço a ninguém.
 
 ## Módulo de auditoria de arquivos (portado do Auditer)
 
@@ -71,12 +133,31 @@ higiene de nome e ortografia de planilha (Hunspell/wasm, pt-BR + inglês).
   CAPS é ignorado — nas planilhas do ACC, CAPS é sigla/código, nunca prosa.
   Auditar CAPS gerava mais de 600 falsos positivos numa planilha só.
 
-O app original segue em `auditer/`, rodando e deployável. Ver o `CLAUDE.md`
-de lá para as decisões internas do corretor.
+**O app `auditer/` foi aposentado em 28/07/2026.** Ele não tinha uma linha de
+lógica que a plataforma já não tivesse: os seis arquivos do motor e o worker
+eram byte a byte idênticos aos de `src/lib/auditer/` — a única diferença em
+todo o conjunto era um `../` que virou `../../`, porque o arquivo desceu um
+nível de pasta. O que restava era casca: `package.json`, Dockerfile, nginx e
+uma UI que já havia sido reimplementada no sistema visual da plataforma.
+
+Recuperável em três lugares, se algum dia precisar: o histórico deste
+repositório (`git log -- auditer/`), o histórico git original em
+`referencias/auditer-historico.git` e o `backup-auditer-2026-07-27.zip` ao
+lado dele.
+
+Uma diferença de comportamento ficou, e é de propósito: o Auditer rodava sem
+login e a aba equivalente exige autenticação. Quem auditava pasta sem ter
+conta na plataforma passa a precisar de uma.
 
 ## Estado atual
 
 **As seis fases do roadmap estão implementadas.** Ver `README.md` para como rodar e para as decisões de arquitetura, `docs/OPERACAO.md` para o runbook de produção e `docs/PILOTO.md` para o roteiro do piloto assistido.
+
+**A plataforma é uma aplicação só.** `backend/` e `frontend/` são divisão de
+código-fonte, não de produto: o `Dockerfile` da raiz compila o React dentro da
+imagem da API, que o serve na mesma porta (`app/spa.py` liga isso ao encontrar
+`backend/static/`). Para desenvolver, `.\dev.ps1` — `-Unico` roda só a :8000
+servindo o build, que é o arranjo de produção, e `-Parar` encerra.
 
 - **Fase 0** — schema completo (23 tabelas, 12 enums), RLS multi-tenant, auth Argon2+JWT, OIDC/PKCE (desligado), Celery, shell React, CI.
 - **Fase 1** — cadastro: projetos, empresas+contatos+subcontratação, usuários+permissões, standards+nomenclatura, disciplinas, critérios+checklists.
