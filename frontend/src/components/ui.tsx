@@ -73,13 +73,14 @@ export function Editor({
   )
 }
 
+/** Estado vazio de página. Borda tracejada e sem card: o tracejado é o sinal
+ *  de "aqui caberia algo" e o card em volta só somaria uma moldura.
+ *  O `texto` deve dizer o PRÓXIMO PASSO, não só "nada encontrado". */
 export function Vazio({ titulo, texto }: { titulo: string; texto: string }) {
   return (
-    <div className="card">
-      <div className="empty">
-        <b>{titulo}</b>
-        {texto}
-      </div>
+    <div className="empty vazio">
+      <b>{titulo}</b>
+      {texto}
     </div>
   )
 }

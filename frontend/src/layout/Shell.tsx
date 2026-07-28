@@ -1,16 +1,52 @@
-import { NavLink, Outlet } from 'react-router-dom'
+/** Esqueleto da aplicação, na estrutura do `ui-kit-export` (README §2 e §4).
+ *
+ *   ┌──────────┬──────────────────────────────────────────┐
+ *   │  MARCA   │  TOPBAR 56px  breadcrumb ··· ações  ⬤user │  colada, com blur
+ *   │──────────├──────────────────────────────────────────┤
+ *   │ SIDEBAR  │                                          │
+ *   │  240px   │  <Outlet />                              │
+ *   │  ↔ 52px  │                                          │
+ *   │          │                                          │
+ *   └──────────┴──────────────────────────────────────────┘
+ *                                          [ dock mobile ]
+ *
+ *  SÓ A ESQUERDA EMPURRA: a sidebar empurra o conteúdo (é a primeira coluna do
+ *  grid). Painel da direita, quando houver, sobrepõe — se empurrasse, abri-lo
+ *  reflowaria a tabela e o usuário perderia de vista a linha que acabou de
+ *  abrir.
+ */
+import { useCallback, useState } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthContext'
 import Sino from '@/components/Sino'
+import UsuarioMenu from '@/components/UsuarioMenu'
 import { useI18n } from '@/i18n'
-import { ITENS_NAV } from '@/layout/nav'
+import { GRUPOS, ITENS_NAV, type ItemNav } from '@/layout/nav'
 import { useProjeto } from '@/projeto/ProjetoContext'
 import { useTheme } from '@/theme/ThemeProvider'
 
-function Icone({ path }: { path: string }) {
+/** A sidebar nasce EXPANDIDA aqui, ao contrário do padrão do kit.
+ *
+ *  Lá o padrão é recolhida porque as telas são full-bleed e cada pixel devolvido
+ *  vira área de trabalho. Aqui `main` é limitado a 1180px: recolher não devolve
+ *  espaço a ninguém, só esconde nove rótulos. */
+const CHAVE_NAV = 'spbim_nav_recolhida'
+
+function leRecolhida(): boolean {
+  try {
+    return localStorage.getItem(CHAVE_NAV) === '1'
+  } catch {
+    return false
+  }
+}
+
+function Icone({ path, tam = 18 }: { path: string; tam?: number }) {
   return (
     <svg
       className="ic"
+      width={tam}
+      height={tam}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -24,109 +60,239 @@ function Icone({ path }: { path: string }) {
   )
 }
 
+const CHEVRON_ESQ = 'M15 18l-6-6 6-6'
+const CHEVRON_DIR = 'M9 18l6-6-6-6'
+const SOL =
+  'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4'
+const LUA = 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z'
+const GLOBO =
+  'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'
+
+/** Pílula de ação da topbar — A MICROINTERAÇÃO-ASSINATURA do sistema.
+ *
+ *  Nasce redonda (só o ícone) e o rótulo CRESCE da direita para a esquerda no
+ *  hover. É o que permite várias ferramentas na topbar sem virar uma fileira de
+ *  ícones mudos nem uma barra de texto. A animação é toda CSS (`.pillact`). */
+function PillAcao({
+  path,
+  rotulo,
+  onClick,
+  ativo,
+}: {
+  path: string
+  rotulo: string
+  onClick: () => void
+  ativo?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      className={`pillact${ativo ? ' on' : ''}`}
+      onClick={onClick}
+      title={rotulo}
+      aria-label={rotulo}
+    >
+      <span className="rot">{rotulo}</span>
+      <span className="ico">
+        <Icone path={path} tam={19} />
+      </span>
+    </button>
+  )
+}
+
 export default function Shell() {
-  const { usuario, sair } = useAuth()
+  const { usuario } = useAuth()
   const { lang, setLang, L } = useI18n()
   const { theme, setTheme } = useTheme()
   const { projeto, projetos, selecionar } = useProjeto()
+  const { pathname } = useLocation()
+
+  const [recolhida, setRecolhida] = useState(leRecolhida)
+  const [gruposOff, setGruposOff] = useState<Record<string, boolean>>({})
+
+  const alternarNav = useCallback(() => {
+    setRecolhida((atual) => {
+      const proximo = !atual
+      try {
+        localStorage.setItem(CHAVE_NAV, proximo ? '1' : '0')
+      } catch {
+        /* modo privado: a preferência simplesmente não persiste */
+      }
+      return proximo
+    })
+  }, [])
+
+  // `permissoes` do /auth/me já vem resolvido: o backend aplica o padrão do
+  // papel quando o usuário não tem lista própria.
+  const itens = ITENS_NAV.filter(
+    (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
+  )
+
+  // Prefixo mais longo: /modelos/:id não está no menu, mas nasce do painel —
+  // sem o fallback, a página de detalhe ficaria com o breadcrumb vazio.
+  const atual =
+    itens
+      .filter((i) => pathname === i.rota || pathname.startsWith(`${i.rota}/`))
+      .sort((a, b) => b.rota.length - a.rota.length)[0] ?? itens[0]
+
+  const escuro = theme === 'dark'
 
   return (
-    <div className="app">
+    <div className="app" data-nav={recolhida ? 'off' : 'on'}>
       <aside>
+        {/* Marca. Altura de 56px, a MESMA da topbar, para as duas linharem. */}
         <div className="brand">
           <div className="mk">SP</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="brand-txt">
             <b>SPBIM</b>
-            <span>
-              {L('Central de Auditoria', 'Audit Center')}
-              {projeto ? ` · ${projeto.codigo}` : ''}
-            </span>
+            <span>{L('Central de Auditoria', 'Audit Center')}</span>
           </div>
-          <Sino />
         </div>
 
-        {projetos.length > 1 && (
-          <select
-            className="projsel"
-            value={projeto?.id ?? ''}
-            onChange={(e) => selecionar(e.target.value)}
-            aria-label={L('Projeto', 'Project')}
-          >
-            {projetos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.codigo} — {p.nome}
-              </option>
-            ))}
-          </select>
-        )}
+        {/* Recolher: círculo saltando da borda. SEMPRE visível — um controle
+            que só aparece no hover não é descoberto por quem não usa mouse. */}
+        <button
+          type="button"
+          className="nav-toggle"
+          onClick={alternarNav}
+          title={recolhida ? L('Expandir', 'Expand') : L('Recolher', 'Collapse')}
+          aria-label={recolhida ? L('Expandir', 'Expand') : L('Recolher', 'Collapse')}
+        >
+          <Icone path={recolhida ? CHEVRON_DIR : CHEVRON_ESQ} tam={15} />
+        </button>
 
-        <nav>
-          {ITENS_NAV.filter(
-            // `permissoes` do /auth/me já vem resolvido: o backend aplica o
-            // padrão do papel quando o usuário não tem lista própria.
-            (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
-          ).map((item) => (
-            <NavLink
-              key={item.rota}
-              to={item.rota}
-              className={({ isActive }) => (isActive ? 'on' : '')}
-            >
-              <Icone path={item.path} />
-              {L(item.pt, item.en)}
-            </NavLink>
-          ))}
-        </nav>
+        <div className="nav-scroll thin-scroll">
+          {GRUPOS.map((grupo, i) => {
+            const doGrupo = itens.filter((it) => it.grupo === grupo.chave)
+            if (doGrupo.length === 0) return null
 
-        <div className="side-foot">
-          {usuario && (
-            <div className="userbox">
-              <div className="av">{(usuario.nome ?? usuario.login).slice(0, 1).toUpperCase()}</div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="nm">{usuario.nome ?? usuario.login}</div>
-                <div className="rl">{usuario.papel}</div>
+            const rotulo = L(grupo.pt, grupo.en)
+            const fechado = !!gruposOff[grupo.chave]
+            // Recolhida, o grupo sempre mostra os itens: não há rótulo em que
+            // clicar para reabri-lo.
+            const mostra = recolhida || !rotulo || !fechado
+
+            return (
+              <div key={grupo.chave}>
+                {rotulo &&
+                  (recolhida ? (
+                    // Recolhida, o cabeçalho vira um divisor DE MESMA ALTURA.
+                    // Sem isso cada grupo encolhe um pouco, os ícones deslizam
+                    // na vertical e a diferença acumula ao longo da coluna.
+                    i > 0 && <div className="nav-divisor" />
+                  ) : (
+                    <button
+                      type="button"
+                      className="nav-grupo-cab"
+                      onClick={() =>
+                        setGruposOff((atual) => ({ ...atual, [grupo.chave]: !atual[grupo.chave] }))
+                      }
+                    >
+                      <span>{rotulo}</span>
+                      <i>{fechado ? '+' : '−'}</i>
+                    </button>
+                  ))}
+
+                {mostra && (
+                  <nav>
+                    {doGrupo.map((item) => (
+                      <ItemLink key={item.rota} item={item} rotulo={L(item.pt, item.en)} />
+                    ))}
+                  </nav>
+                )}
               </div>
-              <button className="linkbtn" onClick={sair}>
-                {L('Sair', 'Exit')}
-              </button>
-            </div>
-          )}
-
-          <div className="switch">
-            {(['pt', 'en'] as const).map((l) => (
-              <button key={l} className={lang === l ? 'on' : ''} onClick={() => setLang(l)}>
-                {l.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <div className="switch">
-            {(
-              [
-                ['light', '☀'],
-                ['dark', '☾'],
-              ] as const
-            ).map(([k, ic]) => (
-              <button
-                key={k}
-                className={theme === k ? 'on' : ''}
-                onClick={() => setTheme(k)}
-                title={k === 'light' ? L('Claro', 'Light') : L('Escuro', 'Dark')}
-              >
-                {ic}
-              </button>
-            ))}
-          </div>
-
-          <div className="foot-t">
-            {L('Fase 0 · fundação', 'Phase 0 · foundation')}
-            <br />
-            {L('controle → execução → relatório', 'control → execution → report')}
-          </div>
+            )
+          })}
         </div>
+
       </aside>
 
-      <main>
-        <Outlet />
-      </main>
+      <div className="col">
+        <header className="topbar">
+          {/* BREADCRUMB: todos os itens no mesmo tamanho, só o último com peso
+              e tinta cheia. Sem accent — accent significa "ação/seleção" no
+              resto do sistema, e a página atual não é nem uma nem outra. */}
+          <div className="tb-crumbs">
+            {projeto &&
+              (projetos.length > 1 ? (
+                <select
+                  className="tb-crumb"
+                  value={projeto.id}
+                  onChange={(e) => selecionar(e.target.value)}
+                  aria-label={L('Projeto', 'Project')}
+                >
+                  {projetos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.codigo} — {p.nome}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="tb-crumb">{projeto.codigo}</span>
+              ))}
+            {projeto && atual && <span className="sep">/</span>}
+            {atual && <span className="tb-crumb atual">{L(atual.pt, atual.en)}</span>}
+          </div>
+
+          <div className="tb-acoes">
+            <Sino />
+            <PillAcao
+              path={escuro ? SOL : LUA}
+              rotulo={escuro ? L('Claro', 'Light') : L('Escuro', 'Dark')}
+              onClick={() => setTheme(escuro ? 'light' : 'dark')}
+            />
+            <PillAcao
+              path={GLOBO}
+              rotulo={lang === 'pt' ? 'English' : 'Português'}
+              onClick={() => setLang(lang === 'pt' ? 'en' : 'pt')}
+            />
+            {/* Por último: é a âncora da conta, e o canto direito da barra é
+                onde se procura por ela. */}
+            <UsuarioMenu />
+          </div>
+        </header>
+
+        <main>
+          <Outlet />
+        </main>
+      </div>
+
+      {/* Dock mobile — os MESMOS itens da sidebar, que some abaixo de 820px.
+          EXCEÇÃO deliberada à regra do ativo: aqui ele revela o rótulo por
+          largura animada, porque no toque não existe hover para desambiguar
+          ícones. */}
+      <nav className="dock">
+        {itens.map((item) => (
+          <NavLink
+            key={item.rota}
+            to={item.rota}
+            end={item.rota === '/'}
+            className={({ isActive }) => (isActive ? 'on' : '')}
+            title={L(item.pt, item.en)}
+          >
+            <Icone path={item.path} tam={19} />
+            <span>{L(item.pt, item.en)}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
+  )
+}
+
+/** ITEM ATIVO = COR + PESO. Sem fundo, sem pílula, sem barra lateral (ver a
+ *  nota em `app.css`). */
+function ItemLink({ item, rotulo }: { item: ItemNav; rotulo: string }) {
+  return (
+    <NavLink
+      to={item.rota}
+      // `end` na raiz: sem ele, `to="/"` casa com QUALQUER rota e o Início
+      // ficaria permanentemente marcado, junto com a página de verdade.
+      end={item.rota === '/'}
+      className={({ isActive }) => (isActive ? 'on' : '')}
+      title={rotulo}
+    >
+      <Icone path={item.path} />
+      <span className="nav-rot">{rotulo}</span>
+    </NavLink>
   )
 }

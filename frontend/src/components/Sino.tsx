@@ -57,19 +57,33 @@ export default function Sino() {
     contar()
   }
 
+  const rotulo = L('Notificações', 'Notifications')
+
   return (
     <div className="sino" ref={caixa}>
-      <button className="sinobtn" onClick={() => setAberto(!aberto)} aria-label={L('Notificações', 'Notifications')}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
-        {naoLidas > 0 && <span className="sinobadge">{naoLidas > 99 ? '99+' : naoLidas}</span>}
+      {/* Pílula de ação da topbar: nasce redonda e o rótulo cresce no hover.
+          A contagem "recorta" o fundo com um anel da cor da barra, para
+          continuar legível quando encosta no ícone. */}
+      <button
+        type="button"
+        className={`pillact${aberto ? ' on' : ''}`}
+        onClick={() => setAberto(!aberto)}
+        title={rotulo}
+        aria-label={rotulo}
+      >
+        <span className="rot">{rotulo}</span>
+        <span className="ico">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          {naoLidas > 0 && <span className="ponto num">{naoLidas > 99 ? '99+' : naoLidas}</span>}
+        </span>
       </button>
 
       {aberto && (
         <div className="sinopainel">
           <div className="sinocab">
-            <b>{L('Notificações', 'Notifications')}</b>
+            <b>{rotulo}</b>
             {naoLidas > 0 && (
               <button className="linkmudo" onClick={marcarTodas}>
                 {L('marcar todas', 'mark all')}

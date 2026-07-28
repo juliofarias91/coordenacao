@@ -7,6 +7,13 @@ export default defineConfig({
   // O corretor ortográfico roda num module worker (`src/workers/spell.worker.js`).
   worker: { format: 'es' },
   resolve: {
+    // O REPOSITÓRIO VIVE NUM DRIVE MAPEADO (K: → \\bimserver01\Deptos$).
+    // Sem isto o Vite chama `realpath` na raiz, recebe o caminho UNC de volta,
+    // e depois o re-resolve contra a raiz do drive: some um
+    // `K:\bimserver01\Deptos$\…\src\main.tsx` que não existe e o build morre em
+    // "Could not load … main.tsx". `preserveSymlinks` desliga esse realpath.
+    // Não remova enquanto o projeto estiver em unidade de rede.
+    preserveSymlinks: true,
     alias: {
       '@': path.resolve(__dirname, 'src'),
       // O build ESM do hunspell-asm faz `import * as runtime from './lib/node/hunspell'`,
@@ -22,6 +29,11 @@ export default defineConfig({
   optimizeDeps: { include: ['hunspell-asm', 'xlsx'] },
   server: {
     port: 5173,
+    // Mesma razão do `preserveSymlinks`: o watcher nativo do SO não observa
+    // compartilhamento de rede — `Error: UNKNOWN: unknown error, watch` derruba
+    // o processo assim que o servidor sobe. Polling custa um pouco de CPU e é o
+    // único jeito de ter hot-reload aqui.
+    watch: { usePolling: true, interval: 400 },
     // A API roda em :8000. O proxy evita CORS no desenvolvimento.
     proxy: {
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
