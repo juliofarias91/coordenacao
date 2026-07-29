@@ -70,6 +70,7 @@ const PASTA = 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 
 const PASTA_ABERTA =
   'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1M3 9l1.6 8a2 2 0 0 0 2 1.6h11a2 2 0 0 0 2-1.6L21 9z'
 const VOLTAR = 'M15 18l-6-6 6-6'
+const LUPA = 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3'
 const GRADE = 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z'
 const LISTA = 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'
 
@@ -174,52 +175,58 @@ export default function Home() {
           estamos?" e "onde está o projeto do fulano?". Quem entra pela home
           está fazendo a segunda, e os números só empurravam as pastas para
           baixo da dobra. */}
-      <div className="card home-projetos">
-        <div className="home-cab">
-          <div className="home-titulo">
-            {grupoAberto ? (
-              <>
-                <button
-                  type="button"
-                  className="home-voltar"
-                  onClick={() => setAberta(null)}
-                  title={L('Voltar', 'Back')}
-                >
-                  <Icone path={VOLTAR} tam={16} />
-                </button>
-                <Icone path={PASTA_ABERTA} tam={19} />
-                <b>{grupoAberto.rotulo}</b>
-              </>
-            ) : (
-              <b>{L('Projetos', 'Projects')}</b>
-            )}
-          </div>
-
-          <div className="home-ferramentas">
+      {/* SEM CARD EM VOLTA. As pastas ficam direto sobre o fundo da página, como
+          no VDCity: um card envolvendo uma grade de cards produz duas molduras
+          concêntricas e faz a grade parecer espremida dentro de uma caixa que
+          não tem função nenhuma. O card é para agrupar conteúdo heterogêneo;
+          aqui tudo já é do mesmo tipo. */}
+      <div className="home-projetos">
+        <div className="home-barra">
+          {/* A busca à esquerda e larga: é o controle mais usado da tela, e
+              quem chega com um nome na cabeça digita antes de olhar a grade. */}
+          <div className="home-buscabox">
+            <Icone path={LUPA} tam={16} />
             <input
-              className="f home-busca"
+              className="f"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder={L('Buscar projeto ou cliente…', 'Search project or client…')}
+              placeholder={L('Buscar projetos ou clientes…', 'Search projects or clients…')}
             />
-            <div className="seg">
-              <button
-                type="button"
-                className={modo === 'pastas' ? 'on' : ''}
-                onClick={() => trocarModo('pastas')}
-                title={L('Pastas', 'Folders')}
-              >
-                <Icone path={GRADE} tam={15} />
-              </button>
-              <button
-                type="button"
-                className={modo === 'lista' ? 'on' : ''}
-                onClick={() => trocarModo('lista')}
-                title={L('Lista', 'List')}
-              >
-                <Icone path={LISTA} tam={15} />
-              </button>
-            </div>
+          </div>
+
+          {grupoAberto && (
+            <button
+              type="button"
+              className="home-voltar"
+              onClick={() => setAberta(null)}
+              title={L('Voltar', 'Back')}
+            >
+              <Icone path={VOLTAR} tam={15} />
+              <span>{grupoAberto.rotulo}</span>
+            </button>
+          )}
+
+          <div style={{ flex: 1 }} />
+
+          {/* Modo de exibição no canto oposto ao da busca: é preferência, não
+              ação — fica fora do caminho de quem só quer achar um projeto. */}
+          <div className="seg">
+            <button
+              type="button"
+              className={modo === 'pastas' ? 'on' : ''}
+              onClick={() => trocarModo('pastas')}
+              title={L('Pastas', 'Folders')}
+            >
+              <Icone path={GRADE} tam={15} />
+            </button>
+            <button
+              type="button"
+              className={modo === 'lista' ? 'on' : ''}
+              onClick={() => trocarModo('lista')}
+              title={L('Lista', 'List')}
+            >
+              <Icone path={LISTA} tam={15} />
+            </button>
           </div>
         </div>
 
@@ -244,17 +251,15 @@ export default function Home() {
                 className="home-pasta"
                 onClick={() => setAberta(g.chave)}
               >
-                {/* O ícone em caixa própria: solto, ele se perdia contra o
-                    nome do cliente, que é o que se procura na grade. */}
-                <span className="home-pasta-ic">
-                  <Icone path={PASTA} tam={20} />
-                </span>
-                <span>
-                  <span className="home-pasta-nome">{g.rotulo}</span>
-                  <span className="home-pasta-n" style={{ display: 'block' }}>
-                    {g.itens.length}{' '}
-                    {g.itens.length === 1 ? L('projeto', 'project') : L('projetos', 'projects')}
-                  </span>
+                {/* Ícone de contorno, grande e solto — sem caixa atrás. A caixa
+                    chegou a existir e foi embora: numa grade de pastas todas
+                    iguais, ela virava o elemento mais pesado do card, sendo que
+                    o que se procura ali é o NOME do cliente. */}
+                <Icone path={PASTA} tam={34} />
+                <span className="home-pasta-nome">{g.rotulo}</span>
+                <span className="home-pasta-n">
+                  {g.itens.length}{' '}
+                  {g.itens.length === 1 ? L('projeto', 'project') : L('projetos', 'projects')}
                 </span>
               </button>
             ))}
@@ -274,9 +279,12 @@ export default function Home() {
           </div>
         )}
 
-        {/* MODO LISTA — acordeão: todas as pastas visíveis, expandindo. */}
+        {/* MODO LISTA — acordeão: todas as pastas visíveis, expandindo.
+            Este SIM leva card: uma lista de linhas precisa de uma superfície
+            que a delimite, ao contrário da grade, em que cada pasta já é um
+            card e a moldura em volta só criaria a segunda borda. */}
         {modo === 'lista' && grupos.length > 0 && (
-          <div className="home-acordeao">
+          <div className="card home-acordeao">
             {grupos.map((g) => {
               const aberto = expandidas.has(g.chave)
               return (
