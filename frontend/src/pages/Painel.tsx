@@ -10,7 +10,7 @@ import { Cabecalho, Erro, Segmented, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { AuditoriaEstado, LinhaPainel, Matriz, Painel as PainelDados } from '@/lib/types'
-import { useProjeto } from '@/projeto/ProjetoContext'
+import { rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 
 const ROTULO_ESTADO: Record<AuditoriaEstado, [string, string]> = {
   publicado: ['Publicado', 'Published'],
@@ -171,7 +171,7 @@ export default function Painel() {
                 <tr
                   key={l.modelo_id}
                   className="clk"
-                  onClick={() => navegar(`/modelos/${l.modelo_id}`)}
+                  onClick={() => navegar(rotaProjeto(projeto.id, `modelos/${l.modelo_id}`))}
                 >
                   <td>
                     <div className="mcell">

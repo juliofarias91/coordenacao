@@ -1,11 +1,49 @@
-# Onde paramos — 28/07/2026
+# Onde paramos — 29/07/2026
 
 Estado da plataforma no fim do dia, o que está no ar, e o que vem a seguir.
 Escrito para retomar amanhã sem reconstruir o contexto.
 
 ---
 
-## O que mudou hoje
+## 29/07 — rotas por projeto
+
+O projeto saiu do `localStorage` e foi para a URL: as telas de auditoria agora
+vivem em **`/projetos/:projetoId/<tela>`**. Era o item 10 da lista de ontem, e
+foi feito antes das telas novas justamente para não ter de refazê-las depois.
+
+O que isso muda na prática:
+
+- **`/painel` significava coisas diferentes para duas pessoas** — cada uma com
+  o seu projeto guardado no navegador. Agora o endereço carrega o projeto e
+  **dá para mandar o link a um colega**. O "Abrir" da administração virou um
+  link de verdade, que se copia e se abre noutra aba.
+- **Trocar de projeto mantém a tela**: quem está no painel do CPQ11 e troca no
+  breadcrumb cai no painel do outro, não numa tela inicial.
+- **O breadcrumb passou a ser `cliente › projeto › tela`** — a mesma árvore que
+  a home usa como pasta.
+- **Os links antigos continuam funcionando.** `/painel`, `/kpis`,
+  `/modelos/:id` e os outros redirecionam para o último projeto visitado, que
+  é exatamente o que a URL antiga queria dizer.
+
+Duas decisões que valem lembrar antes de mexer:
+
+- **`selecionar()` preserva só as telas do menu.** `modelos/<id>` fica de fora
+  de propósito: trocar de projeto ali levaria o id do modelo do projeto antigo
+  para a URL do novo. A lista sai de `ITENS_NAV`, não é escrita à mão.
+- **O `localStorage` (`spbim_projeto`) não sumiu — mudou de papel.** Não é mais
+  o projeto corrente; é a memória do último visitado, que responde "qual
+  projeto?" nas telas globais (home, administração) e alimenta o redirecionamento
+  dos links antigos. Ele acompanha a URL, não o clique: um link recebido de
+  outra pessoa também vira o "último".
+
+`tsc`, `eslint`, `npm test` (28/28) e o build passam; o refresh direto num link
+profundo foi conferido contra a API real (o catch-all do `spa.py` cobre
+qualquer profundidade). **A renderização em si não foi verificada em navegador**
+— não há automação de browser nesta máquina.
+
+---
+
+## O que mudou em 28/07
 
 A plataforma saiu de "roda na máquina do dev contra Postgres local" para
 **publicada, com banco gerenciado e um deploy funcionando**.
@@ -93,8 +131,9 @@ backend já existe.
 
 ### Só tela — o backend já está pronto
 
-1. **Administração separada** — usuários, clientes e visão geral. Clientes tem
-   API desde hoje; usuários desde a Fase 1. *(sugerido como próximo)*
+1. **Administração separada** — falta menos do que parecia: `/admin` já tem
+   Organização, Projetos e Usuários. O que resta é a **aba de Clientes** (a API
+   nasceu em 28/07) e a visão geral. *(sugerido como próximo)*
 2. **Log de atividade** — a trilha de auditoria existe e tem API
    (`/trilha`); falta a tela.
 3. **Notificações** — existe API e o sino na topbar; falta a central.
@@ -115,9 +154,7 @@ backend já existe.
 
 ### Decidido, mas ainda não implementado
 
-10. **Rotas por projeto** (`/projetos/:id/...`) — aprovado. Mexe em todas as
-    telas, no breadcrumb e no `ProjetoContext`. Vale fazer antes de multiplicar
-    telas novas, para não refazê-las depois.
+10. ~~**Rotas por projeto**~~ — **feito em 29/07**, ver o topo.
 11. **Login/cadastro** — decidido: **só por convite do admin**. Cadastro aberto
     contradiz "SSO autentica, não provisiona" (`docs/SUPABASE.md`). O que falta
     é a tela de convite + definição de senha.

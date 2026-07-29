@@ -14,14 +14,15 @@ import { useNavigate } from 'react-router-dom'
 
 import { useI18n } from '@/i18n'
 import { api } from '@/lib/api'
-import { useProjeto } from '@/projeto/ProjetoContext'
+import { rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 
 type Achado = {
   id: string
   tipo: 'projeto' | 'cliente' | 'modelo' | 'criterio'
   titulo: string
   detalhe: string
-  /** O que fazer ao escolher. Projeto troca o contexto; o resto navega. */
+  /** Para onde ir ao escolher. Tudo é navegação — inclusive escolher um
+   *  projeto, que agora significa entrar na URL dele. */
   ir: () => void
 }
 
@@ -47,7 +48,7 @@ function normalizar(s: string): string {
 export default function BuscaGlobal() {
   const { L } = useI18n()
   const navigate = useNavigate()
-  const { projeto, selecionar } = useProjeto()
+  const { projeto } = useProjeto()
 
   const [aberto, setAberto] = useState(false)
   const [termo, setTermo] = useState('')
@@ -100,10 +101,7 @@ export default function BuscaGlobal() {
           tipo: 'projeto' as const,
           titulo: `${p.codigo} · ${p.nome}`,
           detalhe: p.cliente_nome ?? '',
-          ir: () => {
-            selecionar(p.id)
-            navigate('/painel')
-          },
+          ir: () => navigate(rotaProjeto(p.id, 'painel')),
         })),
       ),
       api.clientes.listar().then((r) =>
@@ -126,7 +124,7 @@ export default function BuscaGlobal() {
             tipo: 'modelo' as const,
             titulo: m.codigo,
             detalhe: projeto.codigo,
-            ir: () => navigate(`/modelos/${m.id}`),
+            ir: () => navigate(rotaProjeto(projeto.id, `modelos/${m.id}`)),
           })),
         ),
         api.criterios.listar(projeto.id).then((r) =>
@@ -135,7 +133,7 @@ export default function BuscaGlobal() {
             tipo: 'criterio' as const,
             titulo: `${c.codigo} · ${c.nome_pt}`,
             detalhe: c.categoria ?? '',
-            ir: () => navigate('/criterios'),
+            ir: () => navigate(rotaProjeto(projeto.id, 'criterios')),
           })),
         ),
       )
@@ -148,7 +146,7 @@ export default function BuscaGlobal() {
         setBase(rs.flatMap((r) => (r.status === 'fulfilled' ? r.value : []))),
       )
       .finally(() => setCarregando(false))
-  }, [aberto, base.length, projeto, navigate, selecionar])
+  }, [aberto, base.length, projeto, navigate])
 
   const achados = useMemo(() => {
     const t = normalizar(termo.trim())

@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom'
 import { useI18n } from '@/i18n'
 import { api } from '@/lib/api'
 import type { ClientePasta, Projeto } from '@/lib/types'
-import { useProjeto } from '@/projeto/ProjetoContext'
+import { rotaProjeto } from '@/projeto/ProjetoContext'
 
 const CHAVE_MODO = 'spbim_home_modo'
 
@@ -76,7 +76,6 @@ const LISTA = 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'
 export default function Home() {
   const { L } = useI18n()
   const navigate = useNavigate()
-  const { selecionar } = useProjeto()
 
   const [pastas, setPastas] = useState<ClientePasta[]>([])
   const [projetos, setProjetos] = useState<Projeto[]>([])
@@ -110,12 +109,11 @@ export default function Home() {
 
   const abrirProjeto = useCallback(
     (projeto: Projeto) => {
-      // A home seleciona o projeto e entrega o painel. Enquanto as rotas não
-      // carregarem o projeto na URL, o contexto é quem sabe onde estamos.
-      selecionar(projeto.id)
-      navigate('/painel')
+      // Escolher um projeto é IR para ele: a escolha vira URL, e o painel é o
+      // que se quer ver ao abrir um projeto.
+      navigate(rotaProjeto(projeto.id, 'painel'))
     },
-    [navigate, selecionar],
+    [navigate],
   )
 
   const termo = busca.trim().toLowerCase()

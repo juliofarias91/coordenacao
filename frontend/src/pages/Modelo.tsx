@@ -21,6 +21,7 @@ import type {
   Resultado,
   Versao,
 } from '@/lib/types'
+import { rotaProjeto } from '@/projeto/ProjetoContext'
 
 const CICLO: CheckStatus[] = ['pendente', 'aprovado', 'reprovado', 'na']
 
@@ -40,7 +41,7 @@ const ROTULO_CHECKLIST: Record<string, [string, string]> = {
 }
 
 export default function ModeloView() {
-  const { modeloId } = useParams<{ modeloId: string }>()
+  const { projetoId, modeloId } = useParams<{ projetoId: string; modeloId: string }>()
   const { L, lang } = useI18n()
 
   const [modelo, setModelo] = useState<ModeloDetalhe | null>(null)
@@ -194,7 +195,10 @@ export default function ModeloView() {
   return (
     <>
       <div className="crumb">
-        <Link to="/painel">{L('Painel de controle', 'Control panel')}</Link> ›{' '}
+        <Link to={rotaProjeto(projetoId ?? '', 'painel')}>
+          {L('Painel de controle', 'Control panel')}
+        </Link>{' '}
+        ›{' '}
         <span>{modelo.codigo}</span>
       </div>
 

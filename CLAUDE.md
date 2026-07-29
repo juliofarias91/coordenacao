@@ -174,6 +174,12 @@ servindo o build, que é o arranjo de produção, e `-Parar` encerra.
 **O que resta não é código:** subir o ambiente produtivo num servidor e rodar o piloto assistido. Se o usuário pedir "continue", pergunte o que ele quer — não há próxima fase para implementar sozinho.
 
 Ao continuar:
+- **A URL carrega o projeto**: toda tela de auditoria vive em
+  `/projetos/:projetoId/<tela>` e o projeto corrente sai de lá, não do
+  `localStorage` (que sobrou como memória do último visitado). Tela nova de
+  projeto entra em `ITENS_NAV` com `escopo: 'projeto'` e `rota` sendo só o
+  segmento — quem monta o caminho é `rotaProjeto()`, em
+  `frontend/src/projeto/ProjetoContext.tsx`. Nunca escreva `/painel` à mão.
 - `backend/app/api/v1/` tem o padrão de rota (permissão via `requer_permissao`, sessão via `get_tenant_db`, 404 via `services/escopo.py`).
 - `backend/app/services/auditoria.py` concentra as regras da execução — leia antes de mexer em estado de round.
 - `backend/app/services/automacao/executor.py` tem o registro de verificadores: para automatizar um critério novo, acrescente uma entrada em `VERIFICADORES` ou dê a ele um `parametro_esperado`.

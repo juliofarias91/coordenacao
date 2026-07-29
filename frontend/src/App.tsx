@@ -16,6 +16,7 @@ import Painel from '@/pages/Painel'
 import Placeholder from '@/pages/Placeholder'
 import Portal from '@/pages/Portal'
 import Relatorios from '@/pages/Relatorios'
+import EscopoProjeto, { RotaLegada } from '@/projeto/EscopoProjeto'
 import { ProjetoProvider } from '@/projeto/ProjetoContext'
 
 /** Telas que ainda não têm conteúdo. Ganham corpo nas fases indicadas. */
@@ -34,6 +35,21 @@ const PENDENTES: Array<{
     ],
     fase: 1,
   },
+]
+
+/** As URLs de antes de 29/07/2026, quando toda tela era global e o projeto
+ *  vivia no `localStorage`. Continuam funcionando, redirecionando para o
+ *  último projeto visitado — ver `RotaLegada`. */
+const LEGADAS = [
+  'painel',
+  'kpis',
+  'criterios',
+  'apontamentos',
+  'relatorios',
+  'integracoes',
+  'configuracao',
+  'peb',
+  'modelos/:modeloId',
 ]
 
 export default function App() {
@@ -65,25 +81,40 @@ export default function App() {
       <Routes>
         <Route path="/portal/:token" element={<Portal />} />
         <Route element={<Shell />}>
-          {/* A porta de entrada é a home: os projetos por cliente. O painel
-              exige um projeto escolhido, e escolher é justamente o que a home
-              faz — entrar direto nele obrigava a adivinhar qual. */}
+          {/* GLOBAL — vale para a organização inteira. A porta de entrada é a
+              home: os projetos por cliente. Escolher o projeto é justamente o
+              que ela faz; entrar direto no painel obrigava a adivinhar qual. */}
           <Route index element={<Home />} />
-          <Route path="painel" element={<Painel />} />
-          <Route path="modelos/:modeloId" element={<ModeloView />} />
-          <Route path="kpis" element={<Kpis />} />
-          <Route path="apontamentos" element={<Apontamentos />} />
-          <Route path="relatorios" element={<Relatorios />} />
-          <Route path="integracoes" element={<Integracoes />} />
-          <Route path="configuracao" element={<Configuracao />} />
           <Route path="admin" element={<Admin />} />
-          <Route path="criterios" element={<Criterios />} />
-          {PENDENTES.map((t) => (
-            <Route
-              key={t.rota}
-              path={t.rota}
-              element={<Placeholder titulo={t.titulo} descricao={t.descricao} fase={t.fase} />}
-            />
+
+          {/* POR PROJETO — o projeto está na URL, não no `localStorage`. É o
+              que faz `/projetos/<id>/painel` significar a mesma coisa para
+              todo mundo e virar um link que se manda a um colega. */}
+          <Route path="projetos/:projetoId" element={<EscopoProjeto />}>
+            {/* Sem tela, o projeto abre no painel — é o destino de quem
+                escolhe um projeto na home. */}
+            <Route index element={<Navigate to="painel" replace />} />
+            <Route path="painel" element={<Painel />} />
+            <Route path="modelos/:modeloId" element={<ModeloView />} />
+            <Route path="kpis" element={<Kpis />} />
+            <Route path="apontamentos" element={<Apontamentos />} />
+            <Route path="relatorios" element={<Relatorios />} />
+            <Route path="integracoes" element={<Integracoes />} />
+            <Route path="configuracao" element={<Configuracao />} />
+            <Route path="criterios" element={<Criterios />} />
+            {PENDENTES.map((t) => (
+              <Route
+                key={t.rota}
+                path={t.rota}
+                element={<Placeholder titulo={t.titulo} descricao={t.descricao} fase={t.fase} />}
+              />
+            ))}
+          </Route>
+
+          {/* Os links salvos antes da mudança. Precisam vir DEPOIS das rotas
+              reais e antes do catch-all. */}
+          {LEGADAS.map((tela) => (
+            <Route key={tela} path={tela} element={<RotaLegada tela={tela} />} />
           ))}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

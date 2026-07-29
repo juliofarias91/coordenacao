@@ -9,12 +9,13 @@
  *  todos.
  */
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Campo, Editor, Erro } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { Cliente, Projeto } from '@/lib/types'
-import { useProjeto } from '@/projeto/ProjetoContext'
+import { rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 
 const STATUS = ['config', 'ativo', 'pausado', 'encerrado'] as const
 
@@ -48,7 +49,7 @@ const VAZIO: Rascunho = {
 
 export default function AbaProjetos() {
   const { L } = useI18n()
-  const { projeto: corrente, selecionar, recarregar } = useProjeto()
+  const { recarregar } = useProjeto()
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [rascunho, setRascunho] = useState<Rascunho | null>(null)
@@ -230,15 +231,13 @@ export default function AbaProjetos() {
                   <span className={`pill${p.status === 'ativo' ? ' ok' : ''}`}>{p.status}</span>
                 </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  {corrente?.id !== p.id && (
-                    <button
-                      className="btn sm"
-                      onClick={() => selecionar(p.id)}
-                      style={{ marginRight: 6 }}
-                    >
-                      {L('Abrir', 'Open')}
-                    </button>
-                  )}
+                  {/* "Abrir" agora é um link de verdade: dá para copiar o
+                      endereço, abrir noutra aba, mandar a um colega. Antes
+                      trocava o projeto guardado e a administração continuava
+                      na tela — o efeito só aparecia no menu. */}
+                  <Link className="btn sm" to={rotaProjeto(p.id)} style={{ marginRight: 6 }}>
+                    {L('Abrir', 'Open')}
+                  </Link>
                   <button
                     className="btn sm"
                     onClick={() =>

@@ -16,7 +16,7 @@
  *  abrir.
  */
 import { useCallback, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useMatch } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthContext'
 import BuscaGlobal from '@/components/BuscaGlobal'
@@ -24,7 +24,7 @@ import Sino from '@/components/Sino'
 import UsuarioMenu from '@/components/UsuarioMenu'
 import { useI18n } from '@/i18n'
 import { GRUPOS, ITENS_NAV, type GrupoNav, type ItemNav } from '@/layout/nav'
-import { useProjeto } from '@/projeto/ProjetoContext'
+import { PREFIXO_PROJETO, rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 import { useTheme } from '@/theme/ThemeProvider'
 
 /** A sidebar nasce EXPANDIDA aqui, ao contrário do padrão do kit.
@@ -129,12 +129,21 @@ function PillAcao({
   )
 }
 
+/** Um item do menu casa com o caminho atual, ou com um caminho abaixo dele. */
+function casa(alvo: string, caminho: string): boolean {
+  return caminho === alvo || caminho.startsWith(`${alvo}/`)
+}
+
 export default function Shell() {
   const { usuario, sair } = useAuth()
   const { lang, setLang, L } = useI18n()
   const { theme, setTheme } = useTheme()
-  const { projeto, projetos, selecionar } = useProjeto()
+  const { projeto, projetos, referencia, selecionar } = useProjeto()
   const { pathname } = useLocation()
+  const emProjeto = useMatch(`${PREFIXO_PROJETO}/:projetoId/*`)
+  /** O caminho DEPOIS do projeto (`painel`, `modelos/abc`) — é contra ele que
+   *  os itens de escopo de projeto se comparam. */
+  const trilho = emProjeto?.params['*'] ?? ''
 
   const [recolhida, setRecolhida] = useState(leRecolhida)
   const [gruposOff, setGruposOff] = useState<Record<string, boolean>>({})
@@ -180,12 +189,28 @@ export default function Shell() {
     (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
   )
 
-  // Prefixo mais longo: /modelos/:id não está no menu, mas nasce do painel —
-  // sem o fallback, a página de detalhe ficaria com o breadcrumb vazio.
+  /** Para onde o item aponta. Item de projeto sem projeto de referência não
+   *  aponta para lugar nenhum: a organização não tem projeto (ou a lista ainda
+   *  está vindo), e o item vira um rótulo apagado em vez de um link quebrado. */
+  const destino = useCallback(
+    (item: ItemNav): string | null => {
+      if (item.escopo === 'global') return item.rota
+      return referencia ? rotaProjeto(referencia.id, item.rota) : null
+    },
+    [referencia],
+  )
+
+  // Prefixo mais longo: `modelos/:id` não está no menu, mas nasce do painel.
+  // Sem o fallback, a página de detalhe ficaria com o breadcrumb vazio — e o
+  // painel é onde o detalhe do modelo é aberto, como diz o crumb da própria
+  // página ("Painel de controle › CÓDIGO").
   const atual =
     itens
-      .filter((i) => pathname === i.rota || pathname.startsWith(`${i.rota}/`))
-      .sort((a, b) => b.rota.length - a.rota.length)[0] ?? itens[0]
+      .filter((i) =>
+        i.escopo === 'projeto' ? !!emProjeto && casa(i.rota, trilho) : casa(i.rota, pathname),
+      )
+      .sort((a, b) => b.rota.length - a.rota.length)[0] ??
+    (emProjeto ? itens.find((i) => i.rota === 'painel') : itens[0])
 
   const escuro = theme === 'dark'
 
@@ -264,7 +289,12 @@ export default function Shell() {
                 {mostra && (
                   <nav>
                     {doGrupo.map((item) => (
-                      <ItemLink key={item.rota} item={item} rotulo={L(item.pt, item.en)} />
+                      <ItemLink
+                        key={item.rota}
+                        item={item}
+                        para={destino(item)}
+                        rotulo={L(item.pt, item.en)}
+                      />
                     ))}
                   </nav>
                 )}
@@ -294,8 +324,22 @@ export default function Shell() {
         <header className="topbar">
           {/* BREADCRUMB: todos os itens no mesmo tamanho, só o último com peso
               e tinta cheia. Sem accent — accent significa "ação/seleção" no
-              resto do sistema, e a página atual não é nem uma nem outra. */}
+              resto do sistema, e a página atual não é nem uma nem outra.
+
+              A trilha é CLIENTE › PROJETO › TELA, a hierarquia do domínio
+              (organização → cliente → projeto). O cliente entra desde que o
+              projeto tenha um: agora que ele é entidade, é o que a home usa
+              como pasta, e repetir aqui a mesma árvore evita que a topbar
+              conte uma história diferente da tela de onde se veio. */}
           <div className="tb-crumbs">
+            {projeto?.cliente_nome && (
+              <>
+                <NavLink className="tb-crumb" to="/">
+                  {projeto.cliente_nome}
+                </NavLink>
+                <span className="sep">/</span>
+              </>
+            )}
             {projeto &&
               (projetos.length > 1 ? (
                 <select
@@ -348,18 +392,22 @@ export default function Shell() {
           largura animada, porque no toque não existe hover para desambiguar
           ícones. */}
       <nav className="dock">
-        {itens.map((item) => (
-          <NavLink
-            key={item.rota}
-            to={item.rota}
-            end={item.rota === '/'}
-            className={({ isActive }) => (isActive ? 'on' : '')}
-            title={L(item.pt, item.en)}
-          >
-            <Icone path={item.path} tam={19} />
-            <span>{L(item.pt, item.en)}</span>
-          </NavLink>
-        ))}
+        {itens.map((item) => {
+          const para = destino(item)
+          if (!para) return null
+          return (
+            <NavLink
+              key={item.rota}
+              to={para}
+              end={item.rota === '/'}
+              className={({ isActive }) => (isActive ? 'on' : '')}
+              title={L(item.pt, item.en)}
+            >
+              <Icone path={item.path} tam={19} />
+              <span>{L(item.pt, item.en)}</span>
+            </NavLink>
+          )
+        })}
       </nav>
     </div>
   )
@@ -367,10 +415,22 @@ export default function Shell() {
 
 /** ITEM ATIVO = COR + PESO. Sem fundo, sem pílula, sem barra lateral (ver a
  *  nota em `app.css`). */
-function ItemLink({ item, rotulo }: { item: ItemNav; rotulo: string }) {
+function ItemLink({ item, para, rotulo }: { item: ItemNav; para: string | null; rotulo: string }) {
+  // Sem destino: a tela existe, mas não há projeto para abri-la. Fica no lugar,
+  // apagada — sumir ensinaria que a funcionalidade não existe, quando o que
+  // falta é um projeto.
+  if (!para) {
+    return (
+      <span className="nav-off" title={rotulo} aria-disabled="true">
+        <Icone path={item.path} />
+        <span className="nav-rot">{rotulo}</span>
+      </span>
+    )
+  }
+
   return (
     <NavLink
-      to={item.rota}
+      to={para}
       // `end` na raiz: sem ele, `to="/"` casa com QUALQUER rota e o Início
       // ficaria permanentemente marcado, junto com a página de verdade.
       end={item.rota === '/'}

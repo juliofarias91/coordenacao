@@ -239,7 +239,8 @@ nav {
    Numa coluna de itens agrupados, o retângulo colorido do ativo vira o
    elemento mais pesado da tela — sendo que ele só precisa responder "onde eu
    estou". O negrito responde igual e não compete com o conteúdo. */
-nav a {
+nav a,
+nav .nav-off {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -262,6 +263,12 @@ nav a.on {
   color: var(--ink);
   font-weight: 650;
 }
+/* Tela de projeto sem projeto para abrir. Não é estado semântico — não leva
+   cor: só tinta mais fraca e o cursor dizendo que não há o que clicar. */
+nav .nav-off {
+  color: var(--ink-3);
+  cursor: default;
+}
 nav .ic {
   width: 18px;
   height: 18px;
@@ -280,7 +287,8 @@ nav .ic {
 .app[data-nav='off'] .nav-rot {
   opacity: 0;
 }
-.app[data-nav='off'] nav a {
+.app[data-nav='off'] nav a,
+.app[data-nav='off'] nav .nav-off {
   gap: 0;
   padding: 0;
   justify-content: center;
