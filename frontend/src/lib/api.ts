@@ -432,6 +432,25 @@ export const api = {
   /** Trilha de auditoria. `cursor` vem do `proximo_cursor` da página anterior:
    *  o log cresce por inserção contínua, e com offset uma linha nova entre
    *  duas páginas faria um registro aparecer duas vezes ou sumir. */
+  /** Reporte de erro do sistema. ESCREVER é de qualquer pessoa autenticada —
+   *  quem não consegue usar uma tela é justamente quem precisa avisar. LER é só
+   *  de quem administra: o print mostra dado de projeto. */
+  reportes: {
+    listar: (status?: string) =>
+      requisitar<T.Page<T.ReporteErro>>(`/reportes${qs({ status, limite: 200 })}`),
+    criar: (corpo: Record<string, unknown>) =>
+      escrever<T.ReporteErro>('/reportes', 'POST', corpo),
+    enviarPrint: (id: string, arquivo: File) => {
+      const form = new FormData()
+      form.append('arquivo', arquivo)
+      return requisitar<T.ReporteErro>(`/reportes/${id}/print`, { method: 'POST', body: form })
+    },
+    printUrl: (id: string) => requisitar<{ url: string | null }>(`/reportes/${id}/print-url`),
+    atualizar: (id: string, corpo: Record<string, unknown>) =>
+      escrever<T.ReporteErro>(`/reportes/${id}`, 'PATCH', corpo),
+    remover: (id: string) => requisitar<void>(`/reportes/${id}`, { method: 'DELETE' }),
+  },
+
   trilha: (
     filtros: {
       entidade?: string

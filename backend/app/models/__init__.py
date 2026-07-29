@@ -27,6 +27,7 @@ from app.models.colaboracao import (
     ConviteCliente,
     Notificacao,
     Penalidade,
+    ReporteErro,
     TrilhaAuditoria,
 )
 from app.models.criterios import ChecklistItem, Criterio
@@ -46,6 +47,7 @@ __all__ = [
     "NaoConformidade", "ComentarioFornecedor",
     # colaboração
     "Apontamento", "Notificacao", "Penalidade", "ConviteCliente", "TrilhaAuditoria",
+    "ReporteErro",
 ]
 
 # Tabelas de negócio sujeitas a row-level security (todas menos organizacao,
@@ -53,7 +55,7 @@ __all__ = [
 # depois e ganha a policy na 0003, `projeto_membro` na 0004 — quem entrar aqui
 # a partir de agora precisa de RLS na própria migration que cria a tabela.
 TENANT_TABLES: tuple[str, ...] = (
-    "cliente", "projeto_membro",
+    "cliente", "projeto_membro", "reporte_erro",
     "projeto", "empresa", "contato", "usuario", "standard", "nomenclatura_padrao",
     "disciplina", "criterio", "checklist_item", "modelo", "versao_modelo",
     "auditoria", "resultado_check", "ocorrencia", "evidencia", "nao_conformidade",

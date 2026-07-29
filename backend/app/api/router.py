@@ -33,6 +33,7 @@ from app.api.v1 import (
     painel,
     portal,
     projetos,
+    reportes,
     standards,
     trilha,
     usuarios,
@@ -69,3 +70,4 @@ api_router.include_router(kpis.router)
 api_router.include_router(apontamentos.router)
 api_router.include_router(portal.router)
 api_router.include_router(trilha.router)
+api_router.include_router(reportes.router)

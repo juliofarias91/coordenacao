@@ -2739,3 +2739,72 @@ td.num {
   align-self: flex-start;
   cursor: pointer;
 }
+
+/* --- Apontar erro / erros reportados ------------------------------------- */
+/* O painel de reporte nasce da topbar, nao da sidebar: ancora no `.usermenu`,
+   que e `position: relative`. Mesma cara do painel do sino. */
+.erro-painel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  bottom: auto;
+  left: auto;
+  width: 380px;
+  max-width: 92vw;
+}
+.erro-print {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reporte {
+  border-bottom: 1px solid var(--line);
+}
+.reporte:last-child {
+  border-bottom: none;
+}
+.reporte-cab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--dur-fast);
+}
+.reporte-cab:hover {
+  color: var(--ink);
+}
+.reporte-titulo {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reporte-corpo {
+  padding: 0 16px 16px;
+}
+.reporte-desc {
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  /* `pre-wrap`: o relato foi digitado num textarea, e as quebras de linha que
+     a pessoa deu fazem parte do que ela quis dizer. */
+  white-space: pre-wrap;
+  margin: 0 0 8px;
+}
+.reporte-print {
+  display: block;
+  max-width: 100%;
+  margin: 10px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}

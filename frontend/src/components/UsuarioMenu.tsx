@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import ApontarErro from '@/components/ApontarErro'
 import { useAuth } from '@/auth/AuthContext'
 import { useI18n } from '@/i18n'
 
@@ -18,6 +19,7 @@ export default function UsuarioMenu() {
   const { usuario, sair } = useAuth()
   const { L } = useI18n()
   const [aberto, setAberto] = useState(false)
+  const [apontando, setApontando] = useState(false)
   const caixa = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -134,11 +136,45 @@ export default function UsuarioMenu() {
             {L('Configurações', 'Settings')}
           </Link>
 
+          {/* APONTAR ERRO é de qualquer pessoa — não tem guarda de permissão.
+              Quem não consegue usar uma tela é justamente quem precisa avisar;
+              exigir permissão para reportar filtraria fora o relato de quem
+              mais depende dele. Quem LÊ os reportes é só quem administra. */}
+          <button
+            type="button"
+            className="useritem"
+            role="menuitem"
+            onClick={() => {
+              setAberto(false)
+              setApontando(true)
+            }}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            </svg>
+            {L('Apontar erro', 'Report a problem')}
+          </button>
+
           <button type="button" className="usersair" onClick={sair} role="menuitem">
             {L('Sair', 'Exit')}
           </button>
         </div>
       )}
+
+      {/* FORA do painel da conta, e nao dentro: o menu fecha ao abrir o
+          reporte, e um formulario que morre junto com o menu perderia o que a
+          pessoa ja tinha digitado ao primeiro clique fora. */}
+      {apontando && <ApontarErro onFechar={() => setApontando(false)} />}
     </div>
   )
 }

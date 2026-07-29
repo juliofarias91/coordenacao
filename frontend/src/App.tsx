@@ -29,6 +29,7 @@ import {
   PaginaLogs,
   PaginaOrganizacao,
   PaginaProjetos,
+  PaginaReportes,
   PaginaUsuarios,
 } from '@/pages/admin/paginas'
 import KpisGerais from '@/pages/KpisGerais'
@@ -142,6 +143,7 @@ export default function App() {
               <Route index element={<Navigate to="usuarios" replace />} />
               <Route path="usuarios" element={<PaginaUsuarios />} />
               <Route path="logs" element={<PaginaLogs />} />
+              <Route path="reportes" element={<PaginaReportes />} />
               <Route path="organizacao" element={<PaginaOrganizacao />} />
               <Route path="clientes" element={<PaginaClientes />} />
               <Route path="projetos" element={<PaginaProjetos />} />

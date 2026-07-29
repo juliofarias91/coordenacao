@@ -16,6 +16,7 @@ import { useI18n } from '@/i18n'
 import AbaClientes from '@/pages/admin/Clientes'
 import AbaOrganizacao from '@/pages/admin/Organizacao'
 import AbaProjetos from '@/pages/admin/Projetos'
+import AbaReportes from '@/pages/admin/Reportes'
 import AbaTrilha from '@/pages/admin/Trilha'
 import AbaUsuarios from '@/pages/admin/Usuarios'
 
@@ -130,6 +131,22 @@ export function PaginaProjetos() {
         )}
       />
       <AbaProjetos />
+    </>
+  )
+}
+
+export function PaginaReportes() {
+  const { L } = useI18n()
+  return (
+    <>
+      <Cabecalho
+        titulo={L('Erros reportados', 'Reported problems')}
+        sub={L(
+          'O que quem usa a plataforma relatou pelo menu da conta, com a tela em que estava e, quando anexado, o print. Só quem administra vê esta lista: o print mostra dado de projeto.',
+          'What people reported through the account menu, with the screen they were on and, when attached, the screenshot. Only administrators see this list: screenshots show project data.',
+        )}
+      />
+      <AbaReportes />
     </>
   )
 }

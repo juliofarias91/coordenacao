@@ -351,6 +351,19 @@ export const ITENS_ADMIN: ItemNav[] = [
     fase: 4,
     exigePermissao: 'admin_cadastro',
   },
+  {
+    // Os erros que quem usa a plataforma relatou. Fica ao lado dos logs: os
+    // dois respondem "o que aconteceu aqui dentro" — um pelo que o sistema
+    // registrou, outro pelo que as pessoas contaram.
+    rota: '/admin/reportes',
+    pt: 'Erros reportados',
+    en: 'Reported problems',
+    path: IC.alerta,
+    grupo: 'topo',
+    escopo: 'admin',
+    fase: 4,
+    exigePermissao: 'admin_cadastro',
+  },
 
   // ORGANIZAÇÃO, CLIENTES E PROJETOS FICAM, e num grupo à parte.
   //

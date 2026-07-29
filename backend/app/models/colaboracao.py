@@ -104,3 +104,37 @@ class TrilhaAuditoria(OrgMixin, TimestampMixin, Base):
     entidade_id: Mapped[uuid.UUID | None] = mapped_column(PgUUID(as_uuid=True), index=True)
     acao: Mapped[str | None] = mapped_column(Text)
     diff: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+
+class ReporteErro(OrgMixin, TimestampMixin, Base):
+    """Erro do SISTEMA reportado por quem usa — texto e print.
+
+    NÃO CONFUNDIR COM `Apontamento`, que também é "um apontamento de erro" na
+    fala do dia a dia e é outra coisa inteiramente: aquele é do MODELO auditado
+    e vira issue no ACC; este é da PLATAFORMA, e vira trabalho de quem a
+    mantém. Misturar os dois faria a lista de pendências de obra encher de
+    "botão não funciona".
+
+    Quem reporta é qualquer pessoa autenticada — quem não consegue usar a tela
+    é justamente quem precisa avisar. Quem LÊ e resolve é só quem administra: o
+    reporte carrega print, e print de tela de auditoria mostra dado de projeto.
+    """
+
+    __tablename__ = "reporte_erro"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    # SET NULL e não CASCADE: o reporte sobrevive à saída de quem o abriu. Um
+    # bug não deixa de existir porque a pessoa que o encontrou saiu da empresa.
+    usuario_id: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("usuario.id", ondelete="SET NULL")
+    )
+    titulo: Mapped[str] = mapped_column(Text, nullable=False)
+    descricao: Mapped[str | None] = mapped_column(Text)
+    # A URL em que a pessoa estava. Preenchida pelo cliente, não digitada:
+    # "não funciona" sem a tela é um chamado que começa com uma pergunta.
+    caminho: Mapped[str | None] = mapped_column(Text)
+    # Chave do print no S3. Nunca uma URL pública — o bucket é privado.
+    print_url: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'aberto'"))
+    # A resposta de quem administra: o que foi feito, ou por que não será.
+    resposta: Mapped[str | None] = mapped_column(Text)

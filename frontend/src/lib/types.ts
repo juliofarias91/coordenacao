@@ -464,3 +464,21 @@ export type Membro = Base & {
   usuario_login: string | null
   usuario_papel_org: string | null
 }
+
+/** Erro do SISTEMA reportado por quem usa (migration 0005).
+ *
+ *  NÃO confundir com `Apontamento`, que também é "apontamento de erro" na fala
+ *  do dia a dia: aquele é do MODELO auditado e vira issue no ACC; este é da
+ *  plataforma e vira trabalho de quem a mantém. */
+export type ReporteErro = Base & {
+  usuario_id: string | null
+  titulo: string
+  descricao: string | null
+  /** A URL em que a pessoa estava. Preenchida pelo cliente, não digitada. */
+  caminho: string | null
+  print_url: string | null
+  status: string
+  resposta: string | null
+  usuario_nome: string | null
+  usuario_login: string | null
+}
