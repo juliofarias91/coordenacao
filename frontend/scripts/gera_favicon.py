@@ -72,11 +72,12 @@ NUDGE_NA_DIAGONAL = 0.85
 PASSO = 1.4  # menor que ESP_ANEL: os passos se sobrepõem
 ALCANCE = 96.0  # atravessa o disco inteiro na diagonal
 N_PASSOS = int(ALCANCE / PASSO)
-# O CABO APONTA CONTRA A SOMBRA e a sombra ficou MAIS LEVE por causa disso.
-# Com o cabo a nordeste e a sombra a sudeste, a sombra do cabo não se esconde
-# mais atrás do próprio cabo: ela cruza o vazio abaixo da lente e vira a maior
-# mancha da peça. A 0.17 ela competia com o glifo; a 0.13 volta a ser sombra.
-ALFA_SOMBRA = 0.13
+# Com o cabo a SUDOESTE e a sombra a sudeste, a sombra do cabo sai por baixo da
+# lente em vez de cruzar o vazio: a mancha voltou a ser compacta, e por isso
+# suporta mais tinta sem competir com o glifo. Subiu para 0.20 — o pedido era
+# "um pouco mais escura", e acima disto ela começa a ler como um segundo objeto
+# em vez de ausência de luz.
+ALFA_SOMBRA = 0.20
 
 BRANCO = "#ffffff"
 ROXO = "#6a3dae"  # `--purple` do tema claro
@@ -94,10 +95,10 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent / "public"
 # Meia-diagonal unitária: tudo o que anda a 45° anda em passos deste tamanho.
 _D = 0.70710678
 
-# A LUPA É ESPELHADA NA VERTICAL: o cabo aponta para o NORDESTE, não para o
-# sudeste. Uma direção só governa o cabo inteiro — ponta, comprimento e o
-# empurrão óptico saem daqui. Espelhar de novo é trocar o sinal do y.
-_DIR_CABO = (_D, -_D)
+# O CABO APONTA PARA O SUDOESTE — 180° do nordeste em que estava. Uma direção
+# só governa o cabo inteiro: ponta, comprimento e o empurrão óptico saem daqui.
+# Girar 180° é trocar o sinal dos DOIS eixos; espelhar é trocar o de um.
+_DIR_CABO = (-_D, _D)
 
 # --- sombra ---------------------------------------------------------------
 DIR_SOMBRA = (1.0, 1.0)  # sudeste, em passos de PASSO
