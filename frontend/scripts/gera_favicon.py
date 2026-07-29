@@ -75,7 +75,11 @@ ALFA_SOMBRA = 0.17
 
 BRANCO = "#ffffff"
 ROXO = "#6a3dae"  # `--purple` do tema claro
-ARO = "#e2dcef"  # aro discreto: sem ele o disco branco some na aba clara
+# A SOMBRA É CINZA NEUTRO, não roxo esmaecido. Sombra tingida da cor do objeto
+# lê como um segundo objeto atrás do primeiro; cinza lê como ausência de luz, e
+# some da leitura — que é o que sombra deve fazer.
+SOMBRA = "#2b2b2b"
+ARO = "#e6e6e6"  # aro discreto: sem ele o disco branco some na aba clara
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent / "public"
 
@@ -149,7 +153,7 @@ def svg() -> str:
         f'stroke="{ARO}" stroke-width="1.4"/>'
         # `opacity` no GRUPO: os passos se sobrepõem, e a translucidez aplicada
         # a cada um faria a sombra escurecer perto do glifo.
-        f'<g clip-path="url(#disco)" color="{ROXO}" opacity="{ALFA_SOMBRA}">{passos}</g>'
+        f'<g clip-path="url(#disco)" color="{SOMBRA}" opacity="{ALFA_SOMBRA}">{passos}</g>'
         f'<g color="{ROXO}">{_glifo_svg("currentColor")}</g>'
         "</svg>"
     )
@@ -176,7 +180,11 @@ def png(lado_final: int) -> Image.Image:
     # redução. Sem isso o disco fica serrilhado a 32px.
     k = 8
     tam = int(LADO) * k
-    rgb = tuple(int(ROXO[i : i + 2], 16) for i in (1, 3, 5))
+    def _rgb(hexa: str) -> tuple[int, int, int]:
+        return tuple(int(hexa[i : i + 2], 16) for i in (1, 3, 5))  # type: ignore[return-value]
+
+    tinta = _rgb(ROXO)
+    cinza = _rgb(SOMBRA)
 
     img = Image.new("RGBA", (tam, tam), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -189,7 +197,7 @@ def png(lado_final: int) -> Image.Image:
     camada = Image.new("RGBA", (tam, tam), (0, 0, 0, 0))
     ds = ImageDraw.Draw(camada)
     for i in range(1, N_PASSOS + 1):
-        _glifo_png(ds, k, i * PASSO, i * PASSO, (*rgb, 255))
+        _glifo_png(ds, k, i * PASSO, i * PASSO, (*cinza, 255))
     recorte = Image.new("L", (tam, tam), 0)
     ImageDraw.Draw(recorte).ellipse([cx - r, cy - r, cx + r, cy + r], fill=255)
     camada.putalpha(Image.eval(camada.getchannel("A"), lambda a: int(a * ALFA_SOMBRA)))
@@ -198,7 +206,7 @@ def png(lado_final: int) -> Image.Image:
     )
     img = Image.alpha_composite(img, camada)
 
-    _glifo_png(ImageDraw.Draw(img), k, 0, 0, (*rgb, 255))
+    _glifo_png(ImageDraw.Draw(img), k, 0, 0, (*tinta, 255))
     return img.resize((lado_final, lado_final), Image.LANCZOS)
 
 
