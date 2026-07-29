@@ -28,6 +28,7 @@ from app.schemas.criterio import (
     CriterioUpdate,
     ItemChecklistOut,
 )
+from app.services import lixeira
 from app.services.escopo import conflito, exigir, exigir_projeto, ja_existe
 
 router = APIRouter(tags=["criterios"])
@@ -146,7 +147,7 @@ def remover_criterio(
         raise conflito(
             f"critério em uso em {usos} checklist(s); remova-o dos checklists primeiro"
         )
-    db.delete(criterio)
+    lixeira.remover(db, criterio)
 
 
 # ---------------------------------------------------------------- checklists

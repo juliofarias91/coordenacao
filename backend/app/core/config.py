@@ -85,6 +85,10 @@ class Settings(BaseSettings):
     # Nome do parâmetro de sessão do Postgres que carrega o tenant corrente.
     # É ele que as policies de row-level security consultam.
     tenant_guc: str = Field(default="app.org_id", exclude=True)
+    # O segundo GUC do RLS: quando 'on', as policies passam a devolver TAMBÉM
+    # as linhas removidas. É o que a lixeira liga, e só ela — ver
+    # `db/session.py::set_ver_removidos`.
+    lixeira_guc: str = Field(default="app.ver_removidos", exclude=True)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

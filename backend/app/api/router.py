@@ -26,6 +26,7 @@ from app.api.v1 import (
     health,
     ingest,
     kpis,
+    lixeira,
     membros,
     modelos,
     notificacoes,
@@ -71,3 +72,4 @@ api_router.include_router(apontamentos.router)
 api_router.include_router(portal.router)
 api_router.include_router(trilha.router)
 api_router.include_router(reportes.router)
+api_router.include_router(lixeira.router)

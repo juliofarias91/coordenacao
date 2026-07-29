@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.core.contexto import definir_autor
 from app.core.security import TokenError, decode_token
-from app.db.session import AuthSessionLocal, SessionLocal, set_tenant
+from app.db.session import AuthSessionLocal, SessionLocal, set_tenant, set_ver_removidos
 from app.models.enums import PERMISSOES_POR_PAPEL, PapelUsuario
 
 bearer = HTTPBearer(auto_error=False)
@@ -94,6 +94,29 @@ def get_tenant_db(
     session = SessionLocal()
     try:
         set_tenant(session, user.org_id)
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def get_lixeira_db(
+    user: CurrentUser = Depends(get_current_user),
+) -> Iterator[Session]:
+    """Sessão que ENXERGA as linhas removidas. Só a lixeira usa.
+
+    É a mesma sessão do tenant, com o segundo GUC ligado. Separada de
+    `get_tenant_db` de propósito: uma rota que quisesse ver removidos teria de
+    pedir esta dependência explicitamente, e é isso que impede que a visão da
+    lixeira vaze para uma listagem comum por descuido.
+    """
+    session = SessionLocal()
+    try:
+        set_tenant(session, user.org_id)
+        set_ver_removidos(session, True)
         yield session
         session.commit()
     except Exception:

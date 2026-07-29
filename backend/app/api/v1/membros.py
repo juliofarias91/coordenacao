@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
 from app.models import ProjetoMembro, Usuario
 from app.schemas.membro import MembroCreate, MembroOut, MembroUpdate
+from app.services import lixeira
 from app.services.escopo import conflito, exigir, exigir_projeto, ja_existe
 
 router = APIRouter(tags=["membros"])
@@ -126,5 +127,5 @@ def remover(
     O histórico vive nas auditorias assinadas e na trilha, que têm vida própria
     — sair de um projeto não pode reescrever o que já foi decidido nele.
     """
-    db.delete(exigir(db, ProjetoMembro, membro_id, "membro"))
+    lixeira.remover(db, exigir(db, ProjetoMembro, membro_id, "membro"))
     db.flush()

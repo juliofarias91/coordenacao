@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, OrgMixin, TimestampMixin, uuid_pk
+from app.db.base import Base, OrgMixin, RemovivelMixin, TimestampMixin, uuid_pk
 from app.models.enums import (
     ChecklistTipo,
     EmpresaPapel,
@@ -38,7 +38,7 @@ class Organizacao(TimestampMixin, Base):
     projetos: Mapped[list[Projeto]] = relationship(back_populates="organizacao")
 
 
-class Cliente(OrgMixin, TimestampMixin, Base):
+class Cliente(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     """Quem CONTRATA a auditoria — a Microsoft do CPQ11.
 
     Não confundir com `Empresa`, que é quem PRODUZ o modelo (projetista,
@@ -122,7 +122,7 @@ class Empresa(OrgMixin, TimestampMixin, Base):
     )
 
 
-class Contato(OrgMixin, TimestampMixin, Base):
+class Contato(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     __tablename__ = "contato"
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -165,7 +165,7 @@ class Usuario(OrgMixin, TimestampMixin, Base):
     empresa: Mapped[Empresa | None] = relationship()
 
 
-class Standard(OrgMixin, TimestampMixin, Base):
+class Standard(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     """Padrão de referência que um critério consulta.
 
     tipo ∈ nomenclatura | conjunto_esperado | vocabulario | mapeamento.
@@ -239,7 +239,7 @@ class Disciplina(OrgMixin, TimestampMixin, Base):
     projetista: Mapped[Empresa | None] = relationship()
 
 
-class ProjetoMembro(OrgMixin, TimestampMixin, Base):
+class ProjetoMembro(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     """Quem participa de um projeto, e com que papel NELE.
 
     Até a migration 0004 não existia vínculo nenhum entre usuário e projeto: o

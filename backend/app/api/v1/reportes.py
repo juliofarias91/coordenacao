@@ -25,7 +25,7 @@ from app.core.deps import CurrentUser, get_current_user, get_tenant_db, requer_p
 from app.core.pagination import Page, ParamsPagina, aplicar_cursor, montar_pagina
 from app.models import ReporteErro, Usuario
 from app.schemas.reporte import ReporteCreate, ReporteOut, ReporteUpdate
-from app.services import storage
+from app.services import lixeira, storage
 from app.services.escopo import exigir
 from app.services.storage import StorageError
 
@@ -186,5 +186,5 @@ def remover(
     db: Session = Depends(get_tenant_db),
     _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
 ) -> None:
-    db.delete(exigir(db, ReporteErro, reporte_id, "reporte"))
+    lixeira.remover(db, exigir(db, ReporteErro, reporte_id, "reporte"))
     db.flush()

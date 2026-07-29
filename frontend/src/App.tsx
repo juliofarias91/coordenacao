@@ -33,6 +33,7 @@ import {
   PaginaUsuarios,
 } from '@/pages/admin/paginas'
 import KpisGerais from '@/pages/KpisGerais'
+import Lixeira from '@/pages/Lixeira'
 import MembrosProjeto from '@/pages/MembrosProjeto'
 import ModeloView from '@/pages/Modelo'
 import Notificacoes from '@/pages/Notificacoes'
@@ -158,6 +159,10 @@ export default function App() {
                 Nomes próximos, escopos distintos — o plural marca a diferença
                 e a URL diz qual é qual. */}
             <Route path="configuracoes" element={<Configuracoes />} />
+            {/* A lixeira é global: o que foi removido pode ter vindo de
+                qualquer projeto, e uma lixeira por projeto obrigaria a
+                procurar em cada um. */}
+            <Route path="lixeira" element={<Lixeira />} />
             {/* Notificação é do usuário e do papel dele, não de um projeto —
                 por isso fica aqui e não sob `/projetos/:projetoId`. */}
             <Route path="notificacoes" element={<Notificacoes />} />

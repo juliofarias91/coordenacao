@@ -19,6 +19,7 @@ from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
 from app.core.pagination import Page, ParamsPagina, aplicar_cursor, montar_pagina
 from app.models import Cliente, Projeto
 from app.schemas.cliente import ClienteComProjetos, ClienteCreate, ClienteOut, ClienteUpdate
+from app.services import lixeira
 from app.services.escopo import conflito, exigir, ja_existe
 
 router = APIRouter(prefix="/clientes", tags=["clientes"])
@@ -132,5 +133,5 @@ def remover(
     É a FK com `ON DELETE SET NULL` fazendo o trabalho: histórico de auditoria
     não pode desaparecer porque alguém removeu um cadastro.
     """
-    db.delete(_exigir_cliente(db, cliente_id))
+    lixeira.remover(db, _exigir_cliente(db, cliente_id))
     db.flush()

@@ -39,7 +39,7 @@ from app.schemas.auditoria import (
     ResultadoOut,
     ResultadoUpdate,
 )
-from app.services import storage
+from app.services import lixeira, storage
 from app.services.auditoria import (
     abrir_auditoria,
     checklists_da_versao,
@@ -280,7 +280,7 @@ def remover_evidencia(
     evidencia = exigir(db, Evidencia, evidencia_id, "evidência")
     resultado = exigir(db, ResultadoCheck, evidencia.resultado_id, "resultado")
     _exigir_round_aberto(db, resultado.auditoria_id)
-    db.delete(evidencia)
+    lixeira.remover(db, evidencia)
 
 
 # --------------------------------------------------------------- publicação

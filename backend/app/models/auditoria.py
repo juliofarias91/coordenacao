@@ -14,7 +14,7 @@ from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, Text, Uniqu
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, OrgMixin, TimestampMixin, uuid_pk
+from app.db.base import Base, OrgMixin, RemovivelMixin, TimestampMixin, uuid_pk
 from app.models.enums import (
     AuditoriaEstado,
     ChecklistTipo,
@@ -125,7 +125,7 @@ class Ocorrencia(OrgMixin, TimestampMixin, Base):
     resultado: Mapped[ResultadoCheck] = relationship(back_populates="ocorrencias")
 
 
-class Evidencia(OrgMixin, TimestampMixin, Base):
+class Evidencia(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     __tablename__ = "evidencia"
 
     id: Mapped[uuid.UUID] = uuid_pk()

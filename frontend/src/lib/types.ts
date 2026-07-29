@@ -482,3 +482,14 @@ export type ReporteErro = Base & {
   usuario_nome: string | null
   usuario_login: string | null
 }
+
+/** Uma linha da lixeira (migration 0006).
+ *
+ *  `tipo` é o nome da entidade na URL (`cliente`, `criterio`…), e é ele que a
+ *  rota de restaurar recebe de volta. */
+export type ItemLixeira = {
+  tipo: string
+  id: string
+  rotulo: string
+  removido_em: string
+}

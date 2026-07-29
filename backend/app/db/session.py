@@ -75,6 +75,23 @@ def set_tenant(session: Session, org_id: uuid.UUID | None) -> None:
     )
 
 
+def set_ver_removidos(session: Session, ligado: bool) -> None:
+    """Liga a visão da LIXEIRA nesta transação.
+
+    Com `off` (o padrão), as policies de RLS escondem toda linha com
+    `deleted_at` preenchido — nenhuma consulta precisa lembrar de filtrar, o
+    que é justamente o ponto: filtro espalhado por 72 rotas é esquecido numa
+    delas, e o registro removido reaparece onde ninguém esperava.
+
+    Só a lixeira liga isto, e ela nunca escreve nada além de restaurar ou
+    apagar de vez. Escopo de transação, como o tenant.
+    """
+    session.execute(
+        text("SELECT set_config(:guc, :val, true)"),
+        {"guc": settings.lixeira_guc, "val": "on" if ligado else "off"},
+    )
+
+
 @contextmanager
 def session_scope(org_id: uuid.UUID | None = None) -> Generator[Session]:
     """Sessão para workers e scripts, fora do ciclo de requisição."""

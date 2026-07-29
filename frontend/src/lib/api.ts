@@ -451,6 +451,17 @@ export const api = {
     remover: (id: string) => requisitar<void>(`/reportes/${id}`, { method: 'DELETE' }),
   },
 
+  /** A lixeira. É a ÚNICA rota que enxerga o que foi removido: a policy de RLS
+   *  esconde essas linhas de todas as outras, e nenhuma consulta filtra à mão. */
+  lixeira: {
+    listar: (tipo?: string) => requisitar<T.ItemLixeira[]>(`/lixeira${qs({ tipo })}`),
+    restaurar: (tipo: string, id: string) =>
+      requisitar<void>(`/lixeira/${tipo}/${id}/restaurar`, { method: 'POST' }),
+    /** Definitivo — o `DELETE` de verdade. Só alcança o que já está na lixeira. */
+    apagarDeVez: (tipo: string, id: string) =>
+      requisitar<void>(`/lixeira/${tipo}/${id}`, { method: 'DELETE' }),
+  },
+
   trilha: (
     filtros: {
       entidade?: string

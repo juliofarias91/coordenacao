@@ -10,11 +10,11 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, OrgMixin, TimestampMixin, uuid_pk
+from app.db.base import Base, OrgMixin, RemovivelMixin, TimestampMixin, uuid_pk
 from app.models.enums import NotifTipo, pg_enum
 
 
-class Apontamento(OrgMixin, TimestampMixin, Base):
+class Apontamento(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     """Issue do projeto, espelhável no ACC Issues."""
 
     __tablename__ = "apontamento"
@@ -106,7 +106,7 @@ class TrilhaAuditoria(OrgMixin, TimestampMixin, Base):
     diff: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
-class ReporteErro(OrgMixin, TimestampMixin, Base):
+class ReporteErro(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     """Erro do SISTEMA reportado por quem usa — texto e print.
 
     NÃO CONFUNDIR COM `Apontamento`, que também é "um apontamento de erro" na

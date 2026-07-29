@@ -20,7 +20,7 @@ from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
 from app.core.pagination import Page, ParamsPagina, aplicar_cursor, montar_pagina
 from app.models import Apontamento, Empresa, Modelo
 from app.schemas.comum import ESCRITA, Identificado
-from app.services import aps
+from app.services import aps, lixeira
 from app.services.escopo import conflito, exigir, exigir_projeto
 
 router = APIRouter(tags=["apontamentos"])
@@ -164,7 +164,7 @@ def remover(
     db: Session = Depends(get_tenant_db),
     _: CurrentUser = Depends(requer_permissao("executar")),
 ) -> None:
-    db.delete(exigir(db, Apontamento, apontamento_id, "apontamento"))
+    lixeira.remover(db, exigir(db, Apontamento, apontamento_id, "apontamento"))
 
 
 @router.post("/apontamentos/{apontamento_id}/sync-acc", response_model=SyncOut)

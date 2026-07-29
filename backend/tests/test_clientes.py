@@ -69,10 +69,24 @@ def test_pastas_trazem_a_contagem_de_projetos(
 
 
 @requer_banco
-def test_apagar_cliente_nao_apaga_projeto(
+def test_remover_cliente_nao_apaga_projeto_e_preserva_o_vinculo(
     autenticado: TestClient, cenario: Cenario, db: Session
 ) -> None:
-    """`ON DELETE SET NULL`: o projeto perde o cliente, não a existência."""
+    """O projeto sobrevive — e AGORA O VÍNCULO TAMBÉM.
+
+    Este teste mudou de contrato com a lixeira (migration 0006), e a mudança é
+    uma melhora. Antes o `DELETE` era físico e o `ON DELETE SET NULL` zerava
+    `projeto.cliente_id`: restaurar era impossível, e mesmo que fosse, o
+    projeto teria de ser reatado à mão.
+
+    Agora a remoção é lógica, a FK nunca dispara, e o `cliente_id` continua
+    apontando para a linha que está na lixeira. Restaurar o cliente devolve a
+    pasta com os projetos dentro, sem ninguém reatar nada.
+
+    O projeto NÃO exibe o cliente removido enquanto ele estiver na lixeira:
+    quem esconde é a policy de RLS, e `cliente_nome` sai nulo — ver o teste
+    seguinte.
+    """
     cliente = autenticado.post(f"{API}/clientes", json={"nome": "Some depois"}).json()
     projeto = db.get(Projeto, cenario.projeto.id)
     assert projeto is not None
@@ -83,8 +97,19 @@ def test_apagar_cliente_nao_apaga_projeto(
 
     db.expire_all()
     sobreviveu = db.get(Projeto, cenario.projeto.id)
-    assert sobreviveu is not None, "apagar o cliente levou o projeto junto"
-    assert sobreviveu.cliente_id is None
+    assert sobreviveu is not None, "remover o cliente levou o projeto junto"
+    assert sobreviveu.cliente_id is not None, "o vínculo se perdeu; restaurar não reataria"
+
+    # E o nome não vaza para a interface enquanto o cliente está na lixeira.
+    visto = autenticado.get(f"{API}/projetos/{cenario.projeto.id}").json()
+    assert visto["cliente_nome"] is None
+
+    # Restaurar devolve a pasta inteira, sem reatar nada à mão.
+    assert (
+        autenticado.post(f"{API}/lixeira/cliente/{cliente['id']}/restaurar").status_code == 204
+    )
+    de_volta = autenticado.get(f"{API}/projetos/{cenario.projeto.id}").json()
+    assert de_volta["cliente_nome"] == "Some depois"
 
 
 @requer_banco

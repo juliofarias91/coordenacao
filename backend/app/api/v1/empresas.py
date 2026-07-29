@@ -25,7 +25,7 @@ from app.schemas.empresa import (
     EmpresaOut,
     EmpresaUpdate,
 )
-from app.services import storage
+from app.services import lixeira, storage
 from app.services.escopo import conflito, exigir
 from app.services.storage import StorageError
 
@@ -255,4 +255,4 @@ def remover_contato(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="contato não encontrado nesta empresa"
         )
-    db.delete(contato)
+    lixeira.remover(db, contato)

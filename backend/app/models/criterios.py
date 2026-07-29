@@ -13,11 +13,11 @@ from sqlalchemy import Boolean, ForeignKey, Integer, Text, UniqueConstraint, tex
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, OrgMixin, TimestampMixin, uuid_pk
+from app.db.base import Base, OrgMixin, RemovivelMixin, TimestampMixin, uuid_pk
 from app.models.enums import Automacao, ChecklistTipo, CriterioNivel, pg_enum
 
 
-class Criterio(OrgMixin, TimestampMixin, Base):
+class Criterio(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     __tablename__ = "criterio"
     __table_args__ = (UniqueConstraint("projeto_id", "codigo", name="uq_criterio_projeto_codigo"),)
 

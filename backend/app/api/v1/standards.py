@@ -25,7 +25,7 @@ from app.schemas.standard import (
     StandardOut,
     StandardUpdate,
 )
-from app.services import storage
+from app.services import lixeira, storage
 from app.services.escopo import exigir, exigir_projeto
 from app.services.storage import StorageError
 
@@ -98,7 +98,7 @@ def remover(
     FK com `ON DELETE SET NULL`. Não se apaga a disciplina junto: ela existe
     independentemente do padrão de nome que se resolveu usar nela.
     """
-    db.delete(exigir(db, Standard, standard_id, "standard"))
+    lixeira.remover(db, exigir(db, Standard, standard_id, "standard"))
     db.flush()
 
 

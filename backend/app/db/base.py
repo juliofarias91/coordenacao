@@ -33,6 +33,23 @@ def uuid_pk() -> Mapped[uuid.UUID]:
     )
 
 
+class RemovivelMixin:
+    """`deleted_at` — a lixeira (migration 0006).
+
+    Quem herda isto pode ser removido de forma REVERSÍVEL: a linha continua na
+    tabela e some das consultas porque a policy de RLS a esconde enquanto
+    `deleted_at` estiver preenchido. Nenhuma consulta filtra à mão — filtro
+    espalhado por 72 rotas é esquecido numa delas.
+
+    Só herdam as entidades que se apagam pela interface. Pôr a coluna em tudo
+    seria peso morto num schema que alguém vai ler depois e tentar entender.
+    """
+
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 class TimestampMixin:
     """`created_at`/`updated_at` em toda tabela de negócio (plano técnico, seção 3)."""
 
