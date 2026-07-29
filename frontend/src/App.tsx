@@ -40,6 +40,7 @@ import Notificacoes from '@/pages/Notificacoes'
 import Painel from '@/pages/Painel'
 import Peb from '@/pages/Peb'
 import Placeholder from '@/pages/Placeholder'
+import PlanilhaGeral from '@/pages/PlanilhaGeral'
 import Portal from '@/pages/Portal'
 import Relatorios from '@/pages/Relatorios'
 import EscopoProjeto, { RotaLegada } from '@/projeto/EscopoProjeto'
@@ -187,6 +188,13 @@ export default function App() {
               <Route path="kpis" element={<Kpis />} />
               {/* Os seis recortes de auditoria são A MESMA TELA com outro
                   `checklist`. O backend já servia assim; faltava a porta. */}
+              {/* A PLANILHA vem ANTES da tela genérica: `auditoria/geral/:id` e
+                  `auditoria/:checklist` casariam os dois com `/auditoria/geral/
+                  <uuid>` se a ordem fosse a inversa — e o React Router escolhe
+                  a rota mais específica, mas escrever na ordem certa deixa a
+                  intenção legível. É o preenchimento de um modelo; a de cima é
+                  o controle de todos. */}
+              <Route path="auditoria/geral/:modeloId" element={<PlanilhaGeral />} />
               <Route path="auditoria/:checklist" element={<Auditoria />} />
               <Route path="auditoria" element={<Navigate to="geral" replace />} />
               <Route path="relatorios" element={<Relatorios />} />

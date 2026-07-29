@@ -213,3 +213,47 @@ def marcar_versoes_anteriores_como_desatualizadas(
         mudadas += 1
     db.flush()
     return mudadas
+
+
+def ao_registrar_versao(
+    db: Session,
+    *,
+    org_id: uuid.UUID,
+    versao: VersaoModelo,
+    auditor_id: uuid.UUID | None = None,
+) -> Auditoria | None:
+    """Tudo o que acontece porque uma versão passou a existir.
+
+    DUAS ROTAS CRIAM VERSÃO — `POST /modelos/{id}/versoes` e o webhook do ACC
+    — e as duas precisam produzir o mesmo estado. Deixar a lista de efeitos nos
+    handlers já custou uma divergência silenciosa: o cabeçalho de `api/v1/
+    modelos.py` avisa que o efeito colateral deve morar no serviço justamente
+    porque a versão manual "cria versão equivalente ao fluxo do ACC", e um
+    efeito acrescentado em um dos dois lados quebra essa equivalência sem que
+    nada acuse.
+
+    Os efeitos, em ordem — e a ordem é o ponto:
+
+    1. Invalidar os rounds publicados das versões anteriores.
+    2. Abrir a auditoria GERAL, se a disciplina do modelo a declara.
+
+    Invalidar ANTES de abrir não é estilo: `abrir_auditoria` chama
+    `proximo_round`, que conta os rounds do modelo. Trocar a ordem não muda a
+    contagem hoje — nenhum dos dois passos cria round — mas deixa o segundo
+    lendo um estado que o primeiro ainda vai alterar, e é o tipo de acoplamento
+    que sobrevive até alguém mexer nele.
+
+    Devolve a auditoria geral aberta, ou `None` quando a disciplina não pede
+    geral (ou o modelo não tem disciplina).
+    """
+    marcar_versoes_anteriores_como_desatualizadas(db, versao)
+
+    if ChecklistTipo.GERAL not in checklists_da_versao(db, versao):
+        return None
+    return abrir_auditoria(
+        db,
+        org_id=org_id,
+        versao=versao,
+        checklist=ChecklistTipo.GERAL,
+        auditor_id=auditor_id,
+    )

@@ -2808,3 +2808,119 @@ td.num {
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
 }
+
+/* ============================================================================
+   PLANILHA DA AUDITORIA GERAL — a aba BASE GERAL, editável.
+
+   É a tabela mais densa do sistema: 17 linhas × 7 colunas, e duas delas são
+   campos de texto livre. As decisões abaixo existem por causa dessa densidade.
+
+   `table-layout: fixed` E `width: 100%`: sem os dois, a largura das colunas
+   passa a depender do que foi digitado — escrever uma frase longa em DIRECTION
+   reflowaria a grade inteira e a linha que se está preenchendo mudaria de lugar
+   embaixo do cursor.
+
+   Realce de linha é TINTA (regra 6), como no resto do sistema. Não há fundo de
+   hover aqui, e o motivo é mais forte do que na tabela comum: numa grade em que
+   o cursor está SEMPRE sobre uma linha (é onde se digita), o retângulo que
+   segue o mouse seria o elemento com mais movimento na tela.
+   ============================================================================ */
+.plan {
+  table-layout: fixed;
+  width: 100%;
+}
+.plan th,
+.plan td {
+  /* `top`: as células têm alturas diferentes (o nome do item tem três linhas, a
+     contagem tem uma). Alinhadas ao centro, nada se lê como uma linha. */
+  vertical-align: top;
+}
+.plan-num {
+  font-variant-numeric: tabular-nums;
+  padding-top: 14px;
+}
+.plan-nome {
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+/* A instrução — a coluna oculta do arquivo. QUEBRA em várias linhas, ao
+   contrário de `.irow .in`, que corta com ellipsis: aqui ela é o texto que diz
+   COMO conferir o item, e uma instrução truncada não instrui. */
+.plan-instrucao {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.plan-codigo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-3, var(--ink-2));
+  opacity: 0.75;
+}
+
+/* A CÉLULA EDITÁVEL. Sem borda em repouso — a grade da tabela já delimita o
+   campo, e 34 caixas desenhadas viram um formulário em vez de uma planilha. A
+   borda aparece no foco, que é quando ela informa algo: onde está o cursor. */
+.cel {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  background: none;
+  color: var(--ink);
+  resize: vertical;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.cel:hover:not([readonly]) {
+  /* Regra 6 levada à célula: BORDA, nunca fundo. É o substituto previsto para
+     quando tinta não basta — e aqui não basta, porque o campo vazio não tem
+     tinta para escurecer. */
+  border-color: var(--line-2);
+}
+.cel[readonly] {
+  color: var(--ink-2);
+  cursor: default;
+}
+.cel::placeholder {
+  color: var(--ink-2);
+  opacity: 0.55;
+}
+
+.plan-contagem {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.plan-contagem .cel {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.plan-nc {
+  margin-top: 6px;
+  display: block;
+}
+.plan-imagens {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* Abaixo de 1100px a grade não cabe em sete colunas sem esmagar os dois campos
+   de texto. Rola na horizontal DENTRO do card — o corpo da página nunca rola
+   de lado. */
+@media (max-width: 1100px) {
+  .plan {
+    min-width: 980px;
+  }
+}

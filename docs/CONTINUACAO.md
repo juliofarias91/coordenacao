@@ -184,6 +184,78 @@ num fixture.
 
 ---
 
+## 29/07 — a auditoria geral virou planilha de verdade
+
+O pedido: "toda vez que gerarmos um modelo ele deve ter um campo de auditoria
+pra ele pra imputarmos os dados — nada mais é do que uma planilha do Excel no
+nosso sistema com campos pré-definidos e modificáveis". A referência são os oito
+arquivos em `K:\NEW_COMPANY\...\AUDITORIA\AUDITORIA GERAL`, aba `BASE GERAL`.
+
+**A descoberta que mudou o desenho.** Lidas as oito planilhas, os **17 itens são
+idênticos em todas as disciplinas**, na mesma ordem — ARCH, STRC, ELEC, MECH,
+PLMB, FPRT, TCOM, FALM. O que varia é a resposta, nunca a pergunta. E os 17
+códigos **já existiam** em `scripts/dados/cpq11.yaml`, na ordem exata do
+arquivo. Só que o YAML é dado de exemplo, e você recusou importá-lo no piloto —
+então eles subiram para `services/gabarito.py`, como padrão da empresa, com as
+instruções da coluna oculta (a coluna I, que diz COMO conferir cada item e nunca
+foi para o fornecedor).
+
+O que entrou:
+
+- **`POST /checklists/{checklist}/gabarito`** semeia os 17 num projeto.
+  ACRESCENTA e nunca sobrescreve: achar o código é sinal de que o projeto já o
+  tem, possivelmente ajustado. É o "modificável" do pedido, e há um teste para
+  que sincronizar o texto de fábrica seja uma decisão e não um acidente. O botão
+  fica em Biblioteca de critérios › Compor checklist.
+- **`resultado_check.direcao` (migration 0008)** — a coluna DIRECTION. São duas
+  frases com destinatários diferentes: `comentario` é o diagnóstico interno,
+  `direcao` é a orientação ao fornecedor. Até aqui só existia a primeira, e a
+  orientação vivia em `nao_conformidade.recomendacao` — o que obrigava a criar
+  uma NC, com prazo e responsável, para registrar uma frase. A NC agora nasce
+  das duas, sem cruzar os papéis.
+- **A auditoria geral nasce com a versão**, nas DUAS rotas que criam versão (a
+  manual e o webhook do ACC), por `ao_registrar_versao`. Antes era preciso
+  clicar "Abrir auditorias" e o modelo recém-criado não tinha onde receber nada.
+  Só a geral: LOD e 4D são trabalho dirigido.
+- **`pages/PlanilhaGeral.tsx`** — a grade editável, em
+  `/projetos/:id/auditoria/geral/:modeloId`. Salva no blur, campo por campo; sem
+  botão de salvar porque não há rascunho.
+
+**Dois bugs achados no caminho, e o segundo é maior do que parece.**
+
+1. `/auditoria/geral` era **estruturalmente vazia**. A matriz é modelo × área e
+   busca a célula por `(versao_id, area)`; auditorias de geral têm `area = NULL`
+   e não casavam com coluna nenhuma. A tela mostrava uma grade de travessões.
+   Agora a geral usa `ControleGeral` (a aba GENERAL AUDIT - CONTROL).
+2. **O mesmo vale para 4D, LOD300 e LOD350** — `abrir_auditoria` só recebe
+   `area` quando o chamador a passa, e ninguém passa: nem `POST /auditar` (que
+   repassa `payload.area`, nulo no caminho normal) nem a abertura automática.
+   Ou seja, **quatro das seis telas de auditoria mostram matriz vazia**, e as de
+   LOD400/500 só não mostram porque a área tem de ser informada à mão. Não mexi
+   nelas: escolher entre "abrir uma auditoria por área da disciplina" e "a
+   matriz também mostrar o que não tem área" é decisão sua. Ver a lista de
+   pendências.
+
+O `Modelo.tsx` perdeu uma duplicação de regra: ele mandava `descricao` ao criar
+a NC, o que agora PERDERIA a direção — o servidor herda as duas.
+
+```
+backend    11 passed em test_auditoria_geral.py (gabarito, direcao, abertura)
+           migration 0008 aplicada no piloto e conferida (`alembic current` = 0008)
+frontend   tsc limpo, build ok, publicado em backend/static e servindo na :8000
+```
+
+**A suíte inteira estava rodando quando escrevi isto** — o resultado vai no
+próximo parágrafo desta seção. **Nenhuma tela foi verificada em navegador**: não
+há automação de browser nesta máquina.
+
+**Para VER a planilha no piloto** faltam três passos com dado real, porque o
+CPQ11 está vazio (1 organização, 1 projeto, zero disciplinas): criar uma
+disciplina que declare `geral`, clicar em "Aplicar os 17 itens de fábrica" e
+cadastrar um modelo. A planilha abre sozinha com a versão.
+
+---
+
 ## 29/07 — o lote de telas que faltava
 
 Quatro itens da lista abaixo, todos "só tela": o backend já existia e ninguém
@@ -351,6 +423,30 @@ backend já existe.
 11. **Login/cadastro** — decidido: **só por convite do admin**. Cadastro aberto
     contradiz "SSO autentica, não provisiona" (`docs/SUPABASE.md`). O que falta
     é a tela de convite + definição de senha.
+
+### Precisa de UMA decisão sua (achado de 29/07)
+
+12. **As auditorias sem área e a matriz.** `abrir_auditoria` só grava `area`
+    quando o chamador a informa, e nenhum caminho normal informa. Resultado:
+    **4D, LOD300 e LOD350 mostram matriz vazia** pelo mesmo motivo que a geral
+    mostrava — a célula é buscada por `(versao_id, area)` e a auditoria tem
+    `area = NULL`. A geral saiu da matriz porque a pergunta dela é outra; para
+    as outras três, as saídas são:
+
+    - **(a) abrir uma auditoria por área da disciplina.** `areas_da_versao` já
+      existe e a chave única `(versao_id, checklist, area)` já suporta. Uma
+      disciplina com 4 áreas passa a ter 4 rounds de 4D — é mais granular e é
+      como as planilhas de LOD 400/500 trabalham. Muda a contagem de rounds.
+    - **(b) a matriz ganhar uma coluna "sem área"** para as auditorias de
+      `area = NULL`. Menos invasivo, e honesto para os recortes que de fato não
+      têm área — mas deixa uma coluna estranha ao lado das áreas reais.
+    - **(c) esses três recortes saírem da matriz**, como a geral, e usarem o
+      controle por modelo.
+
+    Minha recomendação é **(c) para 4D/LOD300/LOD350 e (a) só para LOD400/500**:
+    LOD é auditado por área na prática (é o que os arquivos mostram), 4D não.
+    Não implementei nada disso — está fora do que você pediu, e cada opção muda
+    a contagem de rounds ou a leitura do painel.
 
 ---
 

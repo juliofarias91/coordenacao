@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -26,9 +26,11 @@ from app.schemas.criterio import (
     CriterioCreate,
     CriterioOut,
     CriterioUpdate,
+    GabaritoAplicado,
+    GabaritoIn,
     ItemChecklistOut,
 )
-from app.services import lixeira
+from app.services import gabarito, lixeira
 from app.services.escopo import conflito, exigir, exigir_projeto, ja_existe
 
 router = APIRouter(tags=["criterios"])
@@ -235,6 +237,62 @@ def definir_itens(
     return ChecklistOut(
         checklist=checklist,
         projeto_id=payload.projeto_id,
+        itens=[
+            ItemChecklistOut.model_validate(i)
+            for i in _itens_do_checklist(db, payload.projeto_id, checklist)
+        ],
+    )
+
+
+@router.post("/checklists/{checklist}/gabarito", response_model=GabaritoAplicado)
+def aplicar_gabarito(
+    checklist: ChecklistTipo,
+    payload: GabaritoIn,
+    db: Session = Depends(get_tenant_db),
+    user: CurrentUser = Depends(requer_permissao("editar_biblioteca")),
+) -> GabaritoAplicado:
+    """Semeia no projeto os itens de fábrica do checklist.
+
+    É o que faz um projeto novo já ter a planilha da auditoria geral em vez de
+    uma lista vazia. Sem isto, abrir a auditoria de um modelo produz uma
+    auditoria de zero linhas — tecnicamente correta e inútil.
+
+    POST e não PUT: não substitui a composição (para isso existe
+    `PUT /checklists/{checklist}/itens`), acrescenta o que falta. Aplicar duas
+    vezes não duplica, e aplicar depois de o projeto ajustar um item não desfaz
+    o ajuste — ver `services/gabarito.py`.
+    """
+    exigir_projeto(db, payload.projeto_id)
+
+    try:
+        resumo = gabarito.aplicar(
+            db, org_id=user.org_id, projeto_id=payload.projeto_id, checklist=checklist
+        )
+    except KeyError:
+        # 422 e não 404: a rota existe e o checklist é válido — o que não existe
+        # é um gabarito desenhado para ele. Os recortes de LOD saem do BIM
+        # Forum, que é outra fonte e outro formato.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"não há gabarito de fábrica para o checklist '{checklist.value}'. "
+                "Com gabarito hoje: "
+                + ", ".join(sorted(c.value for c in gabarito.GABARITOS))
+            ),
+        ) from None
+    except gabarito.ItemNaLixeira as e:
+        raise conflito(
+            "estes critérios estão na lixeira e precisam ser restaurados antes: "
+            + ", ".join(e.codigos)
+        ) from None
+
+    return GabaritoAplicado(
+        checklist=checklist,
+        projeto_id=payload.projeto_id,
+        criterios_criados=resumo.criterios_criados,
+        criterios_reaproveitados=resumo.criterios_reaproveitados,
+        itens_criados=resumo.itens_criados,
+        itens_existentes=resumo.itens_existentes,
         itens=[
             ItemChecklistOut.model_validate(i)
             for i in _itens_do_checklist(db, payload.projeto_id, checklist)

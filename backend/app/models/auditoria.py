@@ -91,7 +91,15 @@ class ResultadoCheck(OrgMixin, TimestampMixin, Base):
     origem: Mapped[OrigemResult] = mapped_column(
         pg_enum(OrigemResult, "origem_result"), nullable=False, server_default=text("'manual'")
     )
+    # As duas frases da linha reprovada, e elas são diferentes: `comentario` é
+    # o DIAGNÓSTICO (a coluna COMENTARY da planilha, "há elementos em fases
+    # diferentes") e `direcao` é a ORIENTAÇÃO (a coluna DIRECTION, "alinhe
+    # todos os elementos à mesma fase"). Uma descreve, a outra manda fazer.
+    # Antes da 0008 só existia a primeira, e a orientação vazava para dentro
+    # dela — o que tornava impossível mandar ao fornecedor só o que ele deve
+    # fazer, sem o texto interno de diagnóstico.
     comentario: Mapped[str | None] = mapped_column(Text)
+    direcao: Mapped[str | None] = mapped_column(Text)
     # Contadores do arquétipo nível-elemento (4D, LOD 400).
     itens_analisados: Mapped[int | None] = mapped_column(Integer)
     itens_ok: Mapped[int | None] = mapped_column(Integer)

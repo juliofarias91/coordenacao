@@ -8,10 +8,19 @@
  *  Viraram seis entradas de menu porque é assim que se trabalha: abre-se "a
  *  LOD400", não "a matriz, e então escolhe-se LOD400 num seletor". O seletor
  *  segue aqui mesmo assim, para trocar de recorte sem voltar ao menu.
+ *
+ *  A GERAL NÃO É UMA MATRIZ POR ÁREA, e é a única das seis assim. A matriz
+ *  pergunta "como está o modelo X na área Y", e a auditoria geral não tem área:
+ *  `abrir_auditoria` só recebe `area` nas auditorias de especificação. Uma
+ *  auditoria com `area = NULL` não casa com coluna nenhuma da matriz, e o que
+ *  esta tela mostrava era uma grade de travessões. A geral responde outra
+ *  pergunta — "em que pé está a planilha de cada modelo" —, que é a aba
+ *  GENERAL AUDIT - CONTROL do arquivo e vem de `ControleGeral`.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
+import ControleGeral from '@/components/ControleGeral'
 import TabelaMatriz from '@/components/Matriz'
 import { Cabecalho, Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
@@ -23,15 +32,15 @@ import {
   type Checklist,
 } from '@/layout/nav'
 import { ApiError, api } from '@/lib/api'
-import type { ChecklistTipo, Matriz } from '@/lib/types'
+import type { ChecklistTipo, Matriz, Painel } from '@/lib/types'
 import { rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 
 /** O que cada recorte responde — é a diferença entre seis abas iguais e seis
  *  telas com propósito. Sai do que os checklists significam no PEB. */
 const EXPLICACAO: Record<Checklist, [string, string]> = {
   geral: [
-    'Conformidade de base do modelo: nomenclatura, coordenada compartilhada, worksets, unidades. É o que se confere em toda entrega, independente do nível de detalhe.',
-    'Baseline model compliance: naming, shared coordinates, worksets, units. Checked on every delivery, regardless of detail level.',
+    'Conformidade de base do modelo: nomenclatura, coordenada compartilhada, worksets, fases, organização do navegador. São 17 itens, os mesmos em toda disciplina, e todo modelo os responde. Clique em "Abrir planilha" para preencher.',
+    'Baseline model compliance: naming, shared coordinates, worksets, phases, browser organization. 17 items, the same across every discipline, answered by every model. Click "Open sheet" to fill it in.',
   ],
   '4d': [
     'Parâmetros de planejamento nos elementos — fase, sequência, frente de trabalho. É a auditoria que o IfcOpenShell roda sozinho sobre o IFC.',
@@ -66,11 +75,13 @@ export default function Auditoria() {
   const { checklist } = useParams<{ checklist: string }>()
 
   const [matriz, setMatriz] = useState<Matriz | null>(null)
+  const [controle, setControle] = useState<Painel | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
 
   const valido = ehChecklist(checklist)
   const temBanco = valido && checklistTemBanco(checklist)
+  const ehGeral = checklist === 'geral'
 
   const carregar = useCallback(async () => {
     if (!projeto || !valido || !temBanco) return
@@ -79,13 +90,18 @@ export default function Auditoria() {
     try {
       // O `as` é seguro porque `temBanco` já excluiu os que o enum do backend
       // não conhece — é exatamente o que `CHECKLISTS_SEM_BANCO` guarda.
-      setMatriz(await api.matriz(projeto.id, checklist as ChecklistTipo))
+      const tipo = checklist as ChecklistTipo
+      if (ehGeral) {
+        setControle(await api.painel(projeto.id, tipo))
+      } else {
+        setMatriz(await api.matriz(projeto.id, tipo))
+      }
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : String(e))
     } finally {
       setCarregando(false)
     }
-  }, [projeto, checklist, valido, temBanco])
+  }, [projeto, checklist, valido, temBanco, ehGeral])
 
   useEffect(() => {
     carregar()
@@ -147,6 +163,8 @@ export default function Auditoria() {
         />
       ) : carregando ? (
         <p className="hint">{L('Carregando…', 'Loading…')}</p>
+      ) : ehGeral ? (
+        <ControleGeral projetoId={projeto.id} linhas={controle?.linhas ?? []} />
       ) : (
         <TabelaMatriz
           matriz={matriz}

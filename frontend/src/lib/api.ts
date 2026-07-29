@@ -268,6 +268,12 @@ export const api = {
         projeto_id: projetoId,
         itens: criterioIds.map((criterio_id) => ({ criterio_id })),
       }),
+    /** Semeia os itens de fábrica. ACRESCENTA — nunca substitui o que o projeto
+     *  já ajustou; por isso é POST e não o PUT de cima. */
+    aplicarGabarito: (tipo: T.ChecklistTipo, projetoId: string) =>
+      escrever<T.GabaritoAplicado>(`/checklists/${tipo}/gabarito`, 'POST', {
+        projeto_id: projetoId,
+      }),
   },
 
   // ---------------------------------------------------- fase 2 · modelos

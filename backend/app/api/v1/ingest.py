@@ -24,7 +24,7 @@ from app.core.deps import CurrentUser, get_auth_db, get_tenant_db, requer_permis
 from app.models import Modelo, VersaoModelo
 from app.models.enums import VersaoFormato
 from app.services import aps
-from app.services.auditoria import marcar_versoes_anteriores_como_desatualizadas
+from app.services.auditoria import ao_registrar_versao
 from app.services.escopo import exigir
 
 log = logging.getLogger(__name__)
@@ -112,7 +112,10 @@ async def webhook_acc(
     )
     db.add(versao)
     db.flush()
-    marcar_versoes_anteriores_como_desatualizadas(db, versao)
+    # `auditor_id` fica nulo: quem registrou foi o ACC, não uma pessoa. Atribuir
+    # o auditor é decisão da coordenação, e inventar um aqui poria o nome de
+    # alguém num round que ele não sabe que existe.
+    ao_registrar_versao(db, org_id=modelo.org_id, versao=versao)
 
     # SP-301 · o nome do arquivo é conferido na entrada. Divergência gera
     # penalidade no ledger e notifica o responsável — é a primeira automação

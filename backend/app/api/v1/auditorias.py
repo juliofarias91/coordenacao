@@ -338,8 +338,15 @@ def criar_nc(
 ) -> NaoConformidadeOut:
     """Gera a NC a partir de um item reprovado.
 
-    Quando vem de um `resultado_id`, os IDs dos elementos e o critério são
-    herdados — é o caminho normal, e evita redigitar o que a auditoria já sabe.
+    Quando vem de um `resultado_id`, o critério, os IDs dos elementos e as duas
+    frases da linha são herdados — é o caminho normal, e evita redigitar o que a
+    auditoria já sabe. As frases vêm com os papéis preservados: o DIAGNÓSTICO
+    (`comentario`) vira a descrição, a ORIENTAÇÃO (`direcao`) vira a
+    recomendação. Cruzá-las mandaria ao fornecedor o texto interno como se
+    fosse a instrução de correção.
+
+    O que o payload traz explicitamente ganha do herdado: quem escreveu uma
+    descrição na hora de abrir a NC quis outra frase, não a da planilha.
     """
     auditoria = exigir(db, Auditoria, auditoria_id, "auditoria")
     dados = payload.model_dump()
@@ -353,6 +360,10 @@ def criar_nc(
         dados["criterio_id"] = dados.get("criterio_id") or resultado.criterio_id
         if not dados.get("elementos") and resultado.ocorrencias:
             dados["elementos"] = ", ".join(o.element_id for o in resultado.ocorrencias)
+        if not dados.get("descricao"):
+            dados["descricao"] = resultado.comentario
+        if not dados.get("recomendacao"):
+            dados["recomendacao"] = resultado.direcao
 
     if dados.get("responsavel_id"):
         exigir(db, Empresa, dados["responsavel_id"], "empresa responsável")

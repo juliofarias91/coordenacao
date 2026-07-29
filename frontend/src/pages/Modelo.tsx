@@ -170,10 +170,11 @@ export default function ModeloView() {
   async function gerarNc(resultado: Resultado) {
     if (!detalhe) return
     await comErro(async () => {
-      await api.auditorias.criarNc(detalhe.id, {
-        resultado_id: resultado.id,
-        descricao: resultado.comentario ?? '',
-      })
+      // Não manda descrição nem recomendação: o servidor herda `comentario` →
+      // descrição e `direcao` → recomendação, com os papéis certos. Mandar o
+      // comentário daqui, como se fazia, PERDIA a direção — a orientação ao
+      // fornecedor ficava só na planilha e a NC ia sem ela.
+      await api.auditorias.criarNc(detalhe.id, { resultado_id: resultado.id })
       await carregarDetalhe()
     })
   }

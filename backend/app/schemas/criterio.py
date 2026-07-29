@@ -130,3 +130,25 @@ class ChecklistOut(BaseModel):
     checklist: ChecklistTipo
     projeto_id: uuid.UUID
     itens: list[ItemChecklistOut]
+
+
+# -------------------------------------------------------------------- gabarito
+class GabaritoIn(BaseModel):
+    model_config = ESCRITA
+
+    projeto_id: uuid.UUID
+
+
+class GabaritoAplicado(ChecklistOut):
+    """O que a aplicação do gabarito fez, em códigos.
+
+    A tela mostra isto como frase: "15 critérios criados, 2 já existiam". O
+    detalhe importa porque aplicar o gabarito num projeto que já mexeu na
+    biblioteca não sobrescreve nada — e quem clicou merece saber o que foi
+    preservado em vez de precisar ir conferir item por item.
+    """
+
+    criterios_criados: list[str] = Field(default_factory=list)
+    criterios_reaproveitados: list[str] = Field(default_factory=list)
+    itens_criados: list[str] = Field(default_factory=list)
+    itens_existentes: list[str] = Field(default_factory=list)

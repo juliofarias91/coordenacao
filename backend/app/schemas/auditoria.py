@@ -31,7 +31,16 @@ class ResultadoUpdate(BaseModel):
     model_config = ESCRITA
 
     status: CheckStatus | None = None
-    comentario: str | None = None
+    comentario: str | None = Field(
+        default=None, description="O DIAGNÓSTICO — coluna COMENTARY da planilha."
+    )
+    direcao: str | None = Field(
+        default=None,
+        description=(
+            "A ORIENTAÇÃO ao fornecedor — coluna DIRECTION da planilha. "
+            "É o que a não-conformidade herda como `recomendacao`."
+        ),
+    )
     itens_analisados: int | None = Field(default=None, ge=0)
     itens_ok: int | None = Field(default=None, ge=0)
     elementos: list[str] | None = Field(
@@ -50,6 +59,7 @@ class ResultadoOut(Identificado):
     status: CheckStatus
     origem: OrigemResult
     comentario: str | None
+    direcao: str | None
     itens_analisados: int | None
     itens_ok: int | None
     criterio: CriterioOut

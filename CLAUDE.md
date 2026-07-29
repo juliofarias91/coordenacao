@@ -195,7 +195,7 @@ servindo o build, que é o arranjo de produção, e `-Parar` encerra.
 
 - **Administração** (`/admin`, fora do roadmap original) — organização, projetos e usuários no nível do tenant. `GET/PATCH /organizacao` é a única rota nova; projetos e usuários já tinham API desde a Fase 1 e só não tinham tela: até aqui um projeto novo só nascia por `scripts/seed.py` ou pelo importador YAML. Aparece no menu só para quem tem `admin_cadastro`; a guarda real continua no `requer_permissao` de cada rota. **Não existe listagem nem criação de organização** de propósito — listar é o que o isolamento multi-tenant impede, e criar é provisionamento, sai do seed.
 
-72 endpoints; 190 testes contra Postgres, MinIO e arquivos IFC reais.
+73 endpoints; 201 testes contra Postgres, MinIO e arquivos IFC reais.
 
 **O que resta não é código:** subir o ambiente produtivo num servidor e rodar o piloto assistido. Se o usuário pedir "continue", pergunte o que ele quer — não há próxima fase para implementar sozinho.
 
@@ -215,6 +215,50 @@ Ao continuar:
   (`auditoria/:checklist`) sobre a matriz que o backend já servia por
   checklist. Recorte novo entra primeiro em `CHECKLISTS_SEM_BANCO` (hoje
   vazio), que faz a tela dizer o que falta em vez de tomar um 422.
+  **Menos a geral, que não é matriz por área** — ver a seção abaixo.
+
+## Auditoria geral: a planilha dentro do sistema
+
+A planilha de referência é `<PROJETO> _ <DISC> _ AUDITORIA GERAL .xlsx`, aba
+`BASE GERAL`: **17 itens, os mesmos em todas as oito disciplinas**, na mesma
+ordem. O que varia entre os arquivos é a resposta, nunca a pergunta.
+
+- **O gabarito dos 17 mora em `services/gabarito.py`, não no seed.** Lista
+  idêntica em oito arquivos e estável entre projetos é padrão da empresa, e
+  `scripts/dados/cpq11.yaml` é dado de EXEMPLO — que o usuário recusou importar
+  no piloto. `POST /checklists/geral/gabarito` semeia os itens em qualquer
+  projeto; o botão está em Biblioteca de critérios › Compor checklist.
+- **`aplicar()` ACRESCENTA e nunca sobrescreve.** Achar o código é sinal de que
+  o projeto já o tem, possivelmente ajustado à mão. A "melhoria" tentadora —
+  sincronizar o texto de fábrica — apagaria trabalho calado, e
+  `test_gabarito_nao_sobrescreve_ajuste_do_projeto` existe para que ligá-la seja
+  uma decisão. É o "pré-definido e **modificável**" do pedido.
+- **O UNIQUE `(projeto_id, codigo)` vale sobre a linha da lixeira.** Aplicar o
+  gabarito num projeto que apagou um item morreria com "duplicate key"
+  apontando para uma linha que a sessão jura não existir. `gabarito._removidos`
+  liga o GUC para enxergá-la e responde 409 nomeando o código.
+- **`resultado_check.direcao` (0008) é a coluna DIRECTION.** São DUAS frases com
+  destinatários diferentes: `comentario` é o diagnóstico interno ("há elementos
+  em fases diferentes"), `direcao` é a orientação ao fornecedor ("alinhe todos
+  à mesma fase"). Antes só existia a primeira e a orientação vazava para dentro
+  dela. A NC nasce das duas, **sem cruzar**: comentário → `descricao`, direção →
+  `recomendacao`.
+- **A auditoria geral nasce com a VERSÃO**, em `services/auditoria.py::
+  ao_registrar_versao`, chamado pelas DUAS rotas que criam versão (a manual e o
+  webhook do ACC). Só a geral: os recortes de LOD e o 4D são trabalho dirigido,
+  e abrir os seis encheria o painel de rounds que ninguém abriu.
+- **`/auditoria/geral` NÃO é a matriz por área.** A matriz busca a célula por
+  `(versao_id, area)` (`services/painel.py:279`) e `abrir_auditoria` só recebe
+  `area` nas auditorias de especificação — uma auditoria com `area = NULL` não
+  casa com coluna nenhuma, e a tela mostrava uma grade de travessões. A geral
+  usa `ControleGeral` (a aba GENERAL AUDIT - CONTROL: um modelo por linha) e
+  `auditoria/geral/:modeloId` abre a planilha editável, `pages/PlanilhaGeral.tsx`.
+  **Isto vale para os outros quatro recortes sem área também** (4D, LOD300,
+  LOD350) — eles seguem na matriz e seguem vazios; ver decisão aberta.
+- **A planilha salva no BLUR, campo por campo.** Não há botão "salvar
+  planilha", porque não há rascunho: cada célula é um PATCH e a aprovação volta
+  recalculada do servidor. A tela **nunca** calcula percentual — duas contas de
+  aprovação divergem no primeiro arredondamento.
 - **`projeto_membro` registra participação e NÃO autoriza** (migration 0004).
   Quem decide continua sendo `requer_permissao` sobre as permissões de
   organização. `tests/test_membros.py::test_participacao_nao_e_permissao`

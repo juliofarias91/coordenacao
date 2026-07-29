@@ -26,7 +26,7 @@ from app.schemas.modelo import (
     VersaoOut,
 )
 from app.services import storage
-from app.services.auditoria import marcar_versoes_anteriores_como_desatualizadas
+from app.services.auditoria import ao_registrar_versao
 from app.services.escopo import conflito, exigir, exigir_projeto, ja_existe
 from app.services.storage import StorageError
 
@@ -142,7 +142,19 @@ def criar_versao(
     db: Session = Depends(get_tenant_db),
     user: CurrentUser = Depends(requer_permissao("executar")),
 ) -> VersaoOut:
-    """Registra a versão. O arquivo sobe em seguida, por `/versoes/{id}/upload`."""
+    """Registra a versão. O arquivo sobe em seguida, por `/versoes/{id}/upload`.
+
+    A AUDITORIA GERAL NASCE COM A VERSÃO. Antes ela esperava alguém clicar
+    "Abrir auditorias" na tela do modelo, e o efeito era um modelo recém-criado
+    sem lugar para lançar nada — a planilha em branco que a coordenação tinha
+    de criar à mão, só agora dentro do sistema. Se todo modelo responde os 17
+    itens, a folha deles não é um passo, é o estado inicial.
+
+    Só a GERAL, e não todos os checklists da disciplina: os recortes de LOD e o
+    4D são trabalho dirigido, que começa quando a coordenação decide começar.
+    Abrir os seis de uma vez encheria a tela do modelo de rounds vazios e faria
+    o painel contar como "em andamento" auditoria que ninguém abriu.
+    """
     exigir(db, Modelo, modelo_id, "modelo")
 
     rotulo = payload.versao.strip().upper()
@@ -162,8 +174,7 @@ def criar_versao(
     db.add(versao)
     db.flush()
 
-    # O round anterior deixa de valer assim que existe arquivo mais novo.
-    marcar_versoes_anteriores_como_desatualizadas(db, versao)
+    ao_registrar_versao(db, org_id=user.org_id, versao=versao, auditor_id=user.id)
     return VersaoOut.model_validate(versao)
 
 

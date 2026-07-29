@@ -178,6 +178,16 @@ export type Checklist = {
   itens: ItemChecklist[]
 }
 
+/** O que a aplicação do gabarito fez, em códigos de critério. As duas listas de
+ *  "já existia" não são sobra: é como a tela diz o que foi PRESERVADO, já que
+ *  o gabarito acrescenta e nunca sobrescreve o que o projeto ajustou. */
+export type GabaritoAplicado = Checklist & {
+  criterios_criados: string[]
+  criterios_reaproveitados: string[]
+  itens_criados: string[]
+  itens_existentes: string[]
+}
+
 export type Permissao = { codigo: string; papeis_padrao: string[] }
 
 // ------------------------------------------------------------------ fase 2
@@ -225,7 +235,13 @@ export type Resultado = Base & {
   criterio_id: string
   status: CheckStatus
   origem: 'automatico' | 'manual'
+  /** O DIAGNÓSTICO — coluna COMENTARY da planilha ("há elementos em fases
+   *  diferentes"). Texto interno da coordenação. */
   comentario: string | null
+  /** A ORIENTAÇÃO — coluna DIRECTION ("alinhe todos os elementos à mesma
+   *  fase"). É o que vai ao fornecedor, e o que a NC herda como recomendação.
+   *  São dois campos porque são dois textos com destinatários diferentes. */
+  direcao: string | null
   itens_analisados: number | null
   itens_ok: number | null
   criterio: Criterio

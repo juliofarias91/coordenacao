@@ -78,6 +78,10 @@ export default function Criterios() {
   /** Filtro por categoria. `''` é "Todos" — string vazia e não `null` porque é
    *  o valor de um chip, e o par de tipos simplifica a comparação abaixo. */
   const [filtroCategoria, setFiltroCategoria] = useState('')
+  /** O que a última aplicação do gabarito fez. Fica na tela porque a resposta
+   *  importante é o que NÃO foi tocado: o gabarito acrescenta e nunca
+   *  sobrescreve, e sem esta frase quem clicou iria conferir item por item. */
+  const [resumoGabarito, setResumoGabarito] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
     if (!projeto) return
@@ -178,6 +182,32 @@ export default function Criterios() {
     try {
       await api.checklists.definirItens(checklist, projeto.id, selecionados)
       await carregar()
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : String(e))
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  /** Semeia o gabarito de fábrica. ACRESCENTA: o resumo diz quantos itens já
+   *  existiam justamente porque esses ficaram como o projeto os deixou. */
+  async function aplicarGabarito() {
+    if (!projeto) return
+    setErro(null)
+    setResumoGabarito(null)
+    setSalvando(true)
+    try {
+      const r = await api.checklists.aplicarGabarito(checklist, projeto.id)
+      const criados = r.criterios_criados.length
+      const mantidos = r.criterios_reaproveitados.length
+      setResumoGabarito(
+        L(
+          `${r.itens.length} itens no checklist: ${criados} critério(s) criado(s), ${mantidos} já existia(m) e ficou/ficaram como está(ão) — o gabarito não sobrescreve ajuste do projeto.`,
+          `${r.itens.length} items in the checklist: ${criados} criterion(s) created, ${mantidos} already existed and were left untouched — the template does not overwrite project edits.`,
+        ),
+      )
+      await carregar()
+      await carregarChecklist()
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : String(e))
     } finally {
@@ -435,7 +465,19 @@ export default function Criterios() {
                 if (outro) setChecklist(outro)
               }}
             />
+            <div style={{ flex: 1 }} />
+            {/* Só onde existe gabarito. Hoje é a geral: os 17 itens que toda
+                disciplina responde. Sem este botão o gabarito existiria na API
+                e não na plataforma, e um projeto novo continuaria começando com
+                a planilha em branco. */}
+            {checklist === 'geral' && (
+              <button className="btn" onClick={aplicarGabarito} disabled={salvando}>
+                {L('Aplicar os 17 itens de fábrica', 'Apply the 17 factory items')}
+              </button>
+            )}
           </div>
+
+          {resumoGabarito && <p className="hint">{resumoGabarito}</p>}
 
           <div className="card" style={{ marginBottom: 14 }}>
             {criterios.map((c) => {
