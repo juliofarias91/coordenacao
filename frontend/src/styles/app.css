@@ -2229,3 +2229,132 @@ td.num {
   .home-ferramentas { justify-content: space-between; }
   .home-busca { flex: 1; max-width: none; }
 }
+
+/* ==========================================================================
+   BUSCA GLOBAL (Ctrl+K) · SAIR NA SIDEBAR · GRUPOS ARRASTAVEIS
+   ========================================================================== */
+.busca {
+  position: relative;
+  flex: none;
+}
+.buscapainel {
+  position: absolute;
+  top: calc(100% + 14px);
+  /* Ancora à esquerda e cresce para a direita: o painel é largo e, preso à
+     direita como o do sino, transbordaria a topbar em telas médias. */
+  left: 0;
+  width: 460px;
+  max-width: 88vw;
+  overflow: hidden;
+  background: var(--popover);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-xl);
+  z-index: var(--z-popover);
+  animation: uiSurge 0.18s var(--ease);
+}
+.buscacampo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.buscacampo .f {
+  flex: 1;
+  border: none;
+  background: none;
+}
+.buscacampo .f:focus {
+  outline: none;
+  box-shadow: none;
+}
+.buscacampo kbd {
+  flex: none;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel-2);
+  color: var(--ink-3);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.buscalista {
+  max-height: 56vh;
+  overflow-y: auto;
+}
+.buscaitem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--line);
+  transition: background var(--dur-fast);
+}
+.buscaitem:first-child { border-top: none; }
+/* Teclado e mouse compartilham o mesmo realce: sem isso, navegar com as setas
+   deixa duas linhas parecendo selecionadas ao mesmo tempo. */
+.buscaitem.on { background: var(--hover-ink); }
+.buscatit {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.buscaitem .pill { flex: none; }
+
+/* --- Sair no rodape da sidebar ------------------------------------------- */
+.side-foot {
+  flex: none;
+  padding: 8px;
+  border-top: 1px solid var(--line);
+}
+.side-sair {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--ink-3);
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+/* Vermelho só no hover: em repouso, um item permanentemente vermelho na
+   sidebar competiria com o estado semântico das telas. */
+.side-sair:hover {
+  color: var(--bad);
+  background: var(--bad-bg);
+}
+.app[data-nav='off'] .side-sair {
+  gap: 0;
+  padding: 0;
+  justify-content: center;
+}
+
+/* --- Grupos arrastaveis --------------------------------------------------- */
+.nav-grupo-cab[draggable='true'] {
+  cursor: grab;
+}
+.nav-grupo-cab[draggable='true']:active {
+  cursor: grabbing;
+}
+/* O grupo em transito fica translucido, e não sai do fluxo: tirá-lo do lugar
+   faria a coluna saltar e o alvo de soltura fugir do cursor. */
+.nav-grupo.arrastando {
+  opacity: 0.45;
+}

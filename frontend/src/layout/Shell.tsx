@@ -19,10 +19,11 @@ import { useCallback, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthContext'
+import BuscaGlobal from '@/components/BuscaGlobal'
 import Sino from '@/components/Sino'
 import UsuarioMenu from '@/components/UsuarioMenu'
 import { useI18n } from '@/i18n'
-import { GRUPOS, ITENS_NAV, type ItemNav } from '@/layout/nav'
+import { GRUPOS, ITENS_NAV, type GrupoNav, type ItemNav } from '@/layout/nav'
 import { useProjeto } from '@/projeto/ProjetoContext'
 import { useTheme } from '@/theme/ThemeProvider'
 
@@ -32,6 +33,9 @@ import { useTheme } from '@/theme/ThemeProvider'
  *  vira área de trabalho. Aqui `main` é limitado a 1180px: recolher não devolve
  *  espaço a ninguém, só esconde nove rótulos. */
 const CHAVE_NAV = 'spbim_nav_recolhida'
+/** Ordem dos grupos, arrastada pelo usuário. Por login: duas pessoas no mesmo
+ *  navegador não herdam a organização uma da outra. */
+const CHAVE_ORDEM = 'spbim_nav_ordem'
 
 function leRecolhida(): boolean {
   try {
@@ -39,6 +43,31 @@ function leRecolhida(): boolean {
   } catch {
     return false
   }
+}
+
+function leOrdem(login: string | undefined): GrupoNav[] | null {
+  if (!login) return null
+  try {
+    const bruto = localStorage.getItem(`${CHAVE_ORDEM}:${login}`)
+    return bruto ? (JSON.parse(bruto) as GrupoNav[]) : null
+  } catch {
+    return null
+  }
+}
+
+/** A ordem salva reconciliada com a atual: chaves que sumiram do código são
+ *  descartadas e grupos novos entram no fim. Sem isso, uma ordem antiga no
+ *  navegador esconderia um grupo recém-criado — o usuário nunca veria a
+ *  funcionalidade nova e não teria como saber por quê. */
+function ordenarGrupos(
+  todos: typeof GRUPOS,
+  salva: GrupoNav[] | null,
+): typeof GRUPOS {
+  if (!salva) return todos
+  const conhecidos = new Map(todos.map((g) => [g.chave, g]))
+  const ordenados = salva.map((c) => conhecidos.get(c)).filter((g) => g !== undefined)
+  const faltando = todos.filter((g) => !salva.includes(g.chave))
+  return [...ordenados, ...faltando]
 }
 
 function Icone({ path, tam = 18 }: { path: string; tam?: number }) {
@@ -101,7 +130,7 @@ function PillAcao({
 }
 
 export default function Shell() {
-  const { usuario } = useAuth()
+  const { usuario, sair } = useAuth()
   const { lang, setLang, L } = useI18n()
   const { theme, setTheme } = useTheme()
   const { projeto, projetos, selecionar } = useProjeto()
@@ -109,6 +138,29 @@ export default function Shell() {
 
   const [recolhida, setRecolhida] = useState(leRecolhida)
   const [gruposOff, setGruposOff] = useState<Record<string, boolean>>({})
+  const [ordem, setOrdem] = useState<GrupoNav[] | null>(() => leOrdem(usuario?.login))
+  const [arrastando, setArrastando] = useState<GrupoNav | null>(null)
+
+  const grupos = ordenarGrupos(GRUPOS, ordem)
+
+  /** Solta o grupo arrastado na posição do alvo e persiste. */
+  const reordenar = useCallback(
+    (alvo: GrupoNav) => {
+      if (!arrastando || arrastando === alvo) return
+      const chaves = grupos.map((g) => g.chave)
+      const de = chaves.indexOf(arrastando)
+      const para = chaves.indexOf(alvo)
+      if (de < 0 || para < 0) return
+      chaves.splice(para, 0, ...chaves.splice(de, 1))
+      setOrdem(chaves)
+      try {
+        localStorage.setItem(`${CHAVE_ORDEM}:${usuario?.login}`, JSON.stringify(chaves))
+      } catch {
+        /* modo privado: a ordem vale só nesta sessão */
+      }
+    },
+    [arrastando, grupos, usuario?.login],
+  )
 
   const alternarNav = useCallback(() => {
     setRecolhida((atual) => {
@@ -162,7 +214,7 @@ export default function Shell() {
         </button>
 
         <div className="nav-scroll thin-scroll">
-          {GRUPOS.map((grupo, i) => {
+          {grupos.map((grupo, i) => {
             const doGrupo = itens.filter((it) => it.grupo === grupo.chave)
             if (doGrupo.length === 0) return null
 
@@ -173,7 +225,14 @@ export default function Shell() {
             const mostra = recolhida || !rotulo || !fechado
 
             return (
-              <div key={grupo.chave}>
+              <div
+                key={grupo.chave}
+                // O grupo inteiro é o alvo de soltura, não só o cabeçalho: a
+                // faixa de alguns pixels do título seria difícil de acertar.
+                onDragOver={(e) => rotulo && e.preventDefault()}
+                onDrop={() => rotulo && reordenar(grupo.chave)}
+                className={arrastando === grupo.chave ? 'nav-grupo arrastando' : 'nav-grupo'}
+              >
                 {rotulo &&
                   (recolhida ? (
                     // Recolhida, o cabeçalho vira um divisor DE MESMA ALTURA.
@@ -184,9 +243,18 @@ export default function Shell() {
                     <button
                       type="button"
                       className="nav-grupo-cab"
+                      // Só arrasta expandida: recolhida não há rótulo para
+                      // pegar, e o alvo seria um ícone de 18px.
+                      draggable
+                      onDragStart={() => setArrastando(grupo.chave)}
+                      onDragEnd={() => setArrastando(null)}
                       onClick={() =>
                         setGruposOff((atual) => ({ ...atual, [grupo.chave]: !atual[grupo.chave] }))
                       }
+                      title={L(
+                        'Clique para recolher · arraste para reordenar',
+                        'Click to collapse · drag to reorder',
+                      )}
                     >
                       <span>{rotulo}</span>
                       <i>{fechado ? '+' : '−'}</i>
@@ -205,6 +273,21 @@ export default function Shell() {
           })}
         </div>
 
+        {/* Sair também aqui, como no VDCity (`sidebarSignOut`): quem procura a
+            saída olha primeiro o pé da barra lateral. Convive com o do menu da
+            conta — são dois caminhos para a mesma porta, e nenhum deles fica
+            no meio dos botões que se usa o dia todo. */}
+        {usuario && (
+          <div className="side-foot">
+            <button type="button" className="side-sair" onClick={sair} title={L('Sair', 'Exit')}>
+              <Icone
+                path="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
+                tam={17}
+              />
+              <span className="nav-rot">{L('Sair', 'Exit')}</span>
+            </button>
+          </div>
+        )}
       </aside>
 
       <div className="col">
@@ -235,6 +318,9 @@ export default function Shell() {
           </div>
 
           <div className="tb-acoes">
+            {/* Primeiro da fileira: é a ferramenta de maior alcance da barra,
+                e o Ctrl+K a alcança sem o mouse. */}
+            <BuscaGlobal />
             <Sino />
             <PillAcao
               path={escuro ? SOL : LUA}
