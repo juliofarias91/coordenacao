@@ -112,7 +112,7 @@ export default function BuscaGlobal() {
           tipo: 'projeto' as const,
           titulo: `${p.codigo} · ${p.nome}`,
           detalhe: p.cliente_nome ?? '',
-          ir: () => navigate(rotaProjeto(p.id, 'painel')),
+          ir: () => navigate(rotaProjeto(p.id, 'modelos')),
         })),
       ),
       api.clientes.listar().then((r) =>

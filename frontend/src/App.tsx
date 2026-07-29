@@ -66,13 +66,16 @@ const PENDENTES: Array<{
  *  casa com a rota real acima. Redirecioná-las para dentro de um projeto seria
  *  desfazer a mudança. */
 const LEGADAS = [
-  'painel',
   'kpis',
   'criterios',
   'relatorios',
   'configuracao',
   'peb',
   'modelos/:modeloId',
+  // `painel` virou `modelos` quando a tela passou a se chamar pelo que mostra.
+  // A URL antiga continua chegando à tela certa: `RotaLegada` recebe o destino
+  // NOVO, e o `path` da rota é que guarda o endereço velho.
+  { de: 'painel', para: 'modelos' },
 ]
 
 export default function App() {
@@ -154,14 +157,18 @@ export default function App() {
             <Route path="privacidade" element={<Privacidade />} />
 
             {/* POR PROJETO — o projeto está na URL, não no `localStorage`. É o
-                que faz `/projetos/<id>/painel` significar a mesma coisa para
+                que faz `/projetos/<id>/modelos` significar a mesma coisa para
                 todo mundo e virar um link que se manda a um colega. */}
             <Route path="projetos/:projetoId" element={<EscopoProjeto />}>
-              {/* Sem tela, o projeto abre no painel — é o destino de quem
+              {/* Sem tela, o projeto abre nos modelos — é o destino de quem
                   escolhe um projeto na home. */}
-              <Route index element={<Navigate to="painel" replace />} />
-              <Route path="painel" element={<Painel />} />
+              <Route index element={<Navigate to="modelos" replace />} />
+              {/* A lista e o detalhe de um modelo, aninhados como devem ser.
+                  A lista chamava-se `painel`, herança do nome da planilha que
+                  ela substitui; o endereço antigo redireciona logo abaixo. */}
+              <Route path="modelos" element={<Painel />} />
               <Route path="modelos/:modeloId" element={<ModeloView />} />
+              <Route path="painel" element={<Navigate to="../modelos" replace />} />
               <Route path="kpis" element={<Kpis />} />
               {/* Os seis recortes de auditoria são A MESMA TELA com outro
                   `checklist`. O backend já servia assim; faltava a porta. */}
@@ -184,9 +191,11 @@ export default function App() {
 
             {/* Os links salvos antes da mudança. Precisam vir DEPOIS das rotas
                 reais e antes do catch-all. */}
-            {LEGADAS.map((tela) => (
-              <Route key={tela} path={tela} element={<RotaLegada tela={tela} />} />
-            ))}
+            {LEGADAS.map((entrada) => {
+              const de = typeof entrada === 'string' ? entrada : entrada.de
+              const para = typeof entrada === 'string' ? entrada : entrada.para
+              return <Route key={de} path={de} element={<RotaLegada tela={para} />} />
+            })}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

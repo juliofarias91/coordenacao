@@ -110,9 +110,9 @@ export default function Home() {
 
   const abrirProjeto = useCallback(
     (projeto: Projeto) => {
-      // Escolher um projeto é IR para ele: a escolha vira URL, e o painel é o
-      // que se quer ver ao abrir um projeto.
-      navigate(rotaProjeto(projeto.id, 'painel'))
+      // Escolher um projeto é IR para ele: a escolha vira URL, e a lista de
+      // modelos é o que se quer ver ao abrir um projeto.
+      navigate(rotaProjeto(projeto.id, 'modelos'))
     },
     [navigate],
   )

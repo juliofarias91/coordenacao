@@ -127,7 +127,7 @@ export function ProjetoProvider({ children }: { children: ReactNode }) {
       // tela" vale para as telas do menu — um caminho com id dentro
       // (`modelos/<id>`) pertence ao projeto de origem e não se traduz. A
       // query cai junto, pela mesma razão: pode carregar id.
-      const tela = TELAS.has(resto) ? resto : 'painel'
+      const tela = TELAS.has(resto) ? resto : 'modelos'
       navigate(rotaProjeto(id, tela))
     },
     [resto, navigate],
@@ -156,6 +156,6 @@ export function useProjeto(): Ctx {
 
 /** Caminho de uma tela dentro de um projeto. Use SEMPRE isto em vez de montar
  *  a string à mão: o dia em que o prefixo mudar, muda num lugar. */
-export function rotaProjeto(projetoId: string, tela = 'painel'): string {
+export function rotaProjeto(projetoId: string, tela = 'modelos'): string {
   return `${PREFIXO_PROJETO}/${projetoId}/${tela}`
 }

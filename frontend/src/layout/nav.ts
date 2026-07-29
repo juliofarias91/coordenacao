@@ -187,9 +187,13 @@ const PROJETOS = ITENS_GLOBAIS[0]!
 export const ITENS_PROJETO: ItemNav[] = [
   PROJETOS,
   {
-    rota: 'painel',
-    pt: 'Painel de controle',
-    en: 'Control panel',
+    // Chamava-se "Painel de controle", herança do nome da planilha que a tela
+    // substitui. O que ela lista são MODELOS — e a URL passou a dizer isso
+    // também: `/projetos/<id>/modelos`, com o detalhe de um modelo em
+    // `/modelos/<id>` logo abaixo. Nome de tela deve dizer o que a tela mostra.
+    rota: 'modelos',
+    pt: 'Modelos',
+    en: 'Models',
     path: IC.grade,
     grupo: 'visao',
     escopo: 'projeto',

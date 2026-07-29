@@ -223,17 +223,17 @@ export default function Shell() {
     [projeto, referencia],
   )
 
-  // Prefixo mais longo: `modelos/:id` não está no menu, mas nasce do painel.
-  // Sem o fallback, a página de detalhe ficaria com o breadcrumb vazio — e o
-  // painel é onde o detalhe do modelo é aberto, como diz o crumb da própria
-  // página ("Painel de controle › CÓDIGO").
+  // Prefixo mais longo. O detalhe de um modelo (`modelos/<id>`) não está no
+  // menu, mas agora CASA sozinho: desde que a lista virou `modelos`, o detalhe
+  // é um caminho abaixo dela, e `casa()` reconhece isso. Antes era preciso um
+  // fallback fixo apontando para `painel`, porque `modelos/<id>` não descendia
+  // de rota nenhuma — o aninhamento correto resolveu o caso especial.
   const atual =
     itens
       .filter((i) =>
         i.escopo === 'projeto' ? !!emProjeto && casa(i.rota, trilho) : casa(i.rota, pathname),
       )
-      .sort((a, b) => b.rota.length - a.rota.length)[0] ??
-    (emProjeto ? itens.find((i) => i.rota === 'painel') : itens[0])
+      .sort((a, b) => b.rota.length - a.rota.length)[0] ?? (emProjeto ? undefined : itens[0])
 
   const escuro = theme === 'dark'
 

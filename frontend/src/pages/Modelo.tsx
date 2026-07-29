@@ -195,8 +195,8 @@ export default function ModeloView() {
   return (
     <>
       <div className="crumb">
-        <Link to={rotaProjeto(projetoId ?? '', 'painel')}>
-          {L('Painel de controle', 'Control panel')}
+        <Link to={rotaProjeto(projetoId ?? '', 'modelos')}>
+          {L('Modelos', 'Models')}
         </Link>{' '}
         ›{' '}
         <span>{modelo.codigo}</span>

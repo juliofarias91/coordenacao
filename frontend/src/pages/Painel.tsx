@@ -1,6 +1,12 @@
-/** SP-206 · Painel de controle.
+/** SP-206 · Modelos — a lista de modelos do projeto e como cada um está.
  *
- *  Cada número desta tela sai de uma consulta às auditorias. Não existe onde
+ *  Chamava-se "Painel de controle" até 29/07/2026, herança do nome da planilha
+ *  que ela substitui. O que a tela mostra são modelos: um por linha, com versão,
+ *  round, aprovação e estado. Nome de tela deve dizer o que a tela mostra — e a
+ *  rota foi junto (`/projetos/<id>/modelos`), com o detalhe de um modelo logo
+ *  abaixo dela.
+ *
+ *  Cada número aqui sai de uma consulta às auditorias. Não existe onde
  *  digitá-los — é exatamente isso que substitui a planilha de controle.
  */
 import { useCallback, useEffect, useState } from 'react'
@@ -69,7 +75,7 @@ export default function Painel() {
   if (!projeto) {
     return (
       <>
-        <Cabecalho titulo={L('Painel de controle', 'Control panel')} />
+        <Cabecalho titulo={L('Modelos', 'Models')} />
         <Vazio
           titulo={L('Nenhum projeto', 'No project')}
           texto={L('Cadastre um projeto primeiro.', 'Register a project first.')}
@@ -90,10 +96,10 @@ export default function Painel() {
   return (
     <>
       <Cabecalho
-        titulo={L('Painel de controle', 'Control panel')}
+        titulo={L('Modelos', 'Models')}
         sub={L(
-          'Gerado a partir das auditorias — modelos, versões, rounds e aprovação. Não há onde digitar estes números.',
-          'Generated from the audits — models, versions, rounds and approval. There is nowhere to type these numbers.',
+          'Os modelos entregues neste projeto e como cada um está: versão, round, aprovação e estado. Tudo gerado a partir das auditorias — não há onde digitar estes números.',
+          'The models delivered on this project and where each one stands: version, round, approval and state. All generated from the audits — there is nowhere to type these numbers.',
         )}
       />
 
