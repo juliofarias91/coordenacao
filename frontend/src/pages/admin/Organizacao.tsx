@@ -66,6 +66,10 @@ export default function AbaOrganizacao() {
     <>
       <div className="filters" style={{ gap: 10, marginBottom: 14 }}>
         <Numero valor={resumo.projetos} rotulo={L('Projetos', 'Projects')} />
+        {/* Clientes e Empresas são números separados porque são lados opostos
+            da mesa: empresa produz o modelo e responde por não-conformidade,
+            cliente recebe o relatório. */}
+        <Numero valor={resumo.clientes} rotulo={L('Clientes', 'Clients')} />
         <Numero
           valor={resumo.usuarios_ativos}
           rotulo={L('Usuários ativos', 'Active users')}

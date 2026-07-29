@@ -43,6 +43,56 @@ qualquer profundidade). **A renderização em si não foi verificada em navegado
 
 ---
 
+## 29/07 — o lote de telas que faltava
+
+Quatro itens da lista abaixo, todos "só tela": o backend já existia e ninguém
+via o dado.
+
+- **Clientes na Administração** (item 1). A entidade nasceu em 28/07 e só se
+  criava de carona, pelo "+ novo cliente…" do formulário de projeto. Agora tem
+  aba própria — e é o único lugar onde se corrige o nome de um cliente, o que
+  importa porque **o nome do cliente é a pasta da home**. Remover avisa quantos
+  projetos ficam órfãos, em vez de um "tem certeza?" genérico.
+- **Log de atividade** (item 2), na Administração. A trilha grava sozinha desde
+  a Fase 4 e tinha API; faltava a tela. Filtra por entidade, ação e pessoa,
+  agrupa por dia e a linha expande mostrando campo a campo. O cuidado central
+  é que o `diff` **muda de formato conforme a ação** — `criou`/`removeu` trazem
+  o estado inteiro, `alterou` traz `{de, para}` —, e a tela decide pela FORMA
+  do valor, não pela ação, para que uma linha antiga não a derrube.
+- **Central de notificações** (item 3), em `/notificacoes`, com "ver todas" no
+  rodapé do sino. Não é redundante com ele: o sino é o **aviso** (aparece por
+  cima e some), a central é a **caixa** (filtro por tipo, por não-lidas,
+  separação por dia). Rota global, sem projeto — notificação é do usuário e do
+  papel dele.
+- **Política de privacidade** (item 6), em `/privacidade`, **pública**: uma
+  política atrás de login informa tarde demais. Entra por lazy import — é a
+  única tela de texto corrido da plataforma, e estaticamente esse texto
+  viajaria no chunk principal. O conteúdo descreve o que o código realmente
+  faz (RLS, trilha imutável, `ON DELETE SET NULL`, APS, Supabase). **Falta
+  preencher os campos entre colchetes e passar por revisão jurídica.**
+
+**Um bug encontrado e corrigido no caminho.** Escrevendo o primeiro teste de
+`/organizacao` (o endpoint não tinha nenhum), apareceu que a guarda de slug
+duplicado era **código morto**: ela fazia um `SELECT` numa sessão com RLS, que
+só enxerga a própria organização, então nunca achava o slug do vizinho e
+aprovava sempre — a colisão só aparecia no `UPDATE`, como 500. Agora a
+constraint é que decide, e o `IntegrityError` vira 409. De quebra fecha a
+corrida entre dois admins renomeando ao mesmo tempo.
+
+`/organizacao` também passou a contar **clientes**, que ficou de fora quando a
+entidade nasceu.
+
+```
+backend    16 passed  (test_organizacao novo com 5, + test_api e test_permissoes)
+frontend   tsc + eslint limpos, npm test 28/28, bundle inicial 322 kB
+```
+
+Não rodei a suíte inteira do backend (são ~40 min); rodei os três arquivos que
+a mudança de `/organizacao` alcança. **Nenhuma das telas foi verificada em
+navegador** — não há automação de browser nesta máquina.
+
+---
+
 ## O que mudou em 28/07
 
 A plataforma saiu de "roda na máquina do dev contra Postgres local" para
@@ -131,16 +181,18 @@ backend já existe.
 
 ### Só tela — o backend já está pronto
 
-1. **Administração separada** — falta menos do que parecia: `/admin` já tem
-   Organização, Projetos e Usuários. O que resta é a **aba de Clientes** (a API
-   nasceu em 28/07) e a visão geral. *(sugerido como próximo)*
-2. **Log de atividade** — a trilha de auditoria existe e tem API
-   (`/trilha`); falta a tela.
-3. **Notificações** — existe API e o sino na topbar; falta a central.
+1. ~~**Administração separada**~~ — **feito em 29/07**: aba de Clientes, e a
+   visão geral passou a contar clientes.
+2. ~~**Log de atividade**~~ — **feito em 29/07**, aba na Administração.
+3. ~~**Notificações**~~ — **feito em 29/07**, central em `/notificacoes`.
 4. **Perfil separado, em sections** — hoje é um painel no menu da conta.
+   *(a decidir: adotar o padrão de sections do VDCity, `?s=`, ou não)*
 5. **Home em sections** — a home atual é uma tela só; o VDCity divide em
-   seções navegáveis (`?s=`).
-6. **Política de privacidade** — página estática, rota pública.
+   seções navegáveis (`?s=`). *(mesma decisão do item 4)*
+6. ~~**Política de privacidade**~~ — **feito em 29/07**, rota pública
+   `/privacidade`. **Falta preencher os campos entre colchetes (DPO, contato)
+   e passar por revisão jurídica** — o texto é a descrição técnica correta do
+   sistema, não um parecer.
 
 ### Precisa de backend novo
 

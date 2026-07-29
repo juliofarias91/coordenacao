@@ -399,8 +399,19 @@ export const api = {
   /** Portal do cliente: rota pública, sem Bearer. */
   portal: (token: string) => requisitar<Record<string, unknown>>(`/portal/${token}`),
 
-  trilha: (filtros: { entidade?: string; entidade_id?: string; acao?: string } = {}) =>
-    requisitar<T.Page<T.LinhaTrilha>>(`/trilha${qs({ limite: 100, ...filtros })}`),
+  /** Trilha de auditoria. `cursor` vem do `proximo_cursor` da página anterior:
+   *  o log cresce por inserção contínua, e com offset uma linha nova entre
+   *  duas páginas faria um registro aparecer duas vezes ou sumir. */
+  trilha: (
+    filtros: {
+      entidade?: string
+      entidade_id?: string
+      usuario_id?: string
+      acao?: string
+      cursor?: string
+      limite?: number
+    } = {},
+  ) => requisitar<T.Page<T.LinhaTrilha>>(`/trilha${qs({ limite: 100, ...filtros })}`),
 
   automacao: {
     verificadores: () => requisitar<string[]>('/automacao/verificadores'),

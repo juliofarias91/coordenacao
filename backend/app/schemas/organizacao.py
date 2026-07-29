@@ -41,6 +41,10 @@ class ResumoOrganizacao(BaseModel):
 
     organizacao: OrganizacaoOut
     projetos: int
+    # Clientes e empresas são contagens SEPARADAS porque são lados opostos da
+    # mesa: empresa produz o modelo e responde por não-conformidade, cliente
+    # recebe o relatório. Somá-las não responderia nenhuma pergunta.
+    clientes: int = 0
     usuarios: int
     usuarios_ativos: int
     empresas: int

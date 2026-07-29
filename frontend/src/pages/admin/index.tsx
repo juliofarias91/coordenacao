@@ -13,21 +13,30 @@ import { useState } from 'react'
 import { Cabecalho, Segmented, Vazio } from '@/components/ui'
 import { useAuth } from '@/auth/AuthContext'
 import { useI18n } from '@/i18n'
+import AbaClientes from '@/pages/admin/Clientes'
 import AbaOrganizacao from '@/pages/admin/Organizacao'
 import AbaProjetos from '@/pages/admin/Projetos'
+import AbaTrilha from '@/pages/admin/Trilha'
 import AbaUsuarios from '@/pages/admin/Usuarios'
 
-type Aba = 'organizacao' | 'projetos' | 'usuarios'
+type Aba = 'organizacao' | 'clientes' | 'projetos' | 'usuarios' | 'trilha'
 
 export default function Admin() {
   const { L } = useI18n()
   const { usuario } = useAuth()
   const [aba, setAba] = useState<Aba>('organizacao')
 
+  // A ordem é a do funil: a organização contém clientes, que contêm projetos,
+  // que as pessoas acessam. Clientes vem antes de Projetos porque é o que se
+  // cadastra primeiro — um projeto já nasce apontando para um cliente.
   const abas: Array<[Aba, string]> = [
     ['organizacao', L('Organização', 'Organization')],
+    ['clientes', L('Clientes', 'Clients')],
     ['projetos', L('Projetos', 'Projects')],
     ['usuarios', L('Usuários & acessos', 'Users & access')],
+    // Por último: as outras quatro são onde se MEXE, esta é onde se confere o
+    // que foi mexido.
+    ['trilha', L('Log de atividade', 'Activity log')],
   ]
 
   if (!usuario?.permissoes.includes('admin_cadastro')) {
@@ -59,10 +68,14 @@ export default function Admin() {
 
       {aba === 'organizacao' ? (
         <AbaOrganizacao />
+      ) : aba === 'clientes' ? (
+        <AbaClientes />
       ) : aba === 'projetos' ? (
         <AbaProjetos />
-      ) : (
+      ) : aba === 'usuarios' ? (
         <AbaUsuarios />
+      ) : (
+        <AbaTrilha />
       )}
     </>
   )

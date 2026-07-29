@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthContext'
 import { useI18n } from '@/i18n'
@@ -75,6 +76,12 @@ export default function Login() {
             'O acesso por SSO/Autodesk entra quando o provedor for definido (decisão em aberto nº 2 do plano técnico).',
             'SSO/Autodesk sign-in lands once the provider is chosen (open decision #2 in the technical plan).',
           )}
+        </p>
+
+        {/* Antes do login, não depois: é aqui que ainda se pode decidir não
+            entregar dado nenhum. */}
+        <p className="hint">
+          <Link to="/privacidade">{L('Política de privacidade', 'Privacy policy')}</Link>
         </p>
       </form>
     </div>

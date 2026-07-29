@@ -1480,6 +1480,24 @@ td.num {
   font-size: 12.5px;
   line-height: 1.45;
 }
+/* Espelho do `.sinocab`: fica colado no pé do painel enquanto a lista rola,
+   para "ver todas" não fugir para baixo de trinta notificações. */
+.sinorodape {
+  position: sticky;
+  bottom: 0;
+  display: block;
+  background: var(--popover);
+  border-top: 1px solid var(--line);
+  padding: 11px 14px;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 12px;
+  text-decoration: none;
+}
+.sinorodape:hover {
+  color: var(--ink);
+  background: var(--hover-ink);
+}
 
 /* ------------------------------------------------- cabeçalho do detalhe */
 .crumb {
@@ -2365,4 +2383,101 @@ td.num {
    faria a coluna saltar e o alvo de soltura fugir do cursor. */
 .nav-grupo.arrastando {
   opacity: 0.45;
+}
+
+/* --- Log de atividade (trilha) -------------------------------------------- */
+/* O detalhe de uma linha do log. Fica DENTRO da célula da entidade, e não numa
+   linha extra da tabela: uma <tr> a mais reflowaria a grade inteira ao abrir e
+   as colunas dançariam a cada clique. */
+.trilha-diff {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.trilha-campo {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+.trilha-nome {
+  font-family: var(--mono);
+  color: var(--ink-3);
+  min-width: 110px;
+}
+/* O valor ANTIGO é o que se descarta: risco e tinta fraca. O novo fica em
+   --ink cheio, porque é ele que responde "como está agora". Nenhum dos dois
+   leva cor — trocar um campo não é estado semântico, é só uma mudança. */
+.trilha-de {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+.trilha-seta {
+  color: var(--ink-3);
+}
+.trilha-para {
+  color: var(--ink);
+  font-weight: 550;
+}
+
+/* --- Central de notificações ---------------------------------------------- */
+/* Parente do `.sinoitem`, mas de página: mais respiro e o corpo ocupando a
+   largura toda. O sino é um painel de 320px; aqui cabe a mensagem inteira sem
+   quebrar em quatro linhas. */
+.notif-linha {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.notif-linha:last-child {
+  border-bottom: none;
+}
+/* Lida esmaece, não some: continua na lista para ser reencontrada, que é a
+   razão de a central existir separada do sino. */
+.notif-linha.lida {
+  opacity: 0.55;
+}
+.notif-corpo {
+  flex: 1;
+  min-width: 0;
+}
+.notif-msg {
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* --- Página de texto corrido (política de privacidade) -------------------- */
+/* Serve às DUAS árvores de rota: dentro do Shell, onde `main` já limita a
+   largura e dá o respiro; e fora dele, para quem ainda não entrou — daí a
+   margem automática e o padding próprios, que só têm efeito no segundo caso. */
+.doc {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 26px 4px 70px;
+}
+/* Medida de leitura, não de tabela: texto corrido a 1180px cansa a vista, e
+   este é o único lugar da plataforma que tem parágrafo de verdade. */
+.doc p {
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 0 0 10px;
+}
+.doc section {
+  margin-top: 26px;
+}
+.doc h2 {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+.doc .sub {
+  margin-bottom: 4px;
 }

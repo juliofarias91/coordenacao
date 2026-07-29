@@ -24,6 +24,8 @@ export type Organizacao = {
 export type ResumoOrganizacao = {
   organizacao: Organizacao
   projetos: number
+  /** Quem contrata. Contado à parte de `empresas`, que é quem produz. */
+  clientes: number
   usuarios: number
   usuarios_ativos: number
   empresas: number

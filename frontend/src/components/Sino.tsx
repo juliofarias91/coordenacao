@@ -1,5 +1,10 @@
-/** SP-401 · Sino de notificações com badge de não-lidas. */
+/** SP-401 · Sino de notificações com badge de não-lidas.
+ *
+ *  É o AVISO, não a caixa: mostra as últimas por cima da tela em que se está e
+ *  some. Quem precisa procurar vai para a central (`/notificacoes`), que tem
+ *  filtro por tipo e separação por dia — daí o rodapé com "ver todas". */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useI18n } from '@/i18n'
 import { api } from '@/lib/api'
@@ -109,6 +114,12 @@ export default function Sino() {
               <div className="empty">{L('Nada por aqui.', 'Nothing here.')}</div>
             )}
           </div>
+
+          {/* Fecha o painel ao navegar: sem isso ele ficaria aberto sobre a
+              central, escondendo justamente a tela que se pediu. */}
+          <Link className="sinorodape" to="/notificacoes" onClick={() => setAberto(false)}>
+            {L('Ver todas', 'See all')}
+          </Link>
         </div>
       )}
     </div>
