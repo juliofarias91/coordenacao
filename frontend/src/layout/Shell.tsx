@@ -23,7 +23,14 @@ import BuscaGlobal from '@/components/BuscaGlobal'
 import Sino from '@/components/Sino'
 import UsuarioMenu from '@/components/UsuarioMenu'
 import { useI18n } from '@/i18n'
-import { GRUPOS, ITENS_GLOBAIS, ITENS_PROJETO, type GrupoNav, type ItemNav } from '@/layout/nav'
+import {
+  GRUPOS,
+  ITENS_ADMIN,
+  ITENS_GLOBAIS,
+  ITENS_PROJETO,
+  type GrupoNav,
+  type ItemNav,
+} from '@/layout/nav'
 import { PREFIXO_PROJETO, rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 import { useTheme } from '@/theme/ThemeProvider'
 
@@ -144,6 +151,9 @@ export default function Shell() {
   /** O caminho DEPOIS do projeto (`painel`, `modelos/abc`) — é contra ele que
    *  os itens de escopo de projeto se comparam. */
   const trilho = emProjeto?.params['*'] ?? ''
+  /** O painel administrativo é a TERCEIRA área com sidebar própria. `casa` e
+   *  não igualdade: `/admin/usuarios` também está dentro dele. */
+  const emAdmin = casa('/admin', pathname)
 
   const [recolhida, setRecolhida] = useState(leRecolhida)
   const [gruposOff, setGruposOff] = useState<Record<string, boolean>>({})
@@ -183,13 +193,18 @@ export default function Shell() {
     })
   }, [])
 
-  // A SIDEBAR É CONTEXTUAL: dentro de um projeto mostra o que se faz naquele
-  // projeto; fora, o que vale para a organização. Uma lista só misturava os
-  // dois e deixava metade do menu sem sentido para quem estava na home.
+  // A SIDEBAR É CONTEXTUAL, em três áreas: o painel administrativo, um projeto,
+  // ou a organização. Cada uma troca o menu inteiro. Uma lista só misturava
+  // tudo e deixava metade dela sem sentido conforme onde se estivesse.
+  //
+  // A ordem do ternário importa: `/admin` é checado ANTES de projeto porque as
+  // duas condições nunca coincidem, mas ler assim deixa claro que o painel
+  // administrativo tem precedência sobre qualquer contexto herdado.
   //
   // `permissoes` do /auth/me já vem resolvido: o backend aplica o padrão do
   // papel quando o usuário não tem lista própria.
-  const itens = (emProjeto ? ITENS_PROJETO : ITENS_GLOBAIS).filter(
+  const doEscopo = emAdmin ? ITENS_ADMIN : emProjeto ? ITENS_PROJETO : ITENS_GLOBAIS
+  const itens = doEscopo.filter(
     (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
   )
 
@@ -198,7 +213,9 @@ export default function Shell() {
    *  está vindo), e o item vira um rótulo apagado em vez de um link quebrado. */
   const destino = useCallback(
     (item: ItemNav): string | null => {
-      if (item.escopo === 'global') return item.rota
+      // `admin` e `global` já trazem o caminho absoluto; só o de projeto
+      // precisa do id, que não está no item.
+      if (item.escopo !== 'projeto') return item.rota
       const alvo = projeto ?? referencia
       return alvo ? rotaProjeto(alvo.id, item.rota) : null
     },
@@ -222,14 +239,18 @@ export default function Shell() {
   return (
     <div className="app" data-nav={recolhida ? 'off' : 'on'}>
       <aside>
-        {/* Marca. Altura de 56px, a MESMA da topbar, para as duas linharem. */}
-        <div className="brand">
+        {/* Marca. Altura de 56px, a MESMA da topbar, para as duas linharem.
+            É um LINK para a home: agora que a sidebar troca de conteúdo em três
+            áreas, a marca é o único elemento que não muda — e o canto superior
+            esquerdo é onde se clica para voltar ao começo em qualquer sistema.
+            `end` para não ficar marcada como ativa em toda rota. */}
+        <NavLink className="brand" to="/" end title={L('Ir para o início', 'Go to home')}>
           <div className="mk">SP</div>
           <div className="brand-txt">
             <b>SPBIM</b>
             <span>{L('Central de Auditoria', 'Audit Center')}</span>
           </div>
-        </div>
+        </NavLink>
 
         {/* Recolher: círculo saltando da borda. SEMPRE visível — um controle
             que só aparece no hover não é descoberto por quem não usa mouse. */}

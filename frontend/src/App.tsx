@@ -14,7 +14,14 @@ import Home from '@/pages/Home'
 import Integracoes from '@/pages/Integracoes'
 import Kpis from '@/pages/Kpis'
 import Login from '@/pages/Login'
-import Membros from '@/pages/Membros'
+import {
+  PaginaClientes,
+  PaginaLogs,
+  PaginaOrganizacao,
+  PaginaProjetos,
+  PaginaUsuarios,
+} from '@/pages/admin/paginas'
+import KpisGerais from '@/pages/KpisGerais'
 import MembrosProjeto from '@/pages/MembrosProjeto'
 import ModeloView from '@/pages/Modelo'
 import Notificacoes from '@/pages/Notificacoes'
@@ -115,9 +122,24 @@ export default function App() {
                 sempre aceitou listar sem `projeto_id`, e o de integrações
                 sequer tem projeto. Estavam no menu errado desde o começo. */}
             <Route path="apontamentos" element={<Apontamentos />} />
-            <Route path="membros" element={<Membros />} />
+            {/* KPIs de TODOS os projetos. O `/projetos/:id/kpis` continua
+                existindo e é o do projeto — este responde outra pergunta. */}
+            <Route path="kpis" element={<KpisGerais />} />
             <Route path="integracoes" element={<Integracoes />} />
-            <Route path="admin" element={<Admin />} />
+
+            {/* PAINEL ADMINISTRATIVO — a terceira área com sidebar própria.
+                Cada aba de antes virou rota; `Admin` ficou só com a guarda de
+                permissão e o `Outlet`. */}
+            <Route path="admin" element={<Admin />}>
+              <Route index element={<Navigate to="usuarios" replace />} />
+              <Route path="usuarios" element={<PaginaUsuarios />} />
+              <Route path="logs" element={<PaginaLogs />} />
+              <Route path="organizacao" element={<PaginaOrganizacao />} />
+              <Route path="clientes" element={<PaginaClientes />} />
+              <Route path="projetos" element={<PaginaProjetos />} />
+            </Route>
+            {/* O antigo item de Home apontava para cá; agora mora no painel. */}
+            <Route path="membros" element={<Navigate to="/admin/usuarios" replace />} />
             {/* Da CONTA, não de um projeto. `configuracoes` (plural) é a conta;
                 `configuracao` (singular), dentro de um projeto, é o projeto.
                 Nomes próximos, escopos distintos — o plural marca a diferença

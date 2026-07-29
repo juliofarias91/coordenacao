@@ -19,12 +19,24 @@
 /** Grupos da sidebar. O primeiro não tem rótulo: fica fixo no topo, sem
  *  cabeçalho, porque é o destino padrão de quem entra — pedir que se abra um
  *  grupo para chegar na tela inicial é atrito puro. */
-export type GrupoNav = 'topo' | 'auditoria' | 'projeto'
+export type GrupoNav =
+  | 'topo'
+  | 'acompanhamento'
+  | 'organizacao'
+  | 'auditoria'
+  | 'projeto'
+  | 'cadastro'
 
 export const GRUPOS: Array<{ chave: GrupoNav; pt: string; en: string }> = [
   { chave: 'topo', pt: '', en: '' },
+  // Home
+  { chave: 'acompanhamento', pt: 'Acompanhamento', en: 'Tracking' },
+  { chave: 'organizacao', pt: 'Organização', en: 'Organization' },
+  // Projeto
   { chave: 'auditoria', pt: 'Auditoria', en: 'Audit' },
   { chave: 'projeto', pt: 'Projeto', en: 'Project' },
+  // Painel administrativo
+  { chave: 'cadastro', pt: 'Cadastro', en: 'Records' },
 ]
 
 export type ItemNav = {
@@ -39,7 +51,7 @@ export type ItemNav = {
   /** Onde a tela vive. `projeto` significa `/projetos/:projetoId/<rota>`: a
    *  tela não existe sem um projeto escolhido, e o escolhido está na URL.
    *  `global` é o que vale para a organização inteira. */
-  escopo: 'global' | 'projeto'
+  escopo: 'global' | 'projeto' | 'admin'
   /** Fase do roadmap em que a tela é implementada de verdade. */
   fase: number
   /** Some do menu para quem não tem a permissão. É conveniência de navegação,
@@ -100,7 +112,11 @@ export const ROTULO_CHECKLIST: Record<Checklist, [string, string]> = {
   lod500: ['Auditoria LOD500', 'LOD500 audit'],
 }
 
-/** O menu de fora de um projeto: o que vale para a organização inteira. */
+/** O menu de fora de um projeto: o que vale para a organização inteira.
+ *
+ *  Agrupado, como o de projeto. `Projetos` fica sozinho no topo sem rótulo
+ *  porque é a porta de entrada — pôr um cabeçalho acima do primeiro item da
+ *  tela inicial só acrescenta uma linha entre o usuário e o destino. */
 export const ITENS_GLOBAIS: ItemNav[] = [
   {
     rota: '/',
@@ -111,6 +127,20 @@ export const ITENS_GLOBAIS: ItemNav[] = [
     escopo: 'global',
     fase: 1,
   },
+
+  // Acompanhamento: o que se olha para saber como as coisas estão indo.
+  {
+    // KPIs de TODOS os projetos. Existe porque a home fazia duas coisas —
+    // fileira de números E navegação por pastas — e cada uma responde a uma
+    // pergunta diferente. Agora a home só navega.
+    rota: '/kpis',
+    pt: 'KPIs',
+    en: 'KPIs',
+    path: IC.barras,
+    grupo: 'acompanhamento',
+    escopo: 'global',
+    fase: 4,
+  },
   {
     // Central: lista os apontamentos de TODOS os projetos. O backend já
     // aceitava — `projeto_id` sempre foi filtro opcional.
@@ -118,20 +148,12 @@ export const ITENS_GLOBAIS: ItemNav[] = [
     pt: 'Apontamentos',
     en: 'Issues',
     path: IC.alerta,
-    grupo: 'topo',
+    grupo: 'acompanhamento',
     escopo: 'global',
     fase: 4,
   },
-  {
-    rota: '/membros',
-    pt: 'Gestão de membros',
-    en: 'Member management',
-    path: IC.pessoas,
-    grupo: 'topo',
-    escopo: 'global',
-    fase: 1,
-    exigePermissao: 'admin_cadastro',
-  },
+
+  // Organização: o que se liga uma vez e vale para todos os projetos.
   {
     // Nunca foi por projeto: a tela sequer usava o contexto de projeto. Estava
     // no menu errado desde o começo.
@@ -139,7 +161,7 @@ export const ITENS_GLOBAIS: ItemNav[] = [
     pt: 'Integrações',
     en: 'Integrations',
     path: IC.elo,
-    grupo: 'topo',
+    grupo: 'organizacao',
     escopo: 'global',
     fase: 2,
   },
@@ -227,5 +249,78 @@ export const ITENS_PROJETO: ItemNav[] = [
   },
 ]
 
+/** O menu do PAINEL ADMINISTRATIVO.
+ *
+ *  O `/admin` é uma área à parte, não uma tela do fluxo — como o próprio nome
+ *  "painel administrativo" diz. Ele troca a sidebar inteira, pelo mesmo
+ *  mecanismo que o escopo de projeto usa, e tem um caminho de volta no topo.
+ *
+ *  Antes eram abas dentro de uma tela só. Aba serve para alternar entre visões
+ *  do MESMO assunto; aqui são assuntos distintos — quem administra usuários não
+ *  está a meio caminho de conferir o log —, e a fileira de abas ainda ia crescer
+ *  a cada item novo até não caber na linha.
+ */
+export const ITENS_ADMIN: ItemNav[] = [
+  {
+    rota: '/admin/usuarios',
+    pt: 'Usuários',
+    en: 'Users',
+    path: IC.pessoas,
+    grupo: 'topo',
+    escopo: 'admin',
+    fase: 1,
+    exigePermissao: 'admin_cadastro',
+  },
+  {
+    rota: '/admin/logs',
+    pt: 'Logs',
+    en: 'Logs',
+    path: IC.folha,
+    grupo: 'topo',
+    escopo: 'admin',
+    fase: 4,
+    exigePermissao: 'admin_cadastro',
+  },
+
+  // ORGANIZAÇÃO, CLIENTES E PROJETOS FICAM, e num grupo à parte.
+  //
+  // Não foram pedidos nesta rodada — o pedido foi "usuários e logs só por
+  // enquanto". Estão aqui porque são o ÚNICO lugar da plataforma onde um
+  // projeto ou um cliente nasce: a home lista projetos, não os cria. Removê-los
+  // agora deixaria a plataforma sem como cadastrar um projeto, que é o primeiro
+  // passo de qualquer coisa. Quando houver outra porta para isso, este grupo
+  // sai daqui.
+  {
+    rota: '/admin/organizacao',
+    pt: 'Organização',
+    en: 'Organization',
+    path: IC.selo,
+    grupo: 'cadastro',
+    escopo: 'admin',
+    fase: 1,
+    exigePermissao: 'admin_cadastro',
+  },
+  {
+    rota: '/admin/clientes',
+    pt: 'Clientes',
+    en: 'Clients',
+    path: IC.cubo,
+    grupo: 'cadastro',
+    escopo: 'admin',
+    fase: 1,
+    exigePermissao: 'admin_cadastro',
+  },
+  {
+    rota: '/admin/projetos',
+    pt: 'Projetos',
+    en: 'Projects',
+    path: IC.casa,
+    grupo: 'cadastro',
+    escopo: 'admin',
+    fase: 1,
+    exigePermissao: 'admin_cadastro',
+  },
+]
+
 /** Tudo, para quem precisa resolver uma rota em rótulo (o breadcrumb). */
-export const ITENS_NAV: ItemNav[] = [...ITENS_GLOBAIS, ...ITENS_PROJETO]
+export const ITENS_NAV: ItemNav[] = [...ITENS_GLOBAIS, ...ITENS_PROJETO, ...ITENS_ADMIN]

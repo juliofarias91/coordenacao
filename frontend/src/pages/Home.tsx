@@ -155,16 +155,6 @@ export default function Home() {
     return termo ? lista.filter((g) => g.itens.length) : lista
   }, [pastas, porCliente, termo, L])
 
-  const resumo = useMemo(() => {
-    const conta = (s: string) => projetos.filter((p) => p.status === s).length
-    return [
-      { chave: 'ativo', rotulo: L('Projetos ativos', 'Active projects'), n: conta('ativo') },
-      { chave: 'config', rotulo: L('Em configuração', 'In setup'), n: conta('config') },
-      { chave: 'piloto', rotulo: L('Piloto', 'Pilot'), n: conta('piloto') },
-      { chave: 'clientes', rotulo: L('Clientes', 'Clients'), n: pastas.length },
-    ]
-  }, [projetos, pastas, L])
-
   if (carregando) return <div className="hint">{L('Carregando…', 'Loading…')}</div>
   if (erro) {
     return (
@@ -178,17 +168,12 @@ export default function Home() {
 
   return (
     <div className="home">
-      {/* KPI: o tom vai no marcador e o número fica em `--ink`. Uma fileira de
-          números coloridos vira semáforo e perde-se qual valor é grande. */}
-      <div className="home-kpis">
-        {resumo.map((k) => (
-          <div key={k.chave} className={`home-kpi k-${k.chave}`}>
-            <span className="home-kpi-rot">{k.rotulo}</span>
-            <span className="home-kpi-num">{k.n}</span>
-          </div>
-        ))}
-      </div>
-
+      {/* A FILEIRA DE KPIs SAIU DAQUI (29/07/2026) e virou `/kpis`.
+          Esta tela fazia duas coisas — uma fileira de números e uma navegação
+          por pastas — e cada uma responde a uma pergunta diferente: "como
+          estamos?" e "onde está o projeto do fulano?". Quem entra pela home
+          está fazendo a segunda, e os números só empurravam as pastas para
+          baixo da dobra. */}
       <div className="card home-projetos">
         <div className="home-cab">
           <div className="home-titulo">

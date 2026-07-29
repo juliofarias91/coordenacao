@@ -43,6 +43,52 @@ qualquer profundidade). **A renderização em si não foi verificada em navegado
 
 ---
 
+## 29/07 — o painel administrativo virou área, e a home só navega
+
+Ajustes pedidos depois de ver a etapa 1.
+
+**O painel administrativo tem sidebar própria.** Virou a **terceira área** com
+menu próprio, pelo mesmo mecanismo do escopo de projeto: entra-se nele e a
+barra troca inteira. Eram abas; aba serve para alternar entre visões do MESMO
+assunto, e quem administra usuários não está a meio caminho de conferir o log.
+
+```
+/admin   Usuários · Logs
+         Cadastro: Organização · Clientes · Projetos
+```
+
+> **Organização, Clientes e Projetos não foram pedidos** nesta rodada — o
+> pedido foi "usuários e logs só por enquanto". Ficaram, num grupo à parte,
+> porque são o **único lugar da plataforma onde um projeto ou um cliente
+> nasce**: a home lista projetos, não os cria. Removê-los deixaria a plataforma
+> sem como cadastrar um projeto. Quando houver outra porta para isso, o grupo
+> sai. Diga se prefere que saiam já.
+
+**A gestão de membros voltou para o painel** (`/admin/usuarios`). Ela tinha ido
+para a home na etapa 1; com o painel ganhando sidebar, o lugar dela é lá.
+`/membros` redireciona, para não quebrar link.
+
+**A home perdeu a fileira de KPIs**, que virou `/kpis` — de todos os projetos,
+com uma linha por projeto que leva ao KPI daquele. A home fazia duas coisas ao
+mesmo tempo, "como estamos?" e "onde está o projeto do fulano?", e quem entra
+por ela está fazendo a segunda. Agora só há as pastas de cliente e, dentro
+delas, os projetos.
+
+> A tela agrega **no navegador**, uma requisição por projeto: não existe
+> endpoint de KPI consolidado. Com dezenas de projetos isso deixa de se pagar,
+> e aí o certo é um `GET /kpis` no servidor.
+
+**A marca da sidebar leva ao início.** Agora que a barra troca de conteúdo em
+três áreas, ela é o único elemento que não muda.
+
+**O menu da home ganhou grupos**: `Acompanhamento` (KPIs, Apontamentos) e
+`Organização` (Integrações), com `Projetos` sozinho no topo sem rótulo.
+
+As classes `.home-kpi*` viraram `.kpi*`: a fileira saiu da home, e um nome que
+diz onde o bloco vive é a forma mais barata de enganar quem lê depois.
+
+---
+
 ## 29/07 — a navegação remontada (etapa 1 de 2)
 
 A estrutura do menu passou a ser a que a coordenação pediu. O que mudou de

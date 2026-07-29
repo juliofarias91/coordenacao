@@ -179,11 +179,12 @@ Ao continuar:
   `localStorage` (que sobrou como memória do último visitado). Quem monta o
   caminho é `rotaProjeto()`, em `frontend/src/projeto/ProjetoContext.tsx`.
   Nunca escreva `/painel` à mão.
-- **A sidebar é contextual** (`frontend/src/layout/nav.ts`): `ITENS_GLOBAIS`
-  fora de um projeto, `ITENS_PROJETO` dentro. Tela nova entra numa das duas
-  listas — na global se a API dela não recebe `projeto_id`, na de projeto se
-  recebe. Errar isso foi o que deixou Apontamentos e Integrações no menu de
-  projeto sendo que nenhuma das duas APIs é por projeto.
+- **A sidebar é contextual em TRÊS áreas** (`frontend/src/layout/nav.ts`):
+  `ITENS_ADMIN` sob `/admin`, `ITENS_PROJETO` dentro de um projeto,
+  `ITENS_GLOBAIS` no resto. Tela nova entra numa das três — na global se a API
+  dela não recebe `projeto_id`, na de projeto se recebe. Errar isso foi o que
+  deixou Apontamentos e Integrações no menu de projeto sendo que nenhuma das
+  duas APIs é por projeto.
 - **As seis telas de Auditoria são uma só**, parametrizada pela rota
   (`auditoria/:checklist`) sobre a matriz que o backend já servia por
   checklist. Recorte novo entra primeiro em `CHECKLISTS_SEM_BANCO` (hoje

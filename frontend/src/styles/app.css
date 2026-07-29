@@ -102,6 +102,9 @@ aside {
 }
 
 /* Topo da sidebar: h-14, a MESMA altura da topbar, para as duas linharem. */
+/* A marca é um LINK para o início. Sem sublinhado e sem cor de link: ela
+   continua sendo a identidade da barra, não mais um item de menu — o que muda
+   é só o cursor e o realce no hover, que é o que anuncia que ela clica. */
 .brand {
   display: flex;
   align-items: center;
@@ -111,6 +114,12 @@ aside {
   padding: 0 10px;
   border-bottom: 1px solid var(--line);
   overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--dur-fast);
+}
+.brand:hover {
+  background: var(--hover-ink);
 }
 .brand .mk {
   width: 30px;
@@ -2076,13 +2085,17 @@ td.num {
 }
 
 /* Regra 2 do sistema: em KPI o tom vai no MARCADOR e o número fica em --ink.
-   Uma fileira de números coloridos vira semáforo e perde-se qual é grande. */
-.home-kpis {
+   Uma fileira de números coloridos vira semáforo e perde-se qual é grande.
+
+   Chamavam-se `.home-kpi*` porque nasceram na home. A fileira saiu de lá em
+   29/07/2026 e virou a tela `/kpis`; o nome antigo passou a mentir sobre onde
+   o bloco vive, que é a forma mais barata de enganar quem lê depois. */
+.kpi-fila {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
 }
-.home-kpi {
+.kpi {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -2094,7 +2107,7 @@ td.num {
   box-shadow: var(--sh-sm);
   overflow: hidden;
 }
-.home-kpi::before {
+.kpi::before {
   content: '';
   position: absolute;
   left: 0;
@@ -2103,18 +2116,18 @@ td.num {
   width: 3px;
   background: var(--na);
 }
-.home-kpi.k-ativo::before { background: var(--ok); }
-.home-kpi.k-config::before { background: var(--wait); }
-.home-kpi.k-piloto::before { background: var(--purple); }
-.home-kpi.k-clientes::before { background: var(--accent); }
-.home-kpi-rot {
+.kpi.k-ativo::before { background: var(--ok); }
+.kpi.k-config::before { background: var(--wait); }
+.kpi.k-piloto::before { background: var(--purple); }
+.kpi.k-clientes::before { background: var(--accent); }
+.kpi-rot {
   color: var(--ink-3);
   font-size: 11.5px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.home-kpi-num {
+.kpi-num {
   color: var(--ink);
   font-size: 26px;
   font-weight: 700;
