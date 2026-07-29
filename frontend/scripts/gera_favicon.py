@@ -79,7 +79,10 @@ ROXO = "#6a3dae"  # `--purple` do tema claro
 # lê como um segundo objeto atrás do primeiro; cinza lê como ausência de luz, e
 # some da leitura — que é o que sombra deve fazer.
 SOMBRA = "#2b2b2b"
-ARO = "#e6e6e6"  # aro discreto: sem ele o disco branco some na aba clara
+# O DISCO NÃO TEM CONTORNO. Chegou a ter um aro cinza claro, pela ideia de que
+# o branco sumiria numa aba clara; some mesmo, e não faz falta — a aba já
+# desenha uma moldura em volta do favicon, e a sombra interna dá a borda do
+# lado onde ela cai. O aro só aparecia como um anel sujo em volta da peça.
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent / "public"
 
@@ -149,8 +152,7 @@ def svg() -> str:
         # FUNDO REDONDO: o disco é a peça, e fora dele é transparente. Um
         # quadrado branco atrás faria o ícone virar um selo com cantos, e a
         # aba deixaria de mostrar a silhueta circular.
-        f'<circle cx="{cx}" cy="{cy}" r="{R_DISCO}" fill="{BRANCO}" '
-        f'stroke="{ARO}" stroke-width="1.4"/>'
+        f'<circle cx="{cx}" cy="{cy}" r="{R_DISCO}" fill="{BRANCO}"/>'
         # `opacity` no GRUPO: os passos se sobrepõem, e a translucidez aplicada
         # a cada um faria a sombra escurecer perto do glifo.
         f'<g clip-path="url(#disco)" color="{SOMBRA}" opacity="{ALFA_SOMBRA}">{passos}</g>'
@@ -190,7 +192,7 @@ def png(lado_final: int) -> Image.Image:
     d = ImageDraw.Draw(img)
     cx, cy = CENTRO[0] * k, CENTRO[1] * k
     r = R_DISCO * k
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=BRANCO, outline=ARO, width=round(1.4 * k))
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=BRANCO)
 
     # A sombra numa CAMADA À PARTE, opaca, composta uma vez só — ver a
     # docstring do módulo.
