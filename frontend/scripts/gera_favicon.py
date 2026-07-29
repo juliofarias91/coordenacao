@@ -1,25 +1,27 @@
-"""Gera o favicon: bolinha branca, glifo de compartilhar, sombra longa a 45°.
+"""Gera o favicon: disco branco, lupa roxa, sombra longa a sudeste.
 
     backend/.venv/Scripts/python.exe frontend/scripts/gera_favicon.py
 
-Precisa de Pillow, que já vem na venv do backend. Roda RARAMENTE — só
-quando o desenho muda. Os arquivos que ele produz estão versionados, e o
-build não o chama.
+Precisa de Pillow, que já vem na venv do backend. Roda RARAMENTE — só quando o
+desenho muda. Os arquivos que ele produz estão versionados, e o build não o
+chama.
 
-UMA GEOMETRIA, DOIS ARQUIVOS. O SVG (que é o favicon de verdade) e o PNG (o
-fallback, e o que dá para olhar sem navegador) saem das MESMAS constantes.
-Desenhá-los separado seria garantir que divergissem na primeira correção.
+UMA GEOMETRIA, QUATRO ARQUIVOS. O SVG (que é o favicon de verdade), o PNG, o
+`.ico` e o `apple-touch-icon` saem das MESMAS constantes. Desenhá-los separado
+seria garantir que divergissem na primeira correção — e o `.ico` envelheceria
+calado enquanto o SVG mudasse.
 
-A SOMBRA É GERADA, NÃO DESENHADA À MÃO. A sombra longa do design plano é a
-varredura da silhueta ao longo de uma direção — e a varredura de um traço de
-ponta arredondada é outro traço de ponta arredondada. Em vez de calcular o
-polígono resultante (três discos e duas barras, cada um com o seu envelope), o
-glifo é repintado em passos menores que a espessura do traço: a união dos
-passos É a varredura, exata e sem emenda.
+A SOMBRA É CALCULADA, NÃO DESENHADA. A sombra longa do design plano é a
+varredura da silhueta ao longo de uma direção, e a varredura de um traço de
+ponta arredondada é outro traço de ponta arredondada. Em vez de resolver o
+polígono resultante — um anel e uma barra, cada um com o seu envelope —, o
+glifo é repintado em passos MENORES QUE A ESPESSURA DO TRAÇO: a união dos
+passos É a varredura, exata e sem emenda. Recortada no disco, porque sombra que
+escapa do círculo não é sombra, é sujeira.
 
 O CUIDADO QUE NÃO É ÓBVIO: a translucidez tem de ser aplicada UMA VEZ, ao
 conjunto. No SVG isso sai de graça (`opacity` no grupo). No PNG é preciso
-desenhar os 68 passos opacos numa camada à parte e compor a camada inteira com
+desenhar os passos opacos numa camada à parte e compor a camada inteira com
 alfa — senão cada sobreposição escurece a anterior e a sombra vira um borrão
 listrado, mais escuro perto do glifo.
 """
@@ -30,84 +32,99 @@ import pathlib
 
 from PIL import Image, ImageDraw
 
-# --- geometria do glifo (viewBox 64x64) -----------------------------------
-# O símbolo de compartilhar: três nós e duas hastes, num triângulo deitado —
-# o nó da esquerda no meio da altura, os outros dois à direita e simétricos.
-#
-# As coordenadas abaixo são o DESENHO; a posição final sai de `_centragem()`.
-# Escrever números já centrados à mão é o jeito mais fácil de descentralizar de
-# novo na próxima vez que a escala mudar.
+# --- a peça ---------------------------------------------------------------
 LADO = 64.0
 CENTRO = (32.0, 32.0)
 R_DISCO = 31.0
 
-ESCALA = 0.86  # o glifo respira: cheio demais, ele encosta no aro
-R_NO = 7.8 * ESCALA
-ESP_HASTE = 5.2 * ESCALA
-_ESQ = (19.0, 32.0)
-_SUP = (46.0, 16.5)
-_INF = (46.0, 47.5)
+# --- geometria da lupa ----------------------------------------------------
+# Duas peças e só: o anel da lente e o cabo, que sai da borda dela a 45° — a
+# mesma diagonal da sombra, para o desenho e o efeito conversarem.
+#
+# As coordenadas abaixo são o DESENHO; a posição final sai de `_centragem()`.
+# Escrever números já centrados à mão é o jeito mais fácil de descentralizar
+# tudo de novo na próxima vez que a escala mudar.
+# A LUPA OCUPA O DISCO. A tentação é deixá-la respirar; o resultado, a 16px, é
+# um pontinho perdido num círculo branco. Neste tamanho — que é onde o favicon
+# passa 99% do tempo — o que se lê é a silhueta, e silhueta precisa de área.
+ESCALA = 1.15
+R_LENTE = 12.5 * ESCALA
+# O ANEL FINO É O QUE SALVA O ÍCONE. O furo da lente é a única coisa que
+# distingue uma lupa de um alfinete: se o traço engrossar junto com o raio, a
+# 16px o furo fecha por antialiasing e sobra uma bolota com um rabo.
+ESP_ANEL = 4.4 * ESCALA
+ESP_CABO = 5.4 * ESCALA
+_LENTE = (27.5, 27.5)
+# O cabo vai da borda da lente para fora, sempre a 45°. `_CABO_ATE` é o quanto
+# ele avança ALÉM da borda — assim mexer no raio da lente não descola o cabo.
+_CABO_ATE = 11.0 * ESCALA
 
-# Compensação ÓPTICA. O glifo tem um nó sozinho à esquerda e dois nós mais o
-# vértice do "V" à direita: a tinta pesa para a direita, e centrar pela caixa
-# delimitadora deixa a peça visualmente deslocada. Meio pixel para a esquerda
-# resolve — é pouco, e é exatamente o que o olho estava reclamando.
-NUDGE_X = -0.5
-
-
-def _escalar(ponto):
-    cx, cy = CENTRO
-    return (cx + (ponto[0] - cx) * ESCALA, cy + (ponto[1] - cy) * ESCALA)
-
-
-def _centragem():
-    """Quanto mover o glifo para a caixa dele ficar no centro do disco.
-
-    Calculado, não digitado: assim mexer em `ESCALA` ou nas coordenadas não
-    exige refazer a conta de cabeça — e não há como esquecer de refazê-la.
-    """
-    pontos = [_escalar(q) for q in (_ESQ, _SUP, _INF)]
-    xs = [x for x, _ in pontos]
-    ys = [y for _, y in pontos]
-    meio_x = (min(xs) - R_NO + max(xs) + R_NO) / 2
-    meio_y = (min(ys) - R_NO + max(ys) + R_NO) / 2
-    return (CENTRO[0] - meio_x + NUDGE_X, CENTRO[1] - meio_y)
-
-
-_DX, _DY = _centragem()
-NO_ESQ = (_escalar(_ESQ)[0] + _DX, _escalar(_ESQ)[1] + _DY)
-NO_SUP = (_escalar(_SUP)[0] + _DX, _escalar(_SUP)[1] + _DY)
-NO_INF = (_escalar(_INF)[0] + _DX, _escalar(_INF)[1] + _DY)
+# Compensação ÓPTICA. A lupa é um disco pesado em cima à esquerda com um cabo
+# fino embaixo à direita: a tinta pesa para cima e para a esquerda, e centrar
+# pela caixa delimitadora deixa a peça parecendo deslocada. Meio pixel para
+# baixo e para a direita devolve o equilíbrio.
+NUDGE = (0.6, 0.6)
 
 # --- sombra ---------------------------------------------------------------
 # 45° para SUDESTE: em SVG e em imagem o y cresce para BAIXO, então x e y
 # crescem juntos e a sombra cai para a direita e para baixo.
-PASSO = 1.4  # menor que ESP_HASTE: os passos se sobrepõem
+PASSO = 1.4  # menor que ESP_ANEL: os passos se sobrepõem
 ALCANCE = 96.0  # atravessa o disco inteiro na diagonal
 N_PASSOS = int(ALCANCE / PASSO)
 ALFA_SOMBRA = 0.17
 
 BRANCO = "#ffffff"
-ACCENT = "#2547b0"  # o azul da SPBIM
-ARO = "#ccd6ed"  # aro discreto: sem ele o disco branco some na aba clara
+ROXO = "#6a3dae"  # `--purple` do tema claro
+ARO = "#e2dcef"  # aro discreto: sem ele o disco branco some na aba clara
 
-# Relativo ao script, nunca absoluto: o repositório vive num drive de rede
-# aqui e vai viver noutro lugar em qualquer outra máquina.
 RAIZ = pathlib.Path(__file__).resolve().parent.parent / "public"
+
+# Meia-diagonal unitária: o cabo e a sombra andam nesta direção.
+_D = 0.70710678
+
+
+def _pontas_do_cabo(lente: tuple[float, float]) -> tuple[tuple[float, float], ...]:
+    """Onde o cabo começa (na borda da lente) e onde termina."""
+    lx, ly = lente
+    de = (lx + R_LENTE * _D, ly + R_LENTE * _D)
+    ate = (de[0] + _CABO_ATE * _D, de[1] + _CABO_ATE * _D)
+    return de, ate
+
+
+def _centragem() -> tuple[float, float]:
+    """Quanto mover o glifo para a caixa dele ficar no centro do disco.
+
+    Calculado, não digitado: mexer em `ESCALA` ou nas coordenadas não exige
+    refazer a conta de cabeça — e não há como esquecer de refazê-la.
+    """
+    lx, ly = _LENTE
+    _, ate = _pontas_do_cabo(_LENTE)
+    meia_ponta = ESP_CABO / 2
+    esq = lx - R_LENTE - ESP_ANEL / 2
+    topo = ly - R_LENTE - ESP_ANEL / 2
+    dir_ = ate[0] + meia_ponta
+    base = ate[1] + meia_ponta
+    return (
+        CENTRO[0] - (esq + dir_) / 2 + NUDGE[0],
+        CENTRO[1] - (topo + base) / 2 + NUDGE[1],
+    )
+
+
+_DX, _DY = _centragem()
+LENTE = (_LENTE[0] + _DX, _LENTE[1] + _DY)
+CABO_DE, CABO_ATE = _pontas_do_cabo(LENTE)
 
 
 # ============================================================ SVG
 def _glifo_svg(cor: str) -> str:
-    ex, ey = NO_ESQ
-    sx, sy = NO_SUP
-    ix, iy = NO_INF
+    lx, ly = LENTE
     return (
-        f'<g fill="{cor}" stroke="{cor}" stroke-width="{ESP_HASTE}" stroke-linecap="round">'
-        f'<line x1="{ex}" y1="{ey}" x2="{sx}" y2="{sy}"/>'
-        f'<line x1="{ex}" y1="{ey}" x2="{ix}" y2="{iy}"/>'
-        f'<circle cx="{ex}" cy="{ey}" r="{R_NO}" stroke="none"/>'
-        f'<circle cx="{sx}" cy="{sy}" r="{R_NO}" stroke="none"/>'
-        f'<circle cx="{ix}" cy="{iy}" r="{R_NO}" stroke="none"/>'
+        f'<g fill="none" stroke="{cor}" stroke-linecap="round">'
+        f'<circle cx="{lx:.2f}" cy="{ly:.2f}" r="{R_LENTE:.2f}" '
+        f'stroke-width="{ESP_ANEL:.2f}"/>'
+        f'<line x1="{CABO_DE[0]:.2f}" y1="{CABO_DE[1]:.2f}" '
+        f'x2="{CABO_ATE[0]:.2f}" y2="{CABO_ATE[1]:.2f}" '
+        f'stroke-width="{ESP_CABO:.2f}"/>'
         "</g>"
     )
 
@@ -125,36 +142,33 @@ def svg() -> str:
         # cima — uma definição, duas aparições.
         f'<defs><g id="g">{_glifo_svg("currentColor")}</g>'
         f'<clipPath id="disco"><circle cx="{cx}" cy="{cy}" r="{R_DISCO}"/></clipPath></defs>'
-        # FUNDO BRANCO NA PEÇA INTEIRA, não só dentro do disco. Com o canto
-        # transparente o ícone virava um disco flutuando sobre a cor da aba,
-        # e em aba escura o branco do disco brigava com o preto em volta.
-        f'<rect width="64" height="64" fill="{BRANCO}"/>'
+        # FUNDO REDONDO: o disco é a peça, e fora dele é transparente. Um
+        # quadrado branco atrás faria o ícone virar um selo com cantos, e a
+        # aba deixaria de mostrar a silhueta circular.
         f'<circle cx="{cx}" cy="{cy}" r="{R_DISCO}" fill="{BRANCO}" '
         f'stroke="{ARO}" stroke-width="1.4"/>'
-        # `opacity` no GRUPO: os 68 passos se sobrepõem, e a translucidez
-        # aplicada a cada um faria a sombra escurecer perto do glifo.
-        f'<g clip-path="url(#disco)" color="{ACCENT}" opacity="{ALFA_SOMBRA}">{passos}</g>'
-        f'<g color="{ACCENT}">{_glifo_svg("currentColor")}</g>'
+        # `opacity` no GRUPO: os passos se sobrepõem, e a translucidez aplicada
+        # a cada um faria a sombra escurecer perto do glifo.
+        f'<g clip-path="url(#disco)" color="{ROXO}" opacity="{ALFA_SOMBRA}">{passos}</g>'
+        f'<g color="{ROXO}">{_glifo_svg("currentColor")}</g>'
         "</svg>"
     )
 
 
 # ============================================================ PNG
-def _glifo_png(
-    d: ImageDraw.ImageDraw, k: float, dx: float, dy: float, cor: tuple
-) -> None:
-    """O mesmo glifo, em pixels. `k` é a escala (supersampling)."""
-
-    def p(ponto):
-        return ((ponto[0] + dx) * k, (ponto[1] + dy) * k)
-
-    largura = ESP_HASTE * k
-    for destino in (NO_SUP, NO_INF):
-        d.line([p(NO_ESQ), p(destino)], fill=cor, width=round(largura))
-    for no in (NO_ESQ, NO_SUP, NO_INF):
-        x, y = p(no)
-        r = R_NO * k
-        d.ellipse([x - r, y - r, x + r, y + r], fill=cor)
+def _glifo_png(d: ImageDraw.ImageDraw, k: float, dx: float, dy: float, cor: tuple) -> None:
+    """A mesma lupa, em pixels. `k` é a escala (supersampling)."""
+    lx, ly = (LENTE[0] + dx) * k, (LENTE[1] + dy) * k
+    r = R_LENTE * k
+    d.ellipse([lx - r, ly - r, lx + r, ly + r], outline=cor, width=round(ESP_ANEL * k))
+    pa = ((CABO_DE[0] + dx) * k, (CABO_DE[1] + dy) * k)
+    pb = ((CABO_ATE[0] + dx) * k, (CABO_ATE[1] + dy) * k)
+    d.line([pa, pb], fill=cor, width=round(ESP_CABO * k))
+    # O Pillow não tem ponta arredondada em `line`: o disco em cada ponta é o
+    # que evita o corte reto que denunciaria o cabo como um retângulo.
+    rc = ESP_CABO * k / 2
+    for px, py in (pa, pb):
+        d.ellipse([px - rc, py - rc, px + rc, py + rc], fill=cor)
 
 
 def png(lado_final: int) -> Image.Image:
@@ -162,23 +176,20 @@ def png(lado_final: int) -> Image.Image:
     # redução. Sem isso o disco fica serrilhado a 32px.
     k = 8
     tam = int(LADO) * k
-    # Opaco desde o início — ver a nota no SVG.
-    img = Image.new("RGBA", (tam, tam), (255, 255, 255, 255))
-    d = ImageDraw.Draw(img)
+    rgb = tuple(int(ROXO[i : i + 2], 16) for i in (1, 3, 5))
 
+    img = Image.new("RGBA", (tam, tam), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
     cx, cy = CENTRO[0] * k, CENTRO[1] * k
     r = R_DISCO * k
-    d.ellipse(
-        [cx - r, cy - r, cx + r, cy + r], fill=BRANCO, outline=ARO, width=int(1.4 * k)
-    )
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=BRANCO, outline=ARO, width=round(1.4 * k))
 
     # A sombra numa CAMADA À PARTE, opaca, composta uma vez só — ver a
     # docstring do módulo.
     camada = Image.new("RGBA", (tam, tam), (0, 0, 0, 0))
     ds = ImageDraw.Draw(camada)
     for i in range(1, N_PASSOS + 1):
-        _glifo_png(ds, k, i * PASSO, i * PASSO, (0x25, 0x47, 0xB0, 255))
-    # Recorta no disco: sombra que escapa do círculo não é sombra, é sujeira.
+        _glifo_png(ds, k, i * PASSO, i * PASSO, (*rgb, 255))
     recorte = Image.new("L", (tam, tam), 0)
     ImageDraw.Draw(recorte).ellipse([cx - r, cy - r, cx + r, cy + r], fill=255)
     camada.putalpha(Image.eval(camada.getchannel("A"), lambda a: int(a * ALFA_SOMBRA)))
@@ -187,8 +198,7 @@ def png(lado_final: int) -> Image.Image:
     )
     img = Image.alpha_composite(img, camada)
 
-    d = ImageDraw.Draw(img)
-    _glifo_png(d, k, 0, 0, (0x25, 0x47, 0xB0, 255))
+    _glifo_png(ImageDraw.Draw(img), k, 0, 0, (*rgb, 255))
     return img.resize((lado_final, lado_final), Image.LANCZOS)
 
 
@@ -199,8 +209,7 @@ if __name__ == "__main__":
     (RAIZ / "favicon.svg").write_text(conteudo, encoding="utf-8")
     print(f"favicon.svg  {len(conteudo)} bytes · {N_PASSOS} passos de sombra")
 
-    grande = png(180)
-    grande.save(RAIZ / "apple-touch-icon.png")
+    png(180).save(RAIZ / "apple-touch-icon.png")
     png(64).save(RAIZ / "favicon.png")
     # `.ico` com os três tamanhos que o Windows e navegadores antigos pedem.
     png(256).save(RAIZ / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48)])
