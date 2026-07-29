@@ -175,10 +175,15 @@ na consulta. Se o Supabase tivesse alterado alguma coisa, eles quebrariam.
 O Supabase expõe endpoint **S3-compatível**, e a plataforma sempre leu o
 endpoint de variável de ambiente. É troca de configuração, não de código.
 
-Em *Storage → Settings → S3 access keys*, gere uma chave. Depois:
+Em *Storage → Settings → S3 access keys*, gere uma chave — **o secret é
+mostrado uma única vez**. Repare no host: é `<ref>.**storage**.supabase.co`,
+não `<ref>.supabase.co`. Confirmado contra o projeto em 28/07/2026; copie o
+que o painel mostrar, e use a região que ele indicar — a assinatura v4 leva a
+região no cálculo, e errada devolve `SignatureDoesNotMatch`, um erro que não
+parece ter nada a ver com região.
 
 ```bash
-S3_ENDPOINT_URL=https://pilyrmvxytuwoiwjxgdv.supabase.co/storage/v1/s3
+S3_ENDPOINT_URL=https://pilyrmvxytuwoiwjxgdv.storage.supabase.co/storage/v1/s3
 S3_REGION=us-west-2
 S3_BUCKET=spbim-auditoria
 S3_ACCESS_KEY=<access key id>

@@ -41,15 +41,17 @@ CORS_ORIGINS=https://<seu-dominio>
 # python -c "import secrets; print(secrets.token_urlsafe(48))"
 JWT_SECRET=
 
-# Supabase — ver docs/SUPABASE.md
+# Supabase — ver docs/SUPABASE.md. As duas vão pelo POOLER: 6543 (transação)
+# para a API, 5432 (sessão) para migration e autenticação. Não use
+# db.<ref>.supabase.co: só publica AAAA e não responde de rede sem IPv6.
 APP_DATABASE_URL=postgresql+psycopg://spbim_app.<ref>:<senha>@aws-1-<regiao>.pooler.supabase.com:6543/postgres
-DATABASE_URL=postgresql+psycopg://postgres:<senha>@db.<ref>.supabase.co:5432/postgres
+DATABASE_URL=postgresql+psycopg://postgres.<ref>:<senha>@aws-1-<regiao>.pooler.supabase.com:5432/postgres
 
 REDIS_PASSWORD=<a senha do serviço redis>
 CELERY_BROKER_URL=redis://:<senha>@turnbim_redis:6379/0
 CELERY_RESULT_BACKEND=redis://:<senha>@turnbim_redis:6379/1
 
-S3_ENDPOINT_URL=https://<ref>.supabase.co/storage/v1/s3
+S3_ENDPOINT_URL=https://<ref>.storage.supabase.co/storage/v1/s3
 S3_REGION=<região>
 S3_BUCKET=spbim-auditoria
 S3_ACCESS_KEY=
