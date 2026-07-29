@@ -244,11 +244,17 @@ export default function Home() {
                 className="home-pasta"
                 onClick={() => setAberta(g.chave)}
               >
-                <Icone path={PASTA} tam={30} />
-                <span className="home-pasta-nome">{g.rotulo}</span>
-                <span className="home-pasta-n">
-                  {g.itens.length}{' '}
-                  {g.itens.length === 1 ? L('projeto', 'project') : L('projetos', 'projects')}
+                {/* O ícone em caixa própria: solto, ele se perdia contra o
+                    nome do cliente, que é o que se procura na grade. */}
+                <span className="home-pasta-ic">
+                  <Icone path={PASTA} tam={20} />
+                </span>
+                <span>
+                  <span className="home-pasta-nome">{g.rotulo}</span>
+                  <span className="home-pasta-n" style={{ display: 'block' }}>
+                    {g.itens.length}{' '}
+                    {g.itens.length === 1 ? L('projeto', 'project') : L('projetos', 'projects')}
+                  </span>
                 </span>
               </button>
             ))}

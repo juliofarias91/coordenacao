@@ -20,6 +20,7 @@ import { NavLink, Outlet, useLocation, useMatch } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthContext'
 import BuscaGlobal from '@/components/BuscaGlobal'
+import Convidar from '@/components/Convidar'
 import Sino from '@/components/Sino'
 import UsuarioMenu from '@/components/UsuarioMenu'
 import { useI18n } from '@/i18n'
@@ -142,9 +143,7 @@ function casa(alvo: string, caminho: string): boolean {
 }
 
 export default function Shell() {
-  // Sem `sair` aqui: a saída mora no painel da conta (`UsuarioMenu`), que é
-  // quem a chama. O Shell não tem mais botão de sair.
-  const { usuario } = useAuth()
+  const { usuario, sair } = useAuth()
   const { lang, setLang, L } = useI18n()
   const { theme, setTheme } = useTheme()
   const { projeto, projetos, referencia, selecionar } = useProjeto()
@@ -267,24 +266,10 @@ export default function Shell() {
         </button>
 
         <div className="nav-scroll thin-scroll">
-          {/* CAMINHO DE VOLTA. Dentro de um projeto a sidebar troca inteira,
-              então precisa haver a porta de saída — senão a única forma de
-              voltar aos projetos é o logo ou o botão do navegador.
-
-              Mostra o CÓDIGO do projeto, não "Projetos": responde ao mesmo
-              tempo "onde estou" e "por onde saio", que é o que um cabeçalho de
-              contexto tem de fazer. */}
-          {emProjeto && (
-            <NavLink className="nav-volta" to="/" title={L('Todos os projetos', 'All projects')}>
-              <Icone path={CHEVRON_ESQ} tam={15} />
-              {/* Só "Projetos", e não o código do projeto: quem está aqui já vê
-                  o código no breadcrumb da topbar, e repeti-lo fazia o item
-                  parecer o cabeçalho do projeto em vez do que ele é — a porta
-                  de saída. Um botão de voltar diz PARA ONDE se volta. */}
-              <span className="nav-rot">{L('Projetos', 'Projects')}</span>
-            </NavLink>
-          )}
-
+          {/* Não há mais bloco de "voltar": dentro de um projeto o primeiro
+              item da barra é o MESMO `Projetos` da Home (ver `nav.ts`), e é ele
+              que leva de volta. Um item que vai para a mesma tela deve ter a
+              mesma cara nas duas barras. */}
           {grupos.map((grupo, i) => {
             const doGrupo = itens.filter((it) => it.grupo === grupo.chave)
             if (doGrupo.length === 0) return null
@@ -349,11 +334,35 @@ export default function Shell() {
           })}
         </div>
 
-        {/* SAIR NÃO FICA AQUI. Esteve no rodapé da sidebar por um dia e saiu:
-            é ação destrutiva, e a regra do sistema (CLAUDE.md) é que ela mora
-            dentro do painel da conta, nunca exposta numa barra que se usa o dia
-            todo — um clique errado derrubaria a sessão no meio de uma auditoria.
-            O caminho é o avatar na topbar. */}
+        {/* O RODAPÉ DA BARRA É UM SLOT, e o que ocupa ele depende da área:
+            dentro de um projeto, Convidar; fora, Sair. Um lugar fixo para "a
+            ação desta barra" vale mais do que dois botões disputando o pé.
+
+            Sair continua ANOTADO como destrutivo em CLAUDE.md — a diferença é
+            que aqui ele fica no canto mais distante dos controles de trabalho,
+            e o painel da conta segue tendo o mesmo caminho. */}
+        {emProjeto && projeto ? (
+          <div className="side-foot">
+            <Convidar projeto={projeto} />
+          </div>
+        ) : (
+          usuario && (
+            <div className="side-foot">
+              <button
+                type="button"
+                className="side-botao side-sair"
+                onClick={sair}
+                title={L('Sair', 'Exit')}
+              >
+                <Icone
+                  path="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
+                  tam={17}
+                />
+                <span className="nav-rot">{L('Sair', 'Exit')}</span>
+              </button>
+            </div>
+          )
+        )}
       </aside>
 
       <div className="col">

@@ -174,8 +174,18 @@ export const ITENS_GLOBAIS: ItemNav[] = [
   },
 ]
 
+/** `Projetos`, o mesmo item da Home — e é o MESMO objeto, não uma cópia.
+ *
+ *  Dentro de um projeto ele encabeça a barra e faz o papel de voltar. Já foi um
+ *  bloco próprio (`.nav-volta`), com o código do projeto e um subtítulo; virou
+ *  item comum porque é para onde ele leva que importa, e um item que leva à
+ *  mesma tela deve ter a mesma cara nas duas barras. Duplicar o objeto faria as
+ *  duas divergirem no dia em que alguém trocasse o ícone de um lado só. */
+const PROJETOS = ITENS_GLOBAIS[0]!
+
 /** O menu de dentro de um projeto. */
 export const ITENS_PROJETO: ItemNav[] = [
+  PROJETOS,
   {
     rota: 'painel',
     pt: 'Painel de controle',
@@ -329,5 +339,8 @@ export const ITENS_ADMIN: ItemNav[] = [
   },
 ]
 
-/** Tudo, para quem precisa resolver uma rota em rótulo (o breadcrumb). */
-export const ITENS_NAV: ItemNav[] = [...ITENS_GLOBAIS, ...ITENS_PROJETO, ...ITENS_ADMIN]
+/** Tudo, para quem precisa resolver uma rota em rótulo (o breadcrumb).
+ *  `Set` porque `PROJETOS` aparece nas duas listas e é o mesmo objeto. */
+export const ITENS_NAV: ItemNav[] = [
+  ...new Set([...ITENS_GLOBAIS, ...ITENS_PROJETO, ...ITENS_ADMIN]),
+]

@@ -376,15 +376,11 @@ nav .ic {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  /* NO MESMO TRILHO DO CONTEÚDO. A borda de baixo continua atravessando a tela
-     inteira — é ela que separa o chrome do conteúdo —, mas o que está DENTRO da
-     barra fica alinhado com o `main`, que é centrado e limitado a 1180px.
-     Sem isto, o breadcrumb começava na borda esquerda e a busca terminava na
-     direita, enquanto o card embaixo parava no meio: os controles pareciam
-     pertencer a outra tela.
-     O `30px` é o padding horizontal do `main`; o `max()` garante que em tela
-     estreita a barra volte ao respiro mínimo em vez de calcular negativo. */
-  padding: 0 max(20px, calc((100% - var(--w-main)) / 2 + 30px));
+  /* ENCOSTADO NAS LATERAIS. Chegou a acompanhar o trilho do `main`, para os
+     controles ficarem sobre o conteúdo; voltou ao formato de barra de janela,
+     que é o que ela é — o breadcrumb ancorado na esquerda e as ferramentas na
+     direita, indo até as bordas. */
+  padding: 0 20px;
   border-bottom: 1px solid var(--line);
   /* A opaca vem primeiro DE PROPÓSITO: navegador sem `color-mix` descarta a
      segunda e fica com a barra sólida. Sem o fallback, o descarte deixaria a
@@ -455,27 +451,38 @@ select.tb-crumb {
    CRESCE da direita para a esquerda no hover. É o que permite seis ferramentas
    na topbar sem virar seis ícones mudos nem uma barra de texto.
    Se você levar uma coisa só deste sistema, leve esta. */
+/* ACHATADOS. Tinham borda e fundo próprios, o que os transformava em quatro
+   cápsulas competindo com a barra de busca ao lado — quatro molduras numa faixa
+   de 56px viram ruído, e nenhuma delas precisa de moldura para ser encontrada.
+   Agora repousam sem contorno e o fundo só aparece no hover, que é onde a
+   informação "isto clica" é útil. O rótulo que cresce continua igual: é ele,
+   não a borda, que diz o que o botão faz. */
 .pillact {
   position: relative;
   display: flex;
   align-items: center;
-  height: 36px;
+  height: 34px;
   padding: 0 7px;
   gap: 0;
   overflow: hidden;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--r-full);
-  background: var(--panel-2);
-  color: var(--ink-2);
-  transition: color var(--dur-fast), border-color var(--dur-fast);
+  background: none;
+  color: var(--ink-3);
+  transition: color var(--dur-fast), background var(--dur-fast),
+    border-color var(--dur-fast);
 }
 .pillact:hover {
   color: var(--ink);
+  background: var(--hover-ink);
 }
+/* Aberto: aí sim ganha corpo, porque há um painel preso a ele e o botão
+   precisa parecer a âncora desse painel. */
 .pillact.on {
   color: var(--ink);
   font-weight: 650;
-  border-color: var(--line-2);
+  background: var(--panel-2);
+  border-color: var(--line);
 }
 .pillact .rot {
   max-width: 0;
@@ -2203,30 +2210,56 @@ td.num {
 
 .home-grade {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 12px;
+  /* 240px: cabe "Microsoft" e o contador na mesma linha sem truncar, e ainda
+     dá quatro colunas na largura do `main`. */
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
 }
 .home-pasta,
 .home-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 16px;
+  padding: 18px;
   text-align: left;
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
-  transition: border-color var(--dur-fast), background var(--dur-fast);
+  overflow: hidden;
+  transition: border-color var(--dur-fast), background var(--dur-fast),
+    transform var(--dur-fast);
 }
+/* Sobe 1px no hover. É o único movimento da tela e diz "isto abre" sem
+   precisar de sombra nova nem de cor — a pasta já é o elemento clicável, e o
+   card não tem outro estado para confundir com este. */
 .home-pasta:hover,
 .home-card:hover {
   border-color: var(--line-2);
   background: var(--panel);
+  transform: translateY(-1px);
+}
+
+/* --- pasta de cliente --- */
+/* O ícone ganha caixa própria em accent translúcido: é a marca da pasta, e
+   solto ele se perdia contra o nome. Translúcido porque cor cheia num bloco de
+   38px viraria o elemento mais pesado da grade. */
+.home-pasta {
+  gap: 12px;
+}
+.home-pasta-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
 }
 .home-pasta svg { color: var(--accent); }
 .home-pasta-nome {
   color: var(--ink);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 650;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2235,6 +2268,25 @@ td.num {
 .home-pasta-n {
   color: var(--ink-3);
   font-size: 11.5px;
+  margin-top: 2px;
+}
+
+/* --- card de projeto --- */
+.home-card {
+  gap: 8px;
+  /* Espaço para a faixa da macrodisciplina, à esquerda. */
+  padding-left: 20px;
+}
+/* A faixa de cor do projeto — mesma linguagem da célula da matriz. Fica na
+   borda e não no meio do card: é identificação, não estado. */
+.home-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
 }
 .home-card-topo {
   display: flex;
@@ -2252,6 +2304,7 @@ td.num {
   color: var(--ink);
   font-size: 13.5px;
   font-weight: 600;
+  line-height: 1.35;
 }
 
 .home-acordeao {
@@ -2302,21 +2355,27 @@ td.num {
   min-width: 0;
   max-width: 480px;
 }
+/* REDONDA de ponta a ponta (`--r-full`), e não de raio de input. É o único
+   controle da topbar com corpo permanente agora que as pílulas de ação ficaram
+   achatadas — e a cápsula é o que a distingue delas sem precisar de peso. */
 .buscabarra {
   display: flex;
   align-items: center;
   gap: 8px;
   height: 34px;
-  padding: 0 10px;
+  padding: 0 14px;
   border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--panel);
+  border-radius: var(--r-full);
+  background: var(--panel-2);
   color: var(--ink-3);
   transition: border-color var(--dur-fast), background var(--dur-fast);
 }
+.buscabarra:hover {
+  border-color: var(--line-2);
+}
 .buscabarra:focus-within {
   border-color: var(--accent);
-  background: var(--panel-2);
+  background: var(--panel);
 }
 .buscabarra svg {
   flex: none;
@@ -2573,4 +2632,108 @@ td.num {
   gap: 0;
   padding: 0;
   justify-content: center;
+}
+
+/* --- Rodape da sidebar: um slot, uma acao -------------------------------- */
+/* Dentro de um projeto vive aqui o Convidar; fora, o Sair. Um lugar fixo para
+   "a acao desta barra" vale mais do que dois botoes disputando o pe dela. */
+.side-foot {
+  flex: none;
+  padding: 8px;
+  border-top: 1px solid var(--line);
+}
+.side-botao {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--ink-2);
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: left;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.side-botao:hover,
+.side-botao.on {
+  color: var(--ink);
+  background: var(--hover-ink);
+}
+/* Vermelho SO no hover: em repouso, um item permanentemente vermelho na
+   sidebar competiria com o estado semantico das telas. */
+.side-sair:hover {
+  color: var(--bad);
+  background: var(--bad-bg);
+}
+.app[data-nav='off'] .side-botao {
+  gap: 0;
+  padding: 0;
+  justify-content: center;
+}
+
+/* O painel do Convidar. Sobe a partir do rodape e SOBREPOE o conteudo -- a
+   regra "so a esquerda empurra" vale para a sidebar em si, nao para um popover
+   que nasce dela: empurrar aqui reflowaria a tela inteira ao convidar. */
+.side-acao {
+  position: relative;
+}
+.side-painel {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  width: 320px;
+  max-width: 88vw;
+  background: var(--popover);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-xl);
+  z-index: var(--z-popover);
+  animation: uiSurge 0.18s var(--ease);
+}
+/* Recolhida, a barra tem 52px e o painel de 320px transbordaria para fora da
+   tela pela esquerda; ancorar no proprio botao resolve sem media query. */
+.app[data-nav='off'] .side-painel {
+  left: 0;
+}
+.side-convites {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.side-convite {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0;
+  border: none;
+  background: none;
+  color: var(--ink-2);
+  text-align: left;
+  font-size: 12.5px;
+  border-bottom: 1px solid var(--line);
+}
+.side-convite:last-child {
+  border-bottom: none;
+}
+.side-convite:hover {
+  color: var(--ink);
+}
+.side-convite-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A busca da topbar tem cápsula; o `kbd` dentro dela acompanha, senão fica um
+   retângulo dentro de um oval. */
+.buscabarra kbd {
+  border-radius: var(--r-full);
+  padding: 2px 8px;
 }
