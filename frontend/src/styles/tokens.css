@@ -65,7 +65,11 @@
 
   /* Realce de linha de tabela: translúcido sobre a tinta, NUNCA zebra
      (kit §6). Zebra fixa uma cor que erra em um dos dois temas. */
-  --hover-ink: rgb(23 27 34 / 0.035);
+  /* REMOVIDO em 29/07/2026 — ver a regra 6 em `ui-kit-export/README.md`.
+     O realce de cursor deixou de ser fundo e passou a ser tinta. O token fica
+     comentado, e não apagado, para que quem procurar por ele encontre a razão
+     em vez do vazio e o reintroduza achando que sumiu por engano.
+     --hover-ink: rgb(23 27 34 / 0.035); */
 
   /* Cores por macrodisciplina — A=ARCH, C=CIVIL/ESTRUT, M=MEP, S=SITE.
      Paleta categórica validada para o fundo claro: banda de luminosidade,
@@ -133,7 +137,7 @@ html[data-theme='dark'] {
   --purple: #a98ce0;
   --purple-bg: rgb(169 140 224 / 0.13);
 
-  --hover-ink: rgb(250 250 250 / 0.04);
+  /* Ver a nota no tema claro. --hover-ink: rgb(250 250 250 / 0.04); */
 
   /* Passos próprios para o fundo escuro, não um inverso automático do claro:
      a mesma paleta clara reprova aqui em luminosidade e contraste. Estes

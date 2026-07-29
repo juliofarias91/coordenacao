@@ -118,8 +118,8 @@ aside {
   color: inherit;
   transition: background var(--dur-fast);
 }
-.brand:hover {
-  background: var(--hover-ink);
+.brand:hover b {
+  color: var(--accent);
 }
 .brand-txt {
   flex: 1;
@@ -252,7 +252,6 @@ nav .nav-off {
 }
 nav a:hover {
   color: var(--ink);
-  background: var(--hover-ink);
 }
 nav a.on {
   color: var(--ink);
@@ -466,7 +465,6 @@ select.tb-crumb {
 }
 .pillact:hover {
   color: var(--ink);
-  background: var(--hover-ink);
 }
 /* Aberto: aí sim ganha corpo, porque há um painel preso a ele e o botão
    precisa parecer a âncora desse painel. */
@@ -627,7 +625,6 @@ main {
 }
 .dock a.on {
   color: var(--ink);
-  background: var(--hover-ink);
 }
 .dock a.on span {
   max-width: 140px;
@@ -761,7 +758,7 @@ select:focus {
 }
 .btn:hover {
   color: var(--ink);
-  background: var(--hover-ink);
+  border-color: var(--line-2);
 }
 .btn.pri {
   background: var(--accent);
@@ -984,10 +981,12 @@ td {
 }
 tbody tr.clk {
   cursor: pointer;
-  transition: background var(--dur-fast);
+  transition: color var(--dur-fast);
 }
+/* TINTA, não fundo (ver a regra 6 em `ui-kit-export/README.md`). A linha
+   inteira escurece para `--ink`; quem estava em `--ink-2` sobe junto. */
 tbody tr.clk:hover {
-  background: var(--hover-ink);
+  color: var(--ink);
 }
 .gtabela td.num,
 td.num {
@@ -1427,7 +1426,6 @@ td.num {
   transition: background var(--dur-fast), color var(--dur-fast);
 }
 .useritem:hover {
-  background: var(--hover-ink);
   color: var(--ink);
 }
 .useritem svg {
@@ -1538,7 +1536,6 @@ td.num {
 }
 .sinorodape:hover {
   color: var(--ink);
-  background: var(--hover-ink);
 }
 
 /* ------------------------------------------------- cabeçalho do detalhe */
@@ -1912,10 +1909,10 @@ td.num {
   gap: 10px;
   padding: 12px 16px;
   cursor: pointer;
-  transition: background var(--dur-fast);
+  transition: color var(--dur-fast);
 }
 .aud-cab:hover {
-  background: var(--hover-ink);
+  color: var(--ink);
 }
 .aud-seta {
   flex: none;
@@ -2225,7 +2222,6 @@ td.num {
   font-weight: 600;
 }
 .home-voltar:hover {
-  background: var(--hover-ink);
   border-color: var(--line-2);
 }
 
@@ -2339,12 +2335,11 @@ td.num {
   background: none;
   border: none;
   border-radius: var(--r-md);
-  /* Realce é a própria tinta a 3–4%, NUNCA zebra: zebra fixa uma cor que
-     acerta em um tema e erra no outro. */
-  transition: background var(--dur-fast);
+  /* Realce é TINTA, nunca fundo e nunca zebra (regra 6). */
+  transition: color var(--dur-fast);
 }
 .home-linha-pasta:hover,
-.home-linha-projeto:hover { background: var(--hover-ink); }
+.home-linha-projeto:hover { color: var(--ink); }
 .home-linha-pasta svg { color: var(--accent); }
 .home-linha-pasta .home-pasta-n { margin-left: auto; }
 .home-linha-projeto {
@@ -2451,12 +2446,13 @@ td.num {
   background: none;
   border: none;
   border-top: 1px solid var(--line);
-  transition: background var(--dur-fast);
+  transition: color var(--dur-fast);
 }
 .buscaitem:first-child { border-top: none; }
 /* Teclado e mouse compartilham o mesmo realce: sem isso, navegar com as setas
-   deixa duas linhas parecendo selecionadas ao mesmo tempo. */
-.buscaitem.on { background: var(--hover-ink); }
+   deixa duas linhas parecendo selecionadas ao mesmo tempo.
+   Realce por TINTA E PESO (regra 6) — é o mesmo par que marca item ativo. */
+.buscaitem.on { color: var(--ink); font-weight: 600; }
 .buscatit {
   flex: 1;
   min-width: 0;
@@ -2584,42 +2580,6 @@ td.num {
   margin-bottom: 4px;
 }
 
-/* --- Caminho de volta da sidebar contextual ------------------------------- */
-/* Dentro de um projeto a sidebar troca inteira, e este bloco e a porta de
-   saida. Fica ACIMA dos grupos e com um separador embaixo: e cabecalho de
-   contexto, nao mais um item de menu -- se parecesse item, competiria com o
-   destino de verdade. */
-.nav-volta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 8px;
-  margin-bottom: 6px;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  text-decoration: none;
-  color: var(--ink-2);
-  overflow: hidden;
-}
-.nav-volta:hover {
-  color: var(--ink);
-  background: var(--hover-ink);
-}
-/* Uma linha só: o rótulo diz para onde se volta, e o código do projeto vive no
-   breadcrumb da topbar. Duas linhas aqui faziam o bloco parecer o cabeçalho do
-   projeto, competindo com o destino de verdade. */
-.nav-volta .nav-rot {
-  font-size: 13px;
-  font-weight: 600;
-}
-/* Recolhida sobra so a seta, centrada como os icones dos itens. */
-.app[data-nav='off'] .nav-volta {
-  gap: 0;
-  padding: 0;
-  justify-content: center;
-}
-
 /* --- Rodape da sidebar: um slot, uma acao -------------------------------- */
 /* Dentro de um projeto vive aqui o Convidar; fora, o Sair. Um lugar fixo para
    "a acao desta barra" vale mais do que dois botoes disputando o pe dela. */
@@ -2652,7 +2612,6 @@ td.num {
 .side-botao:hover,
 .side-botao.on {
   color: var(--ink);
-  background: var(--hover-ink);
 }
 /* Vermelho SO no hover: em repouso, um item permanentemente vermelho na
    sidebar competiria com o estado semantico das telas. */

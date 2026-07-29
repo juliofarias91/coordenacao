@@ -108,6 +108,42 @@ A sidebar empurra o conteúdo (`padding-left` via `--sidebar-w`). O painel da di
 
 A borda a 14% fica só um degrau acima do fundo — contorno discreto. A 18% (valor comum em temas shadcn) aparece uma linha cinza destacada em volta de cada card que muda completamente a leitura da tela.
 
+### 3.6 Hover é TINTA. Nunca fundo.
+
+**Nenhum elemento ganha cor de fundo por causa do cursor.** Passar o mouse
+escurece a tinta para `--ink` — e só. Vale para item de menu, linha de tabela,
+linha de lista, item de dropdown, botão neutro, pílula da topbar, resultado de
+busca: todos.
+
+É a mesma ideia da regra 3.1 levada ao seu limite. Se *estar ativo* — que é um
+estado permanente e informativo — não merece um retângulo colorido, *estar sob
+o cursor* merece menos ainda: é um estado que dura meio segundo e que o próprio
+ponteiro já anuncia. Numa tabela de trinta linhas, o retângulo que segue o mouse
+é o elemento que mais se move na tela, competindo com o dado que se foi ali
+ler.
+
+Onde a tinta não basta, o substituto é a **borda**, não o fundo: controle que já
+tem contorno (botão neutro, campo, chip) escurece o contorno para `--line-2`.
+
+```css
+/* certo */                      /* errado */
+nav a:hover  { color: var(--ink); }   nav a:hover { background: rgb(0 0 0 / .04); }
+tr.clk:hover { color: var(--ink); }   tr.clk:hover { background: var(--hover-ink); }
+.btn:hover   { border-color: var(--line-2); }
+```
+
+**As três exceções, e por que não são exceções de verdade:**
+
+| Caso | Por quê |
+|---|---|
+| `.btn.pri` escurece o preenchimento | Não é realce aparecendo: é a superfície do próprio botão, que já era cheia, mudando de tom. |
+| Destrutivo (`Sair`, `Remover`) fica vermelho translúcido | Regra 3.2 — destrutivo é um dos três lugares onde cor entra. O vermelho no hover é o único aviso de que a ação não volta atrás. |
+| Estado semântico (`ok/alerta/ruim`) | Também 3.2, e não tem nada a ver com cursor: está lá com ou sem mouse. |
+
+> Havia um token `--hover-ink` (a tinta a 3–4%) para isto. Ele foi **retirado** em
+> 29/07/2026 e ficou comentado em `tokens.css` com o motivo, para quem o
+> procurar achar a razão em vez do vazio.
+
 ---
 
 ## 4. Escalas de referência

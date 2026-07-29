@@ -18,7 +18,7 @@ Princípio central: **a auditoria é a única fonte de dado. Painel de controle,
 - `docs/Especificacao_Plataforma_Auditoria_BIM.md` — modelo de dados conceitual e regras de negócio.
 - `docs/Backlog_Piloto_SPBIM.md` — backlog do piloto (se precisar de tarefas granularizadas).
 - `docs/prototipo_auditoria_bim.html` — **protótipo navegável**: define os fluxos, as telas e os estados. Continua sendo a referência de **o que cada tela mostra**. Não é mais a referência de **como ela parece** — ver a seção "Sistema visual" abaixo.
-- `ui-kit-export/README.md` — **a linguagem visual**: as cinco regras, as escalas e a régua do esqueleto.
+- `ui-kit-export/README.md` — **a linguagem visual**: as seis regras, as escalas e a régua do esqueleto. **Consulte antes de criar ou ajustar qualquer visual** — é a seção 3 dele, e o resumo está na seção "Sistema visual" abaixo.
 
 ## Ordem de construção (roadmap — ver plano técnico, seção 8)
 
@@ -50,8 +50,13 @@ não foram tocadas: `src/styles/tokens.css` e `src/styles/app.css` é que passar
 a expressar a linguagem do kit. Para mudar o visual de algo, mexa nesses dois —
 não espalhe estilo pelas páginas.
 
-**As cinco regras. Uma tela nova que as siga "parece do sistema"; que as
-ignore, não:**
+**LEIA ESTAS REGRAS ANTES DE CRIAR OU AJUSTAR QUALQUER VISUAL** — tela nova,
+componente novo, ou mexida num que já existe. Elas não são preferência de
+estilo: cada uma foi paga com uma tela que ficou errada. Uma tela que as siga
+"parece do sistema"; que as ignore, não. A versão longa, com exemplos de código
+e contra-exemplos, está em `ui-kit-export/README.md` §3.
+
+**As seis regras:**
 
 1. **Ativo é cor + peso, nunca pílula colorida.** Item de sidebar, aba,
    breadcrumb atual: tinta cheia e negrito, sem fundo. Numa coluna de nove
@@ -72,6 +77,18 @@ ignore, não:**
    saturação zero. O azul-ardósia de antes saiu. O espaçamento entre os três
    níveis é o que produz a hierarquia de superfície; se mexer, preserve os
    degraus.
+6. **Hover é TINTA, nunca fundo.** Nenhum elemento ganha cor de fundo por causa
+   do cursor: passar o mouse escurece a tinta para `--ink`, e só. Vale para item
+   de menu, linha de tabela, linha de lista, item de dropdown, botão neutro,
+   pílula da topbar, resultado de busca. É a regra 1 levada ao limite — se
+   *estar ativo*, que é permanente e informativo, não merece retângulo colorido,
+   *estar sob o cursor* merece menos: dura meio segundo e o ponteiro já o
+   anuncia. Numa tabela de trinta linhas, o retângulo que segue o mouse é o que
+   mais se move na tela, competindo com o dado que se foi ali ler.
+   Onde tinta não basta, o substituto é **borda** (`--line-2`), nunca fundo.
+   Três exceções, e nenhuma é realce de cursor: `.btn.pri` escurece o próprio
+   preenchimento, destrutivo fica vermelho translúcido (regra 2), e estado
+   semântico está lá com ou sem mouse. O token `--hover-ink` foi retirado.
 
 **Escalas — não invente um sexto degrau.** Raio: `--r-md` controle pequeno,
 `--r-lg` input/botão, `--r-xl` card interno/popover, `--r-2xl` **card de página
@@ -83,8 +100,10 @@ acima de header de ferramenta. Movimento: **duas** curvas (`--dur`/`--ease`
 domina; em dúvida é ela).
 
 **Armadilhas deste transplante:**
-- Realce de linha de tabela é `--hover-ink` (a própria tinta a 3–4%), **nunca
-  zebra**. Zebra fixa uma cor que acerta em um tema e erra no outro.
+- Realce de linha de tabela é **tinta** (regra 6): a linha escurece para
+  `--ink`. Nunca zebra — zebra fixa uma cor que acerta em um tema e erra no
+  outro — e, desde 29/07/2026, nunca fundo tampouco. Chegou a ser `--hover-ink`;
+  o token não existe mais.
 - Topbar, dock e cabeçalho do portal declaram `background` **duas vezes**: a
   opaca antes do `color-mix`. Navegador sem `color-mix` descarta a segunda e
   fica com a barra sólida; sem o fallback ela ficaria transparente e o conteúdo
