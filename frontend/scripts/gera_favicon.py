@@ -30,20 +30,54 @@ import pathlib
 
 from PIL import Image, ImageDraw
 
-# --- geometria do glifo (viewBox 64×64) -----------------------------------
+# --- geometria do glifo (viewBox 64x64) -----------------------------------
 # O símbolo de compartilhar: três nós e duas hastes, num triângulo deitado —
 # o nó da esquerda no meio da altura, os outros dois à direita e simétricos.
+#
+# As coordenadas abaixo são o DESENHO; a posição final sai de `_centragem()`.
+# Escrever números já centrados à mão é o jeito mais fácil de descentralizar de
+# novo na próxima vez que a escala mudar.
 LADO = 64.0
-# O glifo OCUPA O DISCO. Um símbolo pequeno com muita margem branca funciona
-# num ícone de 180px e some num favicon de 16px, que é onde ele passa 99% do
-# tempo — a esta altura o que se vê é a silhueta, e ela precisa de área.
-R_NO = 7.8  # raio dos nós
-ESP_HASTE = 5.2  # espessura das hastes
-NO_ESQ = (19.0, 32.0)
-NO_SUP = (46.0, 16.5)
-NO_INF = (46.0, 47.5)
-R_DISCO = 31.0
 CENTRO = (32.0, 32.0)
+R_DISCO = 31.0
+
+ESCALA = 0.86  # o glifo respira: cheio demais, ele encosta no aro
+R_NO = 7.8 * ESCALA
+ESP_HASTE = 5.2 * ESCALA
+_ESQ = (19.0, 32.0)
+_SUP = (46.0, 16.5)
+_INF = (46.0, 47.5)
+
+# Compensação ÓPTICA. O glifo tem um nó sozinho à esquerda e dois nós mais o
+# vértice do "V" à direita: a tinta pesa para a direita, e centrar pela caixa
+# delimitadora deixa a peça visualmente deslocada. Meio pixel para a esquerda
+# resolve — é pouco, e é exatamente o que o olho estava reclamando.
+NUDGE_X = -0.5
+
+
+def _escalar(ponto):
+    cx, cy = CENTRO
+    return (cx + (ponto[0] - cx) * ESCALA, cy + (ponto[1] - cy) * ESCALA)
+
+
+def _centragem():
+    """Quanto mover o glifo para a caixa dele ficar no centro do disco.
+
+    Calculado, não digitado: assim mexer em `ESCALA` ou nas coordenadas não
+    exige refazer a conta de cabeça — e não há como esquecer de refazê-la.
+    """
+    pontos = [_escalar(q) for q in (_ESQ, _SUP, _INF)]
+    xs = [x for x, _ in pontos]
+    ys = [y for _, y in pontos]
+    meio_x = (min(xs) - R_NO + max(xs) + R_NO) / 2
+    meio_y = (min(ys) - R_NO + max(ys) + R_NO) / 2
+    return (CENTRO[0] - meio_x + NUDGE_X, CENTRO[1] - meio_y)
+
+
+_DX, _DY = _centragem()
+NO_ESQ = (_escalar(_ESQ)[0] + _DX, _escalar(_ESQ)[1] + _DY)
+NO_SUP = (_escalar(_SUP)[0] + _DX, _escalar(_SUP)[1] + _DY)
+NO_INF = (_escalar(_INF)[0] + _DX, _escalar(_INF)[1] + _DY)
 
 # --- sombra ---------------------------------------------------------------
 # 45° para SUDESTE: em SVG e em imagem o y cresce para BAIXO, então x e y
@@ -91,6 +125,10 @@ def svg() -> str:
         # cima — uma definição, duas aparições.
         f'<defs><g id="g">{_glifo_svg("currentColor")}</g>'
         f'<clipPath id="disco"><circle cx="{cx}" cy="{cy}" r="{R_DISCO}"/></clipPath></defs>'
+        # FUNDO BRANCO NA PEÇA INTEIRA, não só dentro do disco. Com o canto
+        # transparente o ícone virava um disco flutuando sobre a cor da aba,
+        # e em aba escura o branco do disco brigava com o preto em volta.
+        f'<rect width="64" height="64" fill="{BRANCO}"/>'
         f'<circle cx="{cx}" cy="{cy}" r="{R_DISCO}" fill="{BRANCO}" '
         f'stroke="{ARO}" stroke-width="1.4"/>'
         # `opacity` no GRUPO: os 68 passos se sobrepõem, e a translucidez
@@ -124,7 +162,8 @@ def png(lado_final: int) -> Image.Image:
     # redução. Sem isso o disco fica serrilhado a 32px.
     k = 8
     tam = int(LADO) * k
-    img = Image.new("RGBA", (tam, tam), (0, 0, 0, 0))
+    # Opaco desde o início — ver a nota no SVG.
+    img = Image.new("RGBA", (tam, tam), (255, 255, 255, 255))
     d = ImageDraw.Draw(img)
 
     cx, cy = CENTRO[0] * k, CENTRO[1] * k
