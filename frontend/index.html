@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SPBIM · Central de Auditoria BIM</title>
+
+    <!-- O SVG primeiro: quem o entende (todo navegador atual) usa ele, e fica
+         nítido em qualquer densidade de tela. O `.ico` é `alternate icon` e
+         só é buscado por quem ignorou o de cima — é o fallback, não o padrão.
+         Os três saem de `scripts/gera_favicon.py`, do MESMO desenho: gerar em
+         vez de exportar à mão é o que impede o `.ico` de envelhecer sozinho
+         quando o SVG mudar. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2547b0" />
     <script>
       // Aplica o tema antes da primeira pintura, para não piscar branco.
       try {
