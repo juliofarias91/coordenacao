@@ -246,7 +246,11 @@ export default function Shell() {
             esquerdo é onde se clica para voltar ao começo em qualquer sistema.
             `end` para não ficar marcada como ativa em toda rota. */}
         <NavLink className="brand" to="/" end title={L('Ir para o início', 'Go to home')}>
-          <div className="mk">SP</div>
+          {/* SEM MARCA GRÁFICA por enquanto. O quadrado "SP" era um
+              provisório, e um provisório em accent no canto superior esquerdo
+              puxa mais atenção do que o item de menu ativo logo abaixo — o
+              contrário do que a regra 1 do sistema pede. Volta quando houver
+              logotipo de verdade. */}
           <div className="brand-txt">
             <b>SPBIM</b>
             <span>{L('Central de Auditoria', 'Audit Center')}</span>

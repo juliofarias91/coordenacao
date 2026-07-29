@@ -222,9 +222,11 @@ export default function BuscaGlobal() {
             'Project, client, model, criterion…',
           )}
         />
-        {/* O atalho fica escrito no próprio campo: é como se descobre que ele
-            existe sem ler documentação. Vira "esc" enquanto há o que fechar. */}
-        <kbd>{aberto ? 'esc' : 'Ctrl K'}</kbd>
+        {/* SEM o `Ctrl K` / `esc` escrito no campo. Fazia sentido quando a busca
+            era uma pílula que só abria por atalho — era assim que se descobria
+            que o atalho existia. Com a barra fixa e visível, ele virou ruído
+            permanente ocupando o fim de um campo que precisa da largura para
+            mostrar o que se digitou. Os dois atalhos continuam funcionando. */}
       </div>
 
       {aberto && (

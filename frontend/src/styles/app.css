@@ -121,20 +121,6 @@ aside {
 .brand:hover {
   background: var(--hover-ink);
 }
-.brand .mk {
-  width: 30px;
-  height: 30px;
-  flex: none;
-  border-radius: var(--r-md);
-  background: var(--accent);
-  color: var(--accent-ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 13px;
-  font-family: var(--mono);
-}
 .brand-txt {
   flex: 1;
   min-width: 0;
@@ -376,11 +362,11 @@ nav .ic {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  /* ENCOSTADO NAS LATERAIS. Chegou a acompanhar o trilho do `main`, para os
-     controles ficarem sobre o conteúdo; voltou ao formato de barra de janela,
-     que é o que ela é — o breadcrumb ancorado na esquerda e as ferramentas na
-     direita, indo até as bordas. */
-  padding: 0 20px;
+  /* ENCOSTADO NAS LATERAIS, no mesmo eixo do conteúdo. Agora que o `main` é de
+     largura cheia com o mesmo `--pad-x`, as duas coisas coincidem sem cálculo:
+     o breadcrumb cai sobre o título da página e as ferramentas terminam onde a
+     tabela termina. */
+  padding: 0 var(--pad-x);
   border-bottom: 1px solid var(--line);
   /* A opaca vem primeiro DE PROPÓSITO: navegador sem `color-mix` descarta a
      segunda e fica com a barra sólida. Sem o fallback, o descarte deixaria a
@@ -461,6 +447,12 @@ select.tb-crumb {
   position: relative;
   display: flex;
   align-items: center;
+  /* NUNCA ENCOLHE. Sem isto o botão herda `flex-shrink: 1`, e quando o rótulo
+     cresce no hover a fileira passa a faltar espaço: o flex espreme os botões
+     e o `overflow: hidden` corta o texto no meio — era o "Portugu" e o "Lig"
+     dos prints. Quem cede espaço é a barra de busca, que tem `flex: 1 1` e
+     `min-width: 0` justamente para isso. */
+  flex: none;
   height: 34px;
   padding: 0 7px;
   gap: 0;
@@ -495,9 +487,15 @@ select.tb-crumb {
   transition: max-width 0.3s var(--ease), opacity 0.3s var(--ease),
     margin var(--dur) var(--ease);
 }
+/* `max-width` folgado, e não medido: o rótulo MUDA COM O IDIOMA — "Escuro"
+   tem 6 letras, "Notificações" tem 12, e um teto ajustado ao português cortaria
+   o inglês (ou o contrário). Como o elemento só ocupa a largura do próprio
+   texto, um teto generoso não abre buraco nenhum; ele apenas deixa de ser a
+   régua. O custo é a animação terminar um pouco antes nos rótulos curtos, que
+   é invisível a 300ms. */
 .pillact:hover .rot,
 .pillact:focus-visible .rot {
-  max-width: 130px;
+  max-width: 220px;
   margin: 0 6px 0 2px;
   opacity: 1;
 }
@@ -533,16 +531,19 @@ select.tb-crumb {
   font-weight: 700;
 }
 
-/* CENTRADO na coluna, não encostado à esquerda.
-   O limite de 1180px é proposital (ver CLAUDE.md), mas encostá-lo à esquerda
-   deixava um vão morto crescente à direita em tela larga — e, pior, o
-   conteúdo terminava a meio caminho enquanto a topbar ia até a borda, o que
-   fazia a busca e o avatar flutuarem longe de tudo o que comandam. */
+/* LARGURA CHEIA. Já foi limitado a 1180px e centrado; deixou de ser.
+   As telas desta plataforma são tabela, matriz modelo × área e grade de
+   projetos — em todas elas largura é INFORMAÇÃO: mais colunas visíveis sem
+   rolar na horizontal, mais pastas por linha. Um limite de leitura faz sentido
+   para prosa (ver `.doc` e `.top .sub`, que continuam limitados), não para
+   uma planilha.
+
+   O padding lateral é o MESMO da topbar (`--pad-x`), para o breadcrumb cair
+   exatamente sobre o título da página. */
 main {
-  padding: 26px 30px 70px;
-  max-width: var(--w-main);
+  padding: 26px var(--pad-x) 70px;
   width: 100%;
-  margin: 0 auto;
+  min-width: 0;
 }
 .top {
   display: flex;
@@ -558,7 +559,10 @@ main {
   letter-spacing: -0.3px;
 }
 /* O subtítulo NÃO é decorativo: é onde a tela diz o que faz. Sem ele o
-   usuário descobre a função da tela clicando. */
+   usuário descobre a função da tela clicando.
+   O limite de 660px FICA mesmo com o conteúdo em largura cheia: é medida de
+   leitura, não de layout — um parágrafo esticado a 1800px atravessa a tela e
+   o olho perde o começo da linha seguinte. */
 .top .sub {
   color: var(--ink-2);
   font-size: 13px;
@@ -1349,9 +1353,11 @@ td.num {
 .portalcab .switch {
   margin: 0;
 }
+/* O portal do cliente segue a mesma regra do `main`: largura cheia. Ele mostra
+   a mesma matriz e a mesma tabela de modelos, e o cliente lê isso na tela que
+   tem — limitar a 1100px o obrigava a rolar na horizontal num monitor largo. */
 .portalcorpo {
-  padding: 26px 30px 70px;
-  max-width: 1100px;
+  padding: 26px var(--pad-x) 70px;
 }
 
 /* ============================================================================
@@ -2406,16 +2412,6 @@ td.num {
   outline: none;
   box-shadow: none;
 }
-.buscabarra kbd {
-  flex: none;
-  padding: 2px 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--ink-3);
-  white-space: nowrap;
-}
 /* Abaixo de 820px a sidebar some e o dock assume; a busca cede o lugar ao
    breadcrumb, que é o que diz onde se está. */
 @media (max-width: 820px) {
@@ -2440,32 +2436,6 @@ td.num {
   box-shadow: var(--sh-xl);
   z-index: var(--z-popover);
   animation: uiSurge 0.18s var(--ease);
-}
-.buscacampo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  border-bottom: 1px solid var(--line);
-}
-.buscacampo .f {
-  flex: 1;
-  border: none;
-  background: none;
-}
-.buscacampo .f:focus {
-  outline: none;
-  box-shadow: none;
-}
-.buscacampo kbd {
-  flex: none;
-  padding: 2px 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--panel-2);
-  color: var(--ink-3);
-  font-family: var(--mono);
-  font-size: 10px;
 }
 .buscalista {
   max-height: 56vh;
@@ -2580,9 +2550,14 @@ td.num {
 }
 
 /* --- Página de texto corrido (política de privacidade) -------------------- */
-/* Serve às DUAS árvores de rota: dentro do Shell, onde `main` já limita a
-   largura e dá o respiro; e fora dele, para quem ainda não entrou — daí a
-   margem automática e o padding próprios, que só têm efeito no segundo caso. */
+/* A ÚNICA TELA QUE CONTINUA LIMITADA, e de propósito.
+   O resto da plataforma passou a usar a largura cheia porque suas telas são
+   tabela e matriz, onde largura é informação. Aqui é PROSA: uma linha de texto
+   a 1800px é ilegível — o olho perde o começo da linha seguinte. 760px é
+   medida de leitura, não sobra de layout.
+
+   Serve às duas árvores de rota: dentro do Shell e fora dele, para quem ainda
+   não entrou — daí ter margem e padding próprios. */
 .doc {
   max-width: 760px;
   margin: 0 auto;
@@ -2648,10 +2623,13 @@ td.num {
 /* --- Rodape da sidebar: um slot, uma acao -------------------------------- */
 /* Dentro de um projeto vive aqui o Convidar; fora, o Sair. Um lugar fixo para
    "a acao desta barra" vale mais do que dois botoes disputando o pe dela. */
+/* SEM linha separando do resto da barra. A separação já vem do vão: o rodapé
+   é empurrado para o pé pelo `nav-scroll`, e a distância entre ele e o último
+   item do menu diz sozinha que é outra coisa. A régua só somava um traço numa
+   coluna que já tem o divisor dos grupos. */
 .side-foot {
   flex: none;
   padding: 8px;
-  border-top: 1px solid var(--line);
 }
 .side-botao {
   display: flex;
@@ -2742,9 +2720,3 @@ td.num {
   white-space: nowrap;
 }
 
-/* A busca da topbar tem cápsula; o `kbd` dentro dela acompanha, senão fica um
-   retângulo dentro de um oval. */
-.buscabarra kbd {
-  border-radius: var(--r-full);
-  padding: 2px 8px;
-}

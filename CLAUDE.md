@@ -95,9 +95,16 @@ domina; em dúvida é ela).
   não fica exposto na barra — é destrutivo, e um clique errado derrubaria a
   sessão no meio de uma auditoria. As classes `.userbox/.av/.nm/.rl` continuam
   valendo: o que mudou foi onde o bloco é montado, não do que ele é feito.
-- A sidebar nasce **expandida**, ao contrário do padrão do kit. Lá o padrão é
-  recolhida porque as telas são full-bleed; aqui `main` é limitado a 1180px e
-  recolher não devolve espaço a ninguém.
+- A sidebar nasce **expandida**, ao contrário do padrão do kit — mas agora
+  recolher **devolve espaço de verdade**, e a razão original caiu: `main` já
+  foi limitado a 1180px e centrado, e desde 29/07/2026 usa a **largura cheia**
+  com `--pad-x` de margem lateral (o mesmo da topbar, para o breadcrumb cair
+  sobre o título). As telas daqui são tabela, matriz modelo × área e grade de
+  projetos: largura é informação, não sobra.
+  As duas exceções são **prosa**, e continuam limitadas de propósito —
+  `.top .sub` a 660px e a política de privacidade (`.doc`) a 760px. Medida de
+  leitura não é medida de layout: um parágrafo a 1800px atravessa a tela e o
+  olho perde o começo da linha seguinte.
 
 ## Módulo de auditoria de arquivos (portado do Auditer)
 

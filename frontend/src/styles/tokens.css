@@ -176,7 +176,16 @@ html[data-theme='dark'] {
   --h-bar: 2.5rem;           /* 40px                                    */
   --h-dock: 52px;            /* dock mobile                             */
   --w-popover: 20rem;        /* 320px — popovers da topbar              */
-  --w-main: 1180px;
+
+  /* MARGEM LATERAL DO CONTEÚDO — o mesmo valor na topbar e no `main`, para o
+     breadcrumb cair exatamente sobre o título da página. Trocar aqui move as
+     duas juntas; foi para isso que virou token.
+
+     Não existe mais `--w-main`: o conteúdo ocupava no máximo 1180px e ficava
+     centrado, o que em tela larga desperdiçava as laterais — numa plataforma
+     cujas telas são tabela, matriz modelo × área e grade de projetos, largura
+     é informação, não sobra. */
+  --pad-x: 24px;
 
   /* --- z-index: uma escala só, declarada num lugar só (kit) -------------- */
   --z-dock: 30;
