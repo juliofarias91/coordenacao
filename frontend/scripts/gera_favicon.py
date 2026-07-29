@@ -52,8 +52,8 @@ R_LENTE = 12.5 * ESCALA
 # O ANEL FINO É O QUE SALVA O ÍCONE. O furo da lente é a única coisa que
 # distingue uma lupa de um alfinete: se o traço engrossar junto com o raio, a
 # 16px o furo fecha por antialiasing e sobra uma bolota com um rabo.
-ESP_ANEL = 4.4 * ESCALA
-ESP_CABO = 5.4 * ESCALA
+ESP_ANEL = 6.0 * ESCALA
+ESP_CABO = 6.9 * ESCALA
 _LENTE = (27.5, 27.5)
 # O cabo vai da borda da lente para fora, sempre a 45°. `_CABO_ATE` é o quanto
 # ele avança ALÉM da borda — assim mexer no raio da lente não descola o cabo.
