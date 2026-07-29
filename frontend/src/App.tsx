@@ -6,7 +6,8 @@ import { useI18n } from '@/i18n'
 import Shell from '@/layout/Shell'
 import Admin from '@/pages/admin'
 import Apontamentos from '@/pages/Apontamentos'
-import Auditoria from '@/pages/Auditoria'
+import Auditoria from '@/pages/auditoria'
+import Recorte from '@/pages/auditoria/Recorte'
 import BimMandate from '@/pages/BimMandate'
 import Configuracao from '@/pages/configuracao'
 import {
@@ -41,6 +42,7 @@ import Painel from '@/pages/Painel'
 import Peb from '@/pages/Peb'
 import Placeholder from '@/pages/Placeholder'
 import PlanilhaGeral from '@/pages/PlanilhaGeral'
+import PlanilhaLod from '@/pages/PlanilhaLod'
 import Portal from '@/pages/Portal'
 import Relatorios from '@/pages/Relatorios'
 import EscopoProjeto, { RotaLegada } from '@/projeto/EscopoProjeto'
@@ -186,21 +188,28 @@ export default function App() {
               <Route path="modelos/:modeloId" element={<ModeloView />} />
               <Route path="painel" element={<Navigate to="../modelos" replace />} />
               <Route path="kpis" element={<Kpis />} />
-              {/* Os seis recortes de auditoria são A MESMA TELA com outro
-                  `checklist`. O backend já servia assim; faltava a porta. */}
-              {/* A PLANILHA vem ANTES da tela genérica: `auditoria/geral/:id` e
-                  `auditoria/:checklist` casariam os dois com `/auditoria/geral/
-                  <uuid>` se a ordem fosse a inversa — e o React Router escolhe
-                  a rota mais específica, mas escrever na ordem certa deixa a
-                  intenção legível. É o preenchimento de um modelo; a de cima é
-                  o controle de todos. */}
-              <Route path="auditoria/geral/:modeloId" element={<PlanilhaGeral />} />
-              <Route path="auditoria/:checklist" element={<Auditoria />} />
-              <Route path="auditoria" element={<Navigate to="geral" replace />} />
+              {/* AUDITORIA — uma entrada na barra, seis recortes num painel
+                  DENTRO da página. `Auditoria` é o esqueleto (painel + os dois
+                  cabeçalhos alinhados) e tudo abaixo é filho dele, para que o
+                  painel não seja desmontado e remontado a cada navegação.
+                  As planilhas vêm ANTES do `:checklist` genérico: escrever na
+                  ordem da especificidade deixa a intenção legível, mesmo o
+                  roteador já escolhendo a mais específica. */}
+              <Route path="auditoria" element={<Auditoria />}>
+                <Route path="geral/:modeloId" element={<PlanilhaGeral />} />
+                <Route path="lod300/:modeloId" element={<PlanilhaLod />} />
+                <Route path=":checklist" element={<Recorte />} />
+                {/* Sem recorte, quem redireciona é o próprio `Auditoria` — o
+                    padrão é conhecimento dele, não da tabela de rotas. */}
+                <Route index element={null} />
+              </Route>
               <Route path="relatorios" element={<Relatorios />} />
-              {/* CONFIGURAÇÃO — a quarta área com sidebar própria. Eram sete
-                  abas numa linha só; cada uma virou rota, e `Configuracao`
-                  ficou com a guarda de projeto e o `Outlet`. */}
+              {/* CONFIGURAÇÃO DO PROJETO — uma PÁGINA COM ABAS, não uma área.
+                  Chegou a ter sidebar própria e voltou às abas em 29/07/2026: as
+                  seis seções são o cadastro de um projeto, feito de uma vez, e
+                  trocar a barra a cada seção fazia perder de vista em que
+                  projeto se estava. As rotas ficaram — a aba é um `NavLink`, e é
+                  por isso que o endereço continua dizendo em que seção se está. */}
               <Route path="configuracao" element={<Configuracao />}>
                 <Route index element={<Navigate to="projeto" replace />} />
                 <Route path="projeto" element={<CfgProjeto />} />

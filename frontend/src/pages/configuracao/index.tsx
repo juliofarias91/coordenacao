@@ -1,26 +1,39 @@
-/** Fase 1 · Configuração do projeto — uma ÁREA com sidebar própria.
+/** Fase 1 · Configuração do projeto — UMA PÁGINA com abas.
  *
- *  Eram sete abas numa linha só. Aba serve para alternar entre visões do MESMO
- *  assunto; aqui são sete assuntos distintos — quem cadastra projetista não
- *  está a meio caminho de escolher cores —, e sete rótulos como "Nomenclaturas
- *  & padrões" não cabem lado a lado sem quebrar em duas linhas.
+ *  Aqui se define disciplinas, projeto & cliente, projetistas, nomenclatura &
+ *  padrões e cores. **Tudo dentro da página**: a barra lateral do projeto não
+ *  sai da tela e não é trocada por outra.
  *
- *  É a QUARTA área contextual da plataforma, pelo mesmo mecanismo das outras
- *  (`layout/nav.ts`): entra-se nela e a barra troca inteira, com o caminho de
- *  volta no topo. Como no painel administrativo, este arquivo ficou só com a
- *  guarda e o `Outlet` — cada aba virou rota, e o título de cada uma vive na
- *  própria tela.
+ *  ELA JÁ FOI UMA ÁREA COM SIDEBAR PRÓPRIA, e voltou a ser abas em 29/07/2026,
+ *  a pedido. O argumento de então — "aba serve para alternar entre visões do
+ *  MESMO assunto, e aqui são assuntos distintos" — estava errado sobre o que
+ *  estas seis são: elas são o cadastro de UM projeto, feito de uma vez, e quem
+ *  o preenche passa por todas em sequência. Trocar a barra inteira a cada
+ *  seção fazia perder de vista em que projeto se estava, e a área nova ficava
+ *  indistinguível do painel administrativo — que é de outro escopo.
  *
- *  A aba "Usuários & acessos" SAIU: o CRUD de usuário é de nível de
- *  organização e já tem duas portas (Home › Gerenciar membros e o painel
- *  administrativo). Uma terceira, dentro da configuração de UM projeto,
- *  sugeria que o cadastro fosse do projeto — e não é.
+ *  As ROTAS ficaram (`configuracao/projeto`, `/disciplinas`, …). A aba é um
+ *  `NavLink`, não estado local: o endereço continua dizendo em que seção se
+ *  está, o link é copiável e o botão voltar do navegador funciona entre abas.
+ *  Um `useState` aqui teria custado as três coisas de uma vez.
  */
-import { Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 
 import { Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { useProjeto } from '@/projeto/ProjetoContext'
+
+/** A ordem é a de quem monta um projeto do zero: identifica o projeto, diz
+ *  quem produz, define como o arquivo se chama, e só então as disciplinas — que
+ *  dependem de projetista e de nomenclatura para fazerem sentido. */
+const ABAS: Array<[string, string, string]> = [
+  ['projeto', 'Projeto & Cliente', 'Project & Client'],
+  ['projetistas', 'Projetistas', 'Designers'],
+  ['nomenclaturas', 'Nomenclaturas & padrões', 'Nomenclatures & standards'],
+  ['disciplinas', 'Disciplinas', 'Disciplines'],
+  ['cores', 'Cores', 'Colors'],
+  ['cliente', 'Convidar cliente', 'Invite client'],
+]
 
 export default function Configuracao() {
   const { L } = useI18n()
@@ -40,5 +53,22 @@ export default function Configuracao() {
     )
   }
 
-  return <Outlet />
+  return (
+    <>
+      {/* Regra 1: a aba ativa é TINTA CHEIA E NEGRITO, sem pílula colorida —
+          `.abas` está em `app.css` e é a mesma receita do resto do sistema. */}
+      <nav className="abas">
+        {ABAS.map(([rota, pt, en]) => (
+          <NavLink
+            key={rota}
+            to={rota}
+            className={({ isActive }) => (isActive ? 'aba on' : 'aba')}
+          >
+            {L(pt, en)}
+          </NavLink>
+        ))}
+      </nav>
+      <Outlet />
+    </>
+  )
 }

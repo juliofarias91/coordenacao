@@ -51,7 +51,10 @@ def listar(
     entidade: str | None = Query(default=None, description="Nome da tabela (ex.: 'auditoria')"),
     entidade_id: uuid.UUID | None = Query(default=None),
     usuario_id: uuid.UUID | None = Query(default=None),
-    acao: str | None = Query(default=None, pattern=r"^(criou|alterou|removeu)$"),
+    # `restaurou` entrou com a lixeira: sem ele a ação seria gravada e não
+    # consultável, que é o pior dos dois mundos — o log teria o registro e o
+    # filtro devolveria 422 para quem o procurasse.
+    acao: str | None = Query(default=None, pattern=r"^(criou|alterou|removeu|restaurou)$"),
     params: ParamsPagina = Depends(),
     db: Session = Depends(get_tenant_db),
     _: CurrentUser = Depends(requer_permissao("admin_cadastro")),

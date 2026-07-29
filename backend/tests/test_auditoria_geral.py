@@ -161,7 +161,8 @@ def test_direcao_e_separada_do_comentario(
         f"{API}/versoes/{auditavel.versao.id}/auditar", json={"checklist": "geral"}
     )
     assert aberta.status_code in (200, 201), aberta.text
-    auditoria_id = aberta.json()[0]["id"] if isinstance(aberta.json(), list) else aberta.json()["id"]
+    corpo = aberta.json()
+    auditoria_id = corpo[0]["id"] if isinstance(corpo, list) else corpo["id"]
 
     detalhe = autenticado.get(f"{API}/auditorias/{auditoria_id}").json()
     resultado = detalhe["resultados"][0]

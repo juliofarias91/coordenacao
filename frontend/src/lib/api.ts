@@ -269,10 +269,14 @@ export const api = {
         itens: criterioIds.map((criterio_id) => ({ criterio_id })),
       }),
     /** Semeia os itens de fábrica. ACRESCENTA — nunca substitui o que o projeto
-     *  já ajustou; por isso é POST e não o PUT de cima. */
-    aplicarGabarito: (tipo: T.ChecklistTipo, projetoId: string) =>
+     *  já ajustou; por isso é POST e não o PUT de cima.
+     *
+     *  `disciplina` é obrigatória nos gabaritos de LOD e ignorada na geral: os
+     *  17 da geral são os mesmos nas oito disciplinas, os de LOD não. */
+    aplicarGabarito: (tipo: T.ChecklistTipo, projetoId: string, disciplina?: string) =>
       escrever<T.GabaritoAplicado>(`/checklists/${tipo}/gabarito`, 'POST', {
         projeto_id: projetoId,
+        ...(disciplina ? { disciplina } : {}),
       }),
   },
 

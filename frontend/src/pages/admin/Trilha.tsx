@@ -23,19 +23,27 @@ import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { LinhaTrilha, UsuarioCadastro } from '@/lib/types'
 
-/** As três ações que o `before_flush` grava. */
-const ACOES = ['criou', 'alterou', 'removeu'] as const
+/** As ações que o `before_flush` grava.
+ *
+ *  `restaurou` entrou com a lixeira. Ela e `removeu` são o MESMO UPDATE de
+ *  `deleted_at` em direções opostas — e são ações distintas aqui porque tirar
+ *  da lixeira é um ato de alguém, que o log precisa poder mostrar sozinho. */
+const ACOES = ['criou', 'alterou', 'removeu', 'restaurou'] as const
 
 const CLASSE_ACAO: Record<string, string> = {
   criou: 'pill ok',
   alterou: 'pill alerta',
   removeu: 'pill ruim',
+  // Verde como `criou`: restaurar devolve o registro à vida, e o que a cor
+  // responde nesta coluna é "isto tirou ou pôs dado no sistema".
+  restaurou: 'pill ok',
 }
 
 const ROTULO_ACAO: Record<string, [string, string]> = {
   criou: ['criou', 'created'],
   alterou: ['alterou', 'changed'],
   removeu: ['removeu', 'removed'],
+  restaurou: ['restaurou', 'restored'],
 }
 
 /** Nome de tabela → nome de gente. O que não estiver aqui aparece como veio:

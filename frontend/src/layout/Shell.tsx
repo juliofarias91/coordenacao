@@ -27,7 +27,6 @@ import { useI18n } from '@/i18n'
 import {
   GRUPOS,
   ITENS_ADMIN,
-  ITENS_CONFIG,
   ITENS_GLOBAIS,
   ITENS_PROJETO,
   type GrupoNav,
@@ -166,9 +165,6 @@ export default function Shell() {
   /** O painel administrativo é a TERCEIRA área com sidebar própria. `casa` e
    *  não igualdade: `/admin/usuarios` também está dentro dele. */
   const emAdmin = casa('/admin', pathname)
-  /** E a configuração do projeto é a QUARTA. Vive DENTRO de um projeto, então
-   *  precisa ser checada antes dele — senão o menu do projeto ganharia. */
-  const emConfig = !!emProjeto && casa('configuracao', trilho)
 
   const [recolhida, setRecolhida] = useState(leRecolhida)
   const [gruposOff, setGruposOff] = useState<Record<string, boolean>>({})
@@ -218,13 +214,7 @@ export default function Shell() {
   //
   // `permissoes` do /auth/me já vem resolvido: o backend aplica o padrão do
   // papel quando o usuário não tem lista própria.
-  const doEscopo = emAdmin
-    ? ITENS_ADMIN
-    : emConfig
-      ? ITENS_CONFIG
-      : emProjeto
-        ? ITENS_PROJETO
-        : ITENS_GLOBAIS
+  const doEscopo = emAdmin ? ITENS_ADMIN : emProjeto ? ITENS_PROJETO : ITENS_GLOBAIS
   const itens = doEscopo.filter(
     (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
   )
@@ -234,13 +224,12 @@ export default function Shell() {
    *  está vindo), e o item vira um rótulo apagado em vez de um link quebrado. */
   const destino = useCallback(
     (item: ItemNav): string | null => {
-      // `admin` e `global` já trazem o caminho absoluto; os de projeto e de
-      // configuração precisam do id, que não está no item.
+      // `admin` e `global` já trazem o caminho absoluto; os de projeto precisam
+      // do id, que não está no item.
       if (item.escopo === 'global' || item.escopo === 'admin') return item.rota
       const alvo = projeto ?? referencia
       if (!alvo) return null
-      const tela = item.escopo === 'config' ? `configuracao/${item.rota}` : item.rota
-      return rotaProjeto(alvo.id, tela)
+      return rotaProjeto(alvo.id, item.rota)
     },
     [projeto, referencia],
   )
@@ -253,9 +242,6 @@ export default function Shell() {
   const atual =
     itens
       .filter((i) => {
-        if (i.escopo === 'config') {
-          return emConfig && casa(`configuracao/${i.rota}`, trilho)
-        }
         if (i.escopo === 'projeto') return !!emProjeto && casa(i.rota, trilho)
         return casa(i.rota, pathname)
       })

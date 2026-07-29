@@ -77,6 +77,33 @@ def _snapshot(obj: Any) -> dict[str, Any]:
     return dados
 
 
+def _acao_da_lixeira(mudancas: dict[str, Any]) -> str | None:
+    """Traduz o UPDATE de `deleted_at` no ato que ele realmente é.
+
+    A LIXEIRA (migration 0006) FEZ A TRILHA PARAR DE DIZER "REMOVEU". Antes dela
+    apagar era um DELETE, o objeto caía em `session.deleted` e o listener
+    registrava `removeu`. Com remoção reversível o que acontece é um UPDATE de
+    uma coluna — o objeto vai para `session.dirty` — e a trilha passou a
+    registrar `alterou` com um diff de `deleted_at`. Quem filtrasse o log por
+    `acao=removeu` (e a tela de Log tem esse filtro) não via mais nada, e as
+    remoções sumiam da leitura exatamente do registro que existe para
+    reconstruir decisões depois.
+
+    Só conta como remoção quando `deleted_at` VAI de nulo a preenchido, e como
+    restauração no caminho inverso. Um UPDATE que por acaso toque em
+    `deleted_at` sem cruzar o nulo continua sendo uma alteração.
+    """
+    alteracao = mudancas.get("deleted_at")
+    if not isinstance(alteracao, dict):
+        return None
+    antes, depois = alteracao.get("de"), alteracao.get("para")
+    if antes is None and depois is not None:
+        return "removeu"
+    if antes is not None and depois is None:
+        return "restaurou"
+    return None
+
+
 def _garantir_id(obj: Any) -> None:
     """Atribui a chave primária antes do INSERT.
 
@@ -142,7 +169,16 @@ def _antes_do_flush(session: Session, _contexto, _instancias) -> None:
         if not session.is_modified(obj, include_collections=False):
             continue
         mudancas = _diff(obj)
-        if mudancas:
+        if not mudancas:
+            continue
+        # Remoção reversível chega aqui como UPDATE, e é registrada pelo que
+        # ela é. O snapshot vai junto porque, na remoção, "o que foi apagado"
+        # é a informação que se procura no log — o mesmo motivo pelo qual o
+        # DELETE definitivo, logo abaixo, também guarda o estado inteiro.
+        da_lixeira = _acao_da_lixeira(mudancas)
+        if da_lixeira:
+            _registrar(session, obj, da_lixeira, _snapshot(obj))
+        else:
             _registrar(session, obj, "alterou", mudancas)
 
     for obj in removidos:

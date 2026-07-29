@@ -36,9 +36,13 @@ const ROTULO_ESTADO: Record<AuditoriaEstado, [string, string]> = {
 
 export default function ControleGeral({
   projetoId,
+  checklist,
   linhas,
 }: {
   projetoId: string
+  /** Qual recorte esta lista está controlando. Ela serve a GERAL e à LOD 300 —
+   *  os dois que não têm área —, e é ele que decide para onde o botão leva. */
+  checklist: 'geral' | 'lod300'
   linhas: LinhaPainel[]
 }) {
   const { L } = useI18n()
@@ -48,8 +52,8 @@ export default function ControleGeral({
       <Vazio
         titulo={L('Nenhum modelo neste projeto', 'No models in this project')}
         texto={L(
-          'A planilha da auditoria geral nasce junto com a versão do modelo. Cadastre o primeiro modelo em Modelos › Novo modelo.',
-          'The general audit sheet is created together with the model version. Register the first model under Models › New model.',
+          'A planilha nasce junto com a versão do modelo. Cadastre o primeiro modelo em Modelos › Novo modelo.',
+          'The sheet is created together with the model version. Register the first model under Models › New model.',
         )}
       />
     )
@@ -71,9 +75,9 @@ export default function ControleGeral({
         </thead>
         <tbody>
           {linhas.map((l) => {
-            // A linha do painel já vem filtrada por `?checklist=geral`, então
-            // `checklists` tem no máximo a geral. Se está vazia, a disciplina
-            // não declara geral — e é isso que a linha precisa dizer.
+            // A linha do painel já vem filtrada por `?checklist=<este>`, então
+            // `checklists` tem no máximo o recorte em questão. Se está vazia, a
+            // disciplina não o declara — e é isso que a linha precisa dizer.
             const geral = l.checklists[0]
             const pct = geral?.aprovacao_pct == null ? null : Math.round(Number(geral.aprovacao_pct))
 
@@ -114,8 +118,8 @@ export default function ControleGeral({
                     <span
                       className="co"
                       title={L(
-                        'A disciplina deste modelo não declara a auditoria geral. Isso se define em Configuração › Disciplinas.',
-                        'This model’s discipline does not declare the general audit. Set it under Settings › Disciplines.',
+                        'A disciplina deste modelo não declara este recorte. Isso se define em Configurações do projeto › Disciplinas.',
+                        'This model’s discipline does not declare this scope. Set it under Project setup › Disciplines.',
                       )}
                     >
                       {L('Não declarada', 'Not declared')}
@@ -127,7 +131,7 @@ export default function ControleGeral({
                   {geral ? (
                     <Link
                       className="btn sm"
-                      to={rotaProjeto(projetoId, `auditoria/geral/${l.modelo_id}`)}
+                      to={rotaProjeto(projetoId, `auditoria/${checklist}/${l.modelo_id}`)}
                     >
                       {L('Abrir planilha', 'Open sheet')}
                     </Link>

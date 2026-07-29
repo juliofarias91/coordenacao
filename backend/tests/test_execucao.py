@@ -398,6 +398,17 @@ def test_painel_consolida_varios_checklists(
 def test_painel_marca_desatualizado_se_qualquer_checklist_ficou_para_tras(
     autenticado: TestClient, auditavel: CenarioAuditavel
 ) -> None:
+    """Versão nova joga o modelo de volta para "não publicado".
+
+    O CONTRATO MUDOU quando a auditoria geral passou a nascer com a versão
+    (`services/auditoria.py::ao_registrar_versao`). Este teste afirmava que a V2
+    chegava sem auditoria NENHUMA; agora ela chega com a geral aberta, em branco
+    e no round seguinte.
+
+    O que o teste protege continua o mesmo, e é o nome dele: a publicação da V1
+    não conta mais para a linha do painel. O que mudou é por quê — antes porque
+    não havia auditoria, agora porque a que existe está aberta.
+    """
     auditoria = _auditar(autenticado, auditavel.versao.id)
     _concluir(autenticado, auditoria["id"])
     autenticado.post(f"{API}/auditorias/{auditoria['id']}/publicar")
@@ -405,11 +416,15 @@ def test_painel_marca_desatualizado_se_qualquer_checklist_ficou_para_tras(
     autenticado.post(
         f"{API}/modelos/{auditavel.modelo.id}/versoes", json={"versao": "V2", "formato": "ifc"}
     )
-    # A V2 passa a ser a versão vigente e ainda não tem auditoria nenhuma.
     linha = autenticado.get(f"{API}/projetos/{auditavel.projeto.id}/painel").json()["linhas"][0]
     assert linha["versao"] == "V2"
     assert linha["estado"] == "nao_publicado"
-    assert linha["checklists"] == []
+
+    # A geral veio junto com a V2 — aberta, e num round acima do publicado.
+    assert [c["checklist"] for c in linha["checklists"]] == ["geral"]
+    geral = linha["checklists"][0]
+    assert geral["estado"] == "nao_publicado"
+    assert geral["round"] == (auditoria["round"] or 0) + 1
 
 
 def test_painel_mostra_modelo_sem_auditoria(

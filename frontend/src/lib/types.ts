@@ -242,6 +242,13 @@ export type Resultado = Base & {
    *  fase"). É o que vai ao fornecedor, e o que a NC herda como recomendação.
    *  São dois campos porque são dois textos com destinatários diferentes. */
   direcao: string | null
+  /** As três colunas da planilha de LOD (migration 0009). As duas primeiras são
+   *  onde a informação FOI ENCONTRADA — diferente de
+   *  `criterio.parametro_esperado`, que é onde ela DEVERIA estar. A terceira tem
+   *  outro autor: `comentario` é da coordenação, esta é do fornecedor. */
+  parametro_revit: string | null
+  parametro_encontrado: string | null
+  comentario_fornecedor: string | null
   itens_analisados: number | null
   itens_ok: number | null
   criterio: Criterio

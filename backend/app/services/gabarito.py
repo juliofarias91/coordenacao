@@ -38,6 +38,7 @@ from sqlalchemy.orm import Session
 from app.db.session import set_ver_removidos
 from app.models import ChecklistItem, Criterio
 from app.models.enums import Automacao, ChecklistTipo, CriterioNivel
+from app.services import gabarito_lod
 
 
 @dataclass(frozen=True)
@@ -50,7 +51,18 @@ class ItemGabarito:
     categoria: str
     nivel: CriterioNivel
     automacao: Automacao
+    # COMO CONFERIR. Na geral é a coluna oculta de orientação do arquivo.
     instrucao: str
+    # Os três abaixo só o LOD usa. Com default, para que os 17 itens da geral
+    # continuem sendo escritos posicionalmente e legíveis em três linhas cada.
+    #
+    # O QUE FAZ PASSAR. No LOD é a BIM FORUM DESCRIPTION — ela diz o que o
+    # elemento precisa ter ("openings with any dimension greater than 6 inches"),
+    # não como olhar. Os dois campos existem separados no `Criterio` desde a
+    # Fase 1, e trocá-los poria o requisito no lugar da orientação.
+    criterio_aceitacao: str | None = None
+    parametro_esperado: str | None = None
+    min_lod: str | None = None
 
 
 _M = CriterioNivel.MODELO
@@ -165,11 +177,83 @@ GABARITO_GERAL: tuple[ItemGabarito, ...] = (
     ),
 )
 
-# Um checklist só tem gabarito se alguém desenhou um. Hoje é a geral; os
-# recortes de LOD nascem do BIM Forum, que é outra fonte e outro formato.
+# Um checklist só tem gabarito se alguém desenhou um. A GERAL é a única que não
+# depende de disciplina — os 17 itens são os mesmos nas oito. O LOD 300 depende
+# (`gabarito_lod.py`), porque ali muda a pergunta e não só a resposta.
 GABARITOS: dict[ChecklistTipo, tuple[ItemGabarito, ...]] = {
     ChecklistTipo.GERAL: GABARITO_GERAL,
 }
+
+# Os checklists cujo gabarito EXIGE disciplina. Aqui em vez de espalhado pelos
+# `if` da rota: acrescentar o LOD 350 é acrescentar uma entrada, e esquecer de
+# exigir a disciplina passaria a semear a lista errada em silêncio.
+CHECKLISTS_POR_DISCIPLINA: dict[ChecklistTipo, str] = {
+    ChecklistTipo.LOD300: "300",
+}
+
+
+def _lod_para(checklist: ChecklistTipo, disciplina: str) -> tuple[ItemGabarito, ...]:
+    """Achata elemento × informação nas linhas de critério do LOD.
+
+    O código do critério carrega os três níveis — `LOD300_FLOOR_THICKNESS` —
+    porque `Criterio.codigo` é único por PROJETO e o mesmo nome de informação
+    reaparece em cada categoria. Sem a categoria no código, "Thickness" da laje
+    e "Thickness" da fundação colidiriam.
+    """
+    elementos = gabarito_lod.GABARITOS_LOD.get(disciplina.strip().upper())
+    if elementos is None:
+        raise DisciplinaSemGabarito(disciplina)
+
+    lod = CHECKLISTS_POR_DISCIPLINA[checklist]
+    itens: list[ItemGabarito] = []
+    for elemento in elementos:
+        for item in elemento.itens:
+            itens.append(
+                ItemGabarito(
+                    codigo=f"LOD{lod}_{elemento.codigo}_{item.codigo}",
+                    # O rótulo da linha é a INFORMATION; a categoria diz de que
+                    # elemento se fala, e é o que agrupa a tela.
+                    nome_pt=item.nome_pt,
+                    nome_en=item.nome_en,
+                    categoria=f"{elemento.nome_pt} · {elemento.nome_en}",
+                    nivel=gabarito_lod.NIVEL_LINHA,
+                    automacao=gabarito_lod.automacao_de(item),
+                    # A descrição do BIM Forum é CRITÉRIO DE ACEITAÇÃO, não
+                    # instrução: ela diz o que o elemento precisa ter para
+                    # passar, não como conferir. Na geral é o contrário — lá o
+                    # texto de origem é a orientação interna de como auditar. Os
+                    # dois campos existem separados no `Criterio` desde a Fase 1,
+                    # e trocá-los poria o requisito no lugar da orientação.
+                    instrucao="",
+                    criterio_aceitacao=item.descricao,
+                    parametro_esperado=item.parametro,
+                    min_lod=lod,
+                )
+            )
+    return tuple(itens)
+
+
+class DisciplinaSemGabarito(Exception):
+    """Não há arquivo de referência para esta disciplina — hoje só STRC."""
+
+    def __init__(self, disciplina: str) -> None:
+        self.disciplina = disciplina
+        self.disponiveis = sorted(gabarito_lod.GABARITOS_LOD)
+        super().__init__(disciplina)
+
+
+class DisciplinaExigida(Exception):
+    """O checklist é por disciplina e ela não veio.
+
+    Falhar é melhor do que escolher: semear a lista de STRC num projeto de
+    arquitetura criaria 60 critérios de estrutura que ninguém pediu, e
+    desfazê-los depois é trabalho manual.
+    """
+
+    def __init__(self, checklist: ChecklistTipo) -> None:
+        self.checklist = checklist
+        self.disponiveis = sorted(gabarito_lod.GABARITOS_LOD)
+        super().__init__(checklist.value)
 
 
 @dataclass
@@ -227,13 +311,24 @@ def aplicar(
     org_id: uuid.UUID,
     projeto_id: uuid.UUID,
     checklist: ChecklistTipo,
+    disciplina: str | None = None,
 ) -> Resumo:
     """Semeia no projeto os itens do gabarito que ainda faltam.
 
     Idempotente e não destrutivo: rodar duas vezes não duplica nada e rodar
     depois de um ajuste manual não o desfaz.
+
+    `disciplina` é OBRIGATÓRIA nos checklists de LOD e ignorada na geral — os 17
+    itens da geral são os mesmos nas oito disciplinas, os do LOD não. Omiti-la
+    num checklist que a exige levanta `DisciplinaExigida`, e não semeia a lista
+    de uma disciplina arbitrária.
     """
-    itens = GABARITOS.get(checklist)
+    if checklist in CHECKLISTS_POR_DISCIPLINA:
+        if not disciplina:
+            raise DisciplinaExigida(checklist)
+        itens: tuple[ItemGabarito, ...] | None = _lod_para(checklist, disciplina)
+    else:
+        itens = GABARITOS.get(checklist)
     if itens is None:
         raise KeyError(checklist.value)
 
@@ -267,7 +362,9 @@ def aplicar(
                 categoria=item.categoria,
                 nivel=item.nivel,
                 automacao=item.automacao,
-                instrucao=item.instrucao,
+                instrucao=item.instrucao or None,
+                parametro_esperado=item.parametro_esperado,
+                criterio_aceitacao=item.criterio_aceitacao,
             )
             db.add(criterio)
             db.flush()

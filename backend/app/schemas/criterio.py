@@ -137,6 +137,16 @@ class GabaritoIn(BaseModel):
     model_config = ESCRITA
 
     projeto_id: uuid.UUID
+    disciplina: str | None = Field(
+        default=None,
+        max_length=20,
+        description=(
+            "OBRIGATÓRIA nos checklists de LOD, ignorada na geral. Os 17 itens da "
+            "geral são os mesmos nas oito disciplinas; os de LOD não — FLOOR e "
+            "STRUCTURAL COLUMNS são categorias de estrutura. É o código da "
+            "disciplina (`STRC`), não o id."
+        ),
+    )
 
 
 class GabaritoAplicado(ChecklistOut):

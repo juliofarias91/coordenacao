@@ -266,8 +266,29 @@ def aplicar_gabarito(
 
     try:
         resumo = gabarito.aplicar(
-            db, org_id=user.org_id, projeto_id=payload.projeto_id, checklist=checklist
+            db,
+            org_id=user.org_id,
+            projeto_id=payload.projeto_id,
+            checklist=checklist,
+            disciplina=payload.disciplina,
         )
+    except gabarito.DisciplinaExigida as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"o gabarito de '{checklist.value}' é por disciplina — informe qual. "
+                "Com gabarito hoje: " + ", ".join(e.disponiveis)
+            ),
+        ) from None
+    except gabarito.DisciplinaSemGabarito as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"não há arquivo de referência de {checklist.value} para a "
+                f"disciplina '{e.disciplina}'. Com gabarito hoje: "
+                + ", ".join(e.disponiveis)
+            ),
+        ) from None
     except KeyError:
         # 422 e não 404: a rota existe e o checklist é válido — o que não existe
         # é um gabarito desenhado para ele. Os recortes de LOD saem do BIM

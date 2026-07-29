@@ -195,7 +195,7 @@ servindo o build, que é o arranjo de produção, e `-Parar` encerra.
 
 - **Administração** (`/admin`, fora do roadmap original) — organização, projetos e usuários no nível do tenant. `GET/PATCH /organizacao` é a única rota nova; projetos e usuários já tinham API desde a Fase 1 e só não tinham tela: até aqui um projeto novo só nascia por `scripts/seed.py` ou pelo importador YAML. Aparece no menu só para quem tem `admin_cadastro`; a guarda real continua no `requer_permissao` de cada rota. **Não existe listagem nem criação de organização** de propósito — listar é o que o isolamento multi-tenant impede, e criar é provisionamento, sai do seed.
 
-73 endpoints; 201 testes contra Postgres, MinIO e arquivos IFC reais.
+73 endpoints; 289 testes contra Postgres, MinIO e arquivos IFC reais.
 
 **O que resta não é código:** subir o ambiente produtivo num servidor e rodar o piloto assistido. Se o usuário pedir "continue", pergunte o que ele quer — não há próxima fase para implementar sozinho.
 
@@ -211,11 +211,22 @@ Ao continuar:
   dela não recebe `projeto_id`, na de projeto se recebe. Errar isso foi o que
   deixou Apontamentos e Integrações no menu de projeto sendo que nenhuma das
   duas APIs é por projeto.
-- **As seis telas de Auditoria são uma só**, parametrizada pela rota
-  (`auditoria/:checklist`) sobre a matriz que o backend já servia por
-  checklist. Recorte novo entra primeiro em `CHECKLISTS_SEM_BANCO` (hoje
-  vazio), que faz a tela dizer o que falta em vez de tomar um 422.
-  **Menos a geral, que não é matriz por área** — ver a seção abaixo.
+- **A auditoria é UMA entrada na barra**, com os seis recortes num painel de
+  DENTRO da página (`pages/auditoria/`), recolhível, no formato dos canais do
+  VDCity: painel de 300px, dois cabeçalhos de 48px alinhados, recolher
+  **desmonta** o painel. As seis entradas de antes deixavam o grupo Auditoria
+  com nove linhas — mais do que os outros dois somados. Recorte novo entra
+  primeiro em `CHECKLISTS_SEM_BANCO` (hoje vazio), que faz a tela dizer o que
+  falta em vez de tomar um 422.
+- **A configuração do projeto é uma PÁGINA COM ABAS, não uma área.** Chegou a
+  ter sidebar própria e voltou às abas em 29/07/2026: as seis seções são o
+  cadastro de um projeto, feito de uma vez e em sequência, e trocar a barra a
+  cada seção fazia perder de vista em que projeto se estava — além de deixar a
+  área indistinguível do painel administrativo. **São TRÊS áreas contextuais**
+  (global, projeto, admin), não quatro; não existe `escopo: 'config'`.
+- **O layout de página dividida** (`.pgsplit`) é o padrão para navegação de
+  SEGUNDO nível: quando a escolha é entre visões de uma mesma tela, ela vai
+  num painel da página, não na barra do app.
 
 ## Auditoria geral: a planilha dentro do sistema
 
@@ -259,6 +270,38 @@ ordem. O que varia entre os arquivos é a resposta, nunca a pergunta.
   planilha", porque não há rascunho: cada célula é um PATCH e a aprovação volta
   recalculada do servidor. A tela **nunca** calcula percentual — duas contas de
   aprovação divergem no primeiro arredondamento.
+
+## LOD 300: a planilha de espec
+
+Referência: `AUDITORIA\LOD 300\Spec Audit LOD300_STRC.pdf`. **60 linhas em 4
+categorias de elemento**, para STRC.
+
+- **O gabarito de LOD é POR DISCIPLINA** (`services/gabarito_lod.py`), ao
+  contrário do da geral. Ali o que varia entre disciplinas é a resposta; aqui é
+  a PERGUNTA — FLOOR e STRUCTURAL COLUMNS são categorias de estrutura. Omitir a
+  disciplina levanta `DisciplinaExigida` (422): semear STRC num projeto de
+  arquitetura criaria 60 critérios que ninguém pediu.
+- **O mesmo nome de informação em categorias diferentes é critério DIFERENTE.**
+  "Level" na laje é o built-in `Level`; no pilar é `Base Level`. Um critério só
+  teria de escolher um, e estaria errado na metade das linhas.
+- **"Geometric Data" NÃO é `parametro_esperado`.** O arquivo escreve isso na
+  coluna REVIT PARAMETER de três linhas, e é o modo dele dizer "aqui se audita
+  geometria". Como `parametro_esperado`, o verificador do executor procuraria um
+  parâmetro com esse nome e reprovaria **todo** modelo correto. Elas são
+  manuais de propósito; `test_lod300.py` tranca isso.
+- **`parametro_revit` / `parametro_encontrado` (0009) são RESPOSTA**, não
+  requisito — onde a informação FOI achada. Onde ela DEVERIA estar é
+  `criterio.parametro_esperado`. São campos separados porque a comparação entre
+  eles é a única pergunta que a planilha faz.
+- **`comentario_fornecedor` (0009) tem outro AUTOR.** `comentario` é da
+  coordenação; o guia do arquivo diz "SUPPLIERS COMMENTS — permissão de edição:
+  FORNECEDORES". Usar a tabela `comentario_fornecedor` (que é de NC) obrigaria a
+  abrir uma NC com prazo e responsável para cada linha esclarecida.
+- **A auditoria de LOD NÃO nasce com a versão** — só a geral. LOD é trabalho
+  dirigido, e abrir os seis recortes encheria o painel de rounds vazios.
+- O comportamento das duas planilhas (carregar, gravar no blur, publicar) é
+  compartilhado em `components/planilha.tsx`; o que cada tela tem de próprio são
+  as COLUNAS.
 - **`projeto_membro` registra participação e NÃO autoriza** (migration 0004).
   Quem decide continua sendo `requer_permissao` sobre as permissões de
   organização. `tests/test_membros.py::test_participacao_nao_e_permissao`

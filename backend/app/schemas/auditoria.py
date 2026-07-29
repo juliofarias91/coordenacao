@@ -41,6 +41,23 @@ class ResultadoUpdate(BaseModel):
             "É o que a não-conformidade herda como `recomendacao`."
         ),
     )
+    parametro_revit: str | None = Field(
+        default=None,
+        description=(
+            "REVIT PARAMETER da planilha de LOD: o built-in em que a informação "
+            "FOI encontrada. Onde ela deveria estar é `criterio.parametro_esperado`."
+        ),
+    )
+    parametro_encontrado: str | None = Field(
+        default=None, description="PARAMETER da planilha de LOD: o parâmetro NÃO nativo usado."
+    )
+    comentario_fornecedor: str | None = Field(
+        default=None,
+        description=(
+            "SUPPLIERS COMMENTS. Autor diferente do de `comentario`, que é da "
+            "coordenação — é por isso que são dois campos."
+        ),
+    )
     itens_analisados: int | None = Field(default=None, ge=0)
     itens_ok: int | None = Field(default=None, ge=0)
     elementos: list[str] | None = Field(
@@ -60,6 +77,9 @@ class ResultadoOut(Identificado):
     origem: OrigemResult
     comentario: str | None
     direcao: str | None
+    parametro_revit: str | None
+    parametro_encontrado: str | None
+    comentario_fornecedor: str | None
     itens_analisados: int | None
     itens_ok: int | None
     criterio: CriterioOut

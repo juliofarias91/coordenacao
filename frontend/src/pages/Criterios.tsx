@@ -22,9 +22,23 @@ const CHECKLISTS: Array<[ChecklistTipo, string, string]> = [
   ['geral', 'Geral', 'General'],
   ['ifc', 'IFC', 'IFC'],
   ['4d', '4D Parâmetros', '4D Parameters'],
+  ['lod300', 'LOD 300', 'LOD 300'],
+  ['lod350', 'LOD 350', 'LOD 350'],
   ['lod400', 'LOD 400', 'LOD 400'],
   ['lod500', 'LOD 500', 'LOD 500'],
 ]
+
+/** Quais checklists têm gabarito de fábrica, e se ele depende de disciplina.
+ *  Espelha `services/gabarito.py` — acrescentar um lá pede a entrada aqui, e é
+ *  por isso que a lista é explícita em vez de um `startsWith('lod')`. */
+const GABARITO: Partial<Record<ChecklistTipo, 'unico' | 'por_disciplina'>> = {
+  geral: 'unico',
+  lod300: 'por_disciplina',
+}
+
+/** As disciplinas para as quais existe arquivo de referência de LOD. Hoje só
+ *  STRC — é a única que a coordenação mandou. */
+const DISCIPLINAS_COM_GABARITO = ['STRC'] as const
 
 const AUTOMACOES: Array<[Automacao, string, string, string]> = [
   ['auto', 'Auto', 'Auto', 'a'],
@@ -82,6 +96,10 @@ export default function Criterios() {
    *  importante é o que NÃO foi tocado: o gabarito acrescenta e nunca
    *  sobrescreve, e sem esta frase quem clicou iria conferir item por item. */
   const [resumoGabarito, setResumoGabarito] = useState<string | null>(null)
+  /** A disciplina do gabarito de LOD. Só STRC tem arquivo de referência, então
+   *  ela já vem escolhida — mas o seletor fica, porque a segunda disciplina que
+   *  chegar não deve precisar de mudança de tela. */
+  const [discGabarito, setDiscGabarito] = useState<string>(DISCIPLINAS_COM_GABARITO[0])
 
   const carregar = useCallback(async () => {
     if (!projeto) return
@@ -197,7 +215,11 @@ export default function Criterios() {
     setResumoGabarito(null)
     setSalvando(true)
     try {
-      const r = await api.checklists.aplicarGabarito(checklist, projeto.id)
+      const r = await api.checklists.aplicarGabarito(
+        checklist,
+        projeto.id,
+        GABARITO[checklist] === 'por_disciplina' ? discGabarito : undefined,
+      )
       const criados = r.criterios_criados.length
       const mantidos = r.criterios_reaproveitados.length
       setResumoGabarito(
@@ -466,13 +488,32 @@ export default function Criterios() {
               }}
             />
             <div style={{ flex: 1 }} />
-            {/* Só onde existe gabarito. Hoje é a geral: os 17 itens que toda
-                disciplina responde. Sem este botão o gabarito existiria na API
-                e não na plataforma, e um projeto novo continuaria começando com
-                a planilha em branco. */}
-            {checklist === 'geral' && (
+            {/* Só onde existe gabarito. Sem este botão ele existiria na API e
+                não na plataforma, e um projeto novo continuaria começando com a
+                planilha em branco. */}
+            {GABARITO[checklist] === 'por_disciplina' && (
+              <select
+                className="f"
+                style={{ width: 'auto' }}
+                value={discGabarito}
+                onChange={(e) => setDiscGabarito(e.target.value)}
+                aria-label={L('Disciplina do gabarito', 'Template discipline')}
+              >
+                {DISCIPLINAS_COM_GABARITO.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            )}
+            {GABARITO[checklist] && (
               <button className="btn" onClick={aplicarGabarito} disabled={salvando}>
-                {L('Aplicar os 17 itens de fábrica', 'Apply the 17 factory items')}
+                {checklist === 'geral'
+                  ? L('Aplicar os 17 itens de fábrica', 'Apply the 17 factory items')
+                  : L(
+                      `Aplicar o gabarito ${discGabarito} de fábrica`,
+                      `Apply the ${discGabarito} factory template`,
+                    )}
               </button>
             )}
           </div>

@@ -495,8 +495,18 @@ def test_remover_standard(autenticado: TestClient, cenario: Cenario) -> None:
 def test_remover_nomenclatura_nao_apaga_a_disciplina(
     autenticado: TestClient, cenario: Cenario
 ) -> None:
-    """`ON DELETE SET NULL`: a disciplina existe independentemente do padrão de
-    nome que se resolveu usar nela."""
+    """A disciplina existe independentemente do padrão de nome usado nela.
+
+    O CONTRATO MUDOU COM A LIXEIRA (migration 0006) e este teste foi reescrito
+    para o novo. Antes, apagar o padrão era um DELETE e o `ON DELETE SET NULL`
+    zerava `disciplina.nomenclatura_id`. Com remoção reversível a linha
+    continua no banco — a FK nunca dispara — e o vínculo é PRESERVADO.
+
+    Isso é melhor, e é o ponto do teste agora: quem removeu o padrão por engano
+    restaura e a disciplina volta a apontar para ele, sem ter de refazer a
+    ligação em cada uma. O que se garante aqui é que a disciplina sobrevive e
+    que o padrão sai de vista enquanto está na lixeira.
+    """
     padrao = autenticado.post(
         f"{API}/standards",
         json={
@@ -520,4 +530,9 @@ def test_remover_nomenclatura_nao_apaga_a_disciplina(
 
     sobreviveu = autenticado.get(f"{API}/disciplinas/{disciplina['id']}")
     assert sobreviveu.status_code == 200, "apagar o padrão levou a disciplina junto"
-    assert sobreviveu.json()["nomenclatura_id"] is None
+    # O vínculo FICA: é o que torna a restauração completa em vez de deixar as
+    # disciplinas órfãs de um padrão que voltou.
+    assert sobreviveu.json()["nomenclatura_id"] == padrao["id"]
+    # E o padrão some das listas — quem esconde é a policy de RLS, não um
+    # filtro na rota.
+    assert autenticado.get(f"{API}/standards/{padrao['id']}").status_code == 404

@@ -100,6 +100,17 @@ class ResultadoCheck(OrgMixin, TimestampMixin, Base):
     # fazer, sem o texto interno de diagnóstico.
     comentario: Mapped[str | None] = mapped_column(Text)
     direcao: Mapped[str | None] = mapped_column(Text)
+
+    # As três colunas da planilha de LOD (0009). Onde a informação FOI
+    # ENCONTRADA — que é diferente de `criterio.parametro_esperado`, onde ela
+    # DEVERIA estar. A regra do arquivo é "dê preferência a built-in do Revit",
+    # e ela só é auditável com os dois campos separados.
+    parametro_revit: Mapped[str | None] = mapped_column(Text)
+    parametro_encontrado: Mapped[str | None] = mapped_column(Text)
+    # Este tem OUTRO AUTOR: `comentario` é da coordenação, este é do
+    # fornecedor, que na planilha responde na própria linha.
+    comentario_fornecedor: Mapped[str | None] = mapped_column(Text)
+
     # Contadores do arquétipo nível-elemento (4D, LOD 400).
     itens_analisados: Mapped[int | None] = mapped_column(Integer)
     itens_ok: Mapped[int | None] = mapped_column(Integer)

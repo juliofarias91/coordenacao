@@ -184,6 +184,76 @@ num fixture.
 
 ---
 
+## 29/07 — LOD 300, e a navegação das auditorias remontada
+
+Três pedidos que se resolveram juntos porque tocam a mesma tela.
+
+**A auditoria virou UMA entrada na barra.** Os seis recortes deixavam o grupo
+Auditoria com nove linhas — mais do que Visão geral e Projeto somados —, e seis
+rótulos que começam com a mesma palavra obrigam a ler até o fim de cada um. Eles
+foram para um **painel dentro da página**, recolhível, no formato dos canais do
+VDCity: painel de 300px, dois cabeçalhos de 48px cujas bordas se encontram e
+leem como uma régua, e o botão de recolher no cabeçalho do CONTEÚDO — se
+estivesse no painel, recolher levaria embora o botão de trazê-lo de volta.
+Recolher **desmonta** o painel em vez de virá-lo trilho de ícones: "Auditoria
+LOD350" não sobrevive a virar ícone, e seis selos idênticos não diriam nada.
+
+O padrão está em `.pgsplit` e vale para navegação de **segundo nível** em
+qualquer tela daqui para a frente.
+
+**A configuração do projeto voltou a ser abas.** Ela tinha ganhado sidebar
+própria a pedido; o pedido de hoje foi o inverso, e está certo: as seis seções
+são o cadastro de UM projeto, feito de uma vez e em sequência, e trocar a barra
+inteira a cada seção fazia perder de vista em que projeto se estava — além de
+deixar a área indistinguível do painel administrativo. **São três áreas
+contextuais de novo** (global, projeto, admin); `escopo: 'config'` e
+`ITENS_CONFIG` deixaram de existir. As rotas ficaram: a aba é um `NavLink`, o
+endereço continua dizendo em que seção se está e o botão voltar funciona.
+
+**O LOD 300.** Referência: `Spec Audit LOD300_STRC.pdf` e a planilha ao lado —
+60 linhas em 4 categorias de elemento.
+
+- O gabarito é **por disciplina** (`services/gabarito_lod.py`), ao contrário do
+  da geral: ali muda a resposta entre disciplinas, aqui muda a pergunta. Omitir
+  a disciplina responde 422 em vez de escolher uma.
+- **Migration 0009**: `parametro_revit`, `parametro_encontrado` e
+  `comentario_fornecedor`. As duas primeiras são onde a informação FOI achada —
+  diferente de `parametro_esperado`, que é onde ela DEVERIA estar; a comparação
+  entre as duas é a única pergunta que a planilha faz. A terceira tem outro
+  autor: o guia do arquivo diz "SUPPLIERS COMMENTS — edição: FORNECEDORES".
+- A planilha (`pages/PlanilhaLod.tsx`) agrupa por elemento, e o comportamento
+  comum às duas planilhas saiu para `components/planilha.tsx` — senão os dois
+  arquivos de 500 linhas divergiriam na primeira correção.
+
+**Um bug que eu mesmo criei e peguei antes de rodar:** marquei
+`parametro_esperado = "Geometric Data"` em três linhas, copiando a coluna REVIT
+PARAMETER do arquivo. "Geometric Data" não é nome de parâmetro — é o modo da
+planilha dizer "aqui se audita geometria". Como `parametro_esperado` ele torna a
+linha AUTOMÁTICA, e o verificador procuraria um parâmetro com esse nome, não
+acharia em modelo nenhum e **reprovaria todos**. Falso negativo em massa, que é
+pior do que não automatizar. Há teste trancando isso.
+
+**Dois defeitos antigos, da lixeira, corrigidos no caminho** — apareceram ao
+rodar a suíte inteira pela primeira vez desde que ela entrou:
+
+1. **A trilha parou de dizer "removeu".** Com remoção reversível, apagar virou
+   um UPDATE de `deleted_at`; o objeto vai para `session.dirty` e o listener
+   registrava `alterou`. Quem filtrasse o log por remoção não via mais nada —
+   num registro que existe para reconstruir decisões depois. Agora o
+   `before_flush` traduz o UPDATE no ato que ele é, e `restaurou` entrou como
+   ação própria (com filtro na API e rótulo na tela).
+2. **`test_remover_nomenclatura_nao_apaga_a_disciplina`** afirmava que o
+   `ON DELETE SET NULL` zerava o vínculo. Com soft delete a FK nunca dispara e o
+   vínculo é preservado — que é melhor, porque restaurar o padrão devolve as
+   disciplinas ligadas a ele. Teste reescrito para o contrato novo.
+
+```
+backend    289 testes; a suíte inteira leva ~1h contra o Supabase
+frontend   tsc limpo, build ok
+```
+
+---
+
 ## 29/07 — a auditoria geral virou planilha de verdade
 
 O pedido: "toda vez que gerarmos um modelo ele deve ter um campo de auditoria

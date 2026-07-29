@@ -64,7 +64,7 @@ export type ItemNav = {
   /** Onde a tela vive. `projeto` significa `/projetos/:projetoId/<rota>`: a
    *  tela não existe sem um projeto escolhido, e o escolhido está na URL.
    *  `global` é o que vale para a organização inteira. */
-  escopo: 'global' | 'projeto' | 'admin' | 'config'
+  escopo: 'global' | 'projeto' | 'admin'
   /** Fase do roadmap em que a tela é implementada de verdade. */
   fase: number
   /** Some do menu para quem não tem a permissão. É conveniência de navegação,
@@ -92,12 +92,12 @@ const IC = {
   cubo: 'M21 16V8l-9-5-9 5v8l9 5zM3.3 7.3 12 12l8.7-4.7M12 12v9.5',
 } as const
 
-/** Os seis recortes de auditoria da barra lateral.
+/** Os seis recortes de auditoria.
  *
- *  Todos são A MESMA TELA: a matriz modelo × área, que o backend já servia
- *  parametrizada por checklist (`GET /projetos/{id}/matriz?checklist=…`).
- *  Viraram entradas separadas no menu porque é assim que se trabalha — abre-se
- *  "a LOD400", não "a matriz, e então escolhe-se LOD400 num seletor".
+ *  Eles JÁ FORAM seis entradas da barra lateral e hoje são o painel de dentro
+ *  da página de auditoria (`pages/auditoria/`) — a barra tem uma entrada só. A
+ *  lista continua aqui porque é a fonte de verdade de quais recortes existem, e
+ *  quem a consome são o painel da página, o validador da rota e os rótulos.
  *
  *  `lod300` e `lod350` são novos no enum `ChecklistTipo` (migration 0004).
  */
@@ -296,18 +296,27 @@ export const ITENS_PROJETO: ItemNav[] = [
     fase: 1,
   },
 
-  // Auditoria: os seis recortes, e o relatório que sai deles.
-  ...CHECKLISTS.map(
-    (c): ItemNav => ({
-      rota: `auditoria/${c}`,
-      pt: ROTULO_CHECKLIST[c][0],
-      en: ROTULO_CHECKLIST[c][1],
-      path: IC.selo,
-      grupo: 'auditoria',
-      escopo: 'projeto',
-      fase: 2,
-    }),
-  ),
+  // AUDITORIA: UMA ENTRADA, não seis.
+  //
+  // Os seis recortes já foram seis itens aqui, e a barra ficou com nove linhas
+  // num grupo só — mais do que os outros dois grupos juntos, empurrando para
+  // fora da vista o que se configura ANTES de auditar. Pior: seis rótulos que
+  // começam com a mesma palavra ("Auditoria geral", "Auditoria 4D"…) obrigam a
+  // ler até o fim de cada um para escolher.
+  //
+  // Os recortes passaram para um painel DENTRO da página de auditoria
+  // (`pages/auditoria/`), recolhível, no formato dos canais do VDCity. É a
+  // troca certa: escolher entre recortes é navegação de segundo nível, e
+  // segundo nível não pertence à barra que também tem KPIs e PEB.
+  {
+    rota: 'auditoria',
+    pt: 'Auditoria',
+    en: 'Audit',
+    path: IC.selo,
+    grupo: 'auditoria',
+    escopo: 'projeto',
+    fase: 2,
+  },
   {
     rota: 'relatorios',
     pt: 'Relatórios · RNC',
@@ -407,86 +416,18 @@ export const ITENS_ADMIN: ItemNav[] = [
 
 /** O menu da CONFIGURAÇÃO DO PROJETO — a quarta área com barra própria.
  *
- *  Eram sete abas numa linha só. Aba serve para alternar entre visões do MESMO
- *  assunto, e aqui são assuntos distintos: quem cadastra projetista não está a
- *  meio caminho de escolher cores. Sete rótulos como "Nomenclaturas & padrões"
- *  também não cabem lado a lado sem quebrar a linha.
+ *  A CONFIGURAÇÃO DO PROJETO NÃO É UMA ÁREA. Ela chegou a ter barra própria e
+ *  voltou a ser uma página com abas em 29/07/2026, a pedido: as seis seções são
+ *  o cadastro de UM projeto, preenchido de uma vez e em sequência, e trocar a
+ *  barra inteira a cada seção fazia perder de vista em que projeto se estava —
+ *  além de deixar a área indistinguível do painel administrativo, que é de
+ *  outro escopo. As abas vivem em `pages/configuracao/index.tsx`, as rotas
+ *  ficaram como estavam, e não há `ITENS_CONFIG` nem `escopo: 'config'`.
  *
- *  `rota` é o caminho DENTRO da configuração; o prefixo sai de
- *  `rotaProjeto(id, 'configuracao/<rota>')`. */
-export const ITENS_CONFIG: ItemNav[] = [
-  {
-    // A PORTA DE SAÍDA, no mesmo lugar em que o menu do projeto tem
-    // "Projetos": o primeiro item de uma área contextual é por onde se volta.
-    // `escopo: 'projeto'` porque o destino é uma tela do projeto, não da
-    // configuração — é o que faz `destino()` montar o caminho sem o prefixo
-    // `configuracao/`.
-    rota: 'modelos',
-    pt: 'Voltar ao projeto',
-    en: 'Back to project',
-    path: IC.casa,
-    grupo: 'topo',
-    escopo: 'projeto',
-    fase: 1,
-  },
-  {
-    rota: 'projeto',
-    pt: 'Projeto & Cliente',
-    en: 'Project & Client',
-    path: IC.casa,
-    grupo: 'topo',
-    escopo: 'config',
-    fase: 1,
-  },
-  {
-    rota: 'disciplinas',
-    pt: 'Disciplinas',
-    en: 'Disciplines',
-    path: IC.cubo,
-    grupo: 'topo',
-    escopo: 'config',
-    fase: 1,
-  },
-  {
-    rota: 'projetistas',
-    pt: 'Projetistas',
-    en: 'Designers',
-    path: IC.pessoas,
-    grupo: 'topo',
-    escopo: 'config',
-    fase: 1,
-  },
-  {
-    rota: 'nomenclaturas',
-    pt: 'Nomenclaturas & padrões',
-    en: 'Nomenclatures & standards',
-    path: IC.livro,
-    grupo: 'topo',
-    escopo: 'config',
-    fase: 1,
-  },
-  {
-    rota: 'cores',
-    pt: 'Cores',
-    en: 'Colors',
-    path: IC.selo,
-    grupo: 'topo',
-    escopo: 'config',
-    fase: 1,
-  },
-  {
-    rota: 'cliente',
-    pt: 'Convidar cliente',
-    en: 'Invite client',
-    path: IC.elo,
-    grupo: 'topo',
-    escopo: 'config',
-    fase: 4,
-  },
-]
+ *  São TRÊS áreas contextuais, não quatro: global, projeto e administração. */
 
 /** Tudo, para quem precisa resolver uma rota em rótulo (o breadcrumb).
  *  `Set` porque `PROJETOS` aparece nas duas listas e é o mesmo objeto. */
 export const ITENS_NAV: ItemNav[] = [
-  ...new Set([...ITENS_GLOBAIS, ...ITENS_PROJETO, ...ITENS_ADMIN, ...ITENS_CONFIG]),
+  ...new Set([...ITENS_GLOBAIS, ...ITENS_PROJETO, ...ITENS_ADMIN]),
 ]
