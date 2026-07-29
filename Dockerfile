@@ -77,6 +77,9 @@ COPY --chown=spbim:spbim backend/app ./app
 COPY --chown=spbim:spbim backend/alembic ./alembic
 COPY --chown=spbim:spbim backend/alembic.ini backend/pyproject.toml ./
 COPY --chown=spbim:spbim backend/scripts ./scripts
+# O bit de execução não sobrevive ao checkout em Windows, que é de onde esta
+# imagem é construída — sem o chmod, o ENTRYPOINT falha com "permission denied".
+RUN chmod +x ./scripts/entrypoint.sh
 
 # É a presença deste diretório que faz a API servir a aplicação — ver
 # `app/spa.py`. Sem ele, a API responde só a API.
@@ -88,8 +91,21 @@ USER spbim
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+# `start-period` folgado porque o ENTRYPOINT migra o banco antes de subir a
+# API: num banco vazio a 0001 cria 23 tabelas, 12 enums e as policies de RLS, e
+# 20s não bastariam. Marcar o container como não-saudável nesse intervalo o
+# faria reiniciar no meio da migration.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
   CMD curl -fsS http://localhost:8000/api/v1/health || exit 1
+
+# O ENTRYPOINT roda `alembic upgrade head` e só então executa o CMD.
+#
+# Está no ENTRYPOINT e não no CMD para valer TAMBÉM PARA O WORKER, que troca o
+# comando mas fala com o mesmo banco. Antes disto o container subia o uvicorn
+# direto e a migration era aplicada à mão antes de implantar — funciona
+# enquanto alguém lembra, e no dia em que esquecer a imagem nova roda contra um
+# schema velho.
+ENTRYPOINT ["./scripts/entrypoint.sh"]
 
 # `--proxy-headers` porque a plataforma põe um proxy na frente: sem isso o IP
 # e o esquema do cliente chegariam errados ao log e às URLs geradas.

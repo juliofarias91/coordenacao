@@ -10,9 +10,11 @@ deixa a limpeza de um tenant ser um prefixo só.
 from __future__ import annotations
 
 import logging
+import socket
 import uuid
 from functools import lru_cache
 from pathlib import PurePosixPath
+from urllib.parse import urlparse
 
 import boto3
 from botocore.config import Config
@@ -44,6 +46,57 @@ def cliente():
         aws_secret_access_key=settings.s3_secret_key,
         config=Config(signature_version="s3v4", retries={"max_attempts": 3}),
     )
+
+
+@lru_cache
+def cliente_sonda():
+    """Cliente de DIAGNÓSTICO: timeout curto e uma tentativa só.
+
+    Nunca use para gravar ou ler de verdade — um upload legítimo de modelo BIM
+    PRECISA dos retries que aqui foram removidos.
+    """
+    return boto3.client(
+        "s3",
+        endpoint_url=settings.s3_endpoint_url or None,
+        region_name=settings.s3_region,
+        aws_access_key_id=settings.s3_access_key,
+        aws_secret_access_key=settings.s3_secret_key,
+        config=Config(
+            signature_version="s3v4",
+            connect_timeout=2,
+            read_timeout=2,
+            retries={"max_attempts": 1},
+        ),
+    )
+
+
+def endpoint_alcancavel(timeout: float = 0.5) -> bool:
+    """O host do storage aceita conexão TCP?
+
+    Mesmo raciocínio de `fila_disponivel()` no worker: um socket cru responde
+    "está no ar?" em meio segundo, enquanto a chamada de verdade leva muito
+    mais para desistir. Medido nesta base: `head_bucket` contra endpoint
+    inalcançável custa ~8 s mesmo com timeout curto e uma tentativa (o host
+    resolve para vários endereços, e cada um espera a sua vez); sem essa
+    configuração, ~45 s.
+
+    Num endpoint de readiness que o monitoramento chama a cada 30 s, isso
+    empilha requisições penduradas e transforma "o storage está fora" em "a API
+    está fora". Serve só para DECIDIR SE VALE TENTAR — quem responde se o
+    bucket existe e se a credencial presta continua sendo o `head_bucket`.
+    """
+    bruto = settings.s3_endpoint_url
+    if not bruto:
+        return True  # AWS de verdade: sem endpoint próprio, não há o que sondar
+    url = urlparse(bruto)
+    if not url.hostname:
+        return True
+    porta = url.port or (443 if url.scheme == "https" else 80)
+    try:
+        with socket.create_connection((url.hostname, porta), timeout=timeout):
+            return True
+    except OSError:
+        return False
 
 
 def garantir_bucket() -> None:

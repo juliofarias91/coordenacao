@@ -215,15 +215,39 @@ backend já existe.
 
 ## Pendências operacionais
 
-- **Storage**: as chaves S3 estão no Easypanel e foram validadas, mas o bucket
-  `spbim-auditoria` ainda não existe — a aplicação o cria no primeiro upload.
-  **Conferir no painel se ele nasce privado.**
-- **Redis**: não existe no Easypanel. Sem ele a auditoria automática não
-  enfileira — o upload é aceito e a análise fica pendente.
-- **Migration no deploy**: o `Dockerfile` sobe o uvicorn direto, sem rodar
-  `alembic upgrade head`. Hoje o banco está em dia porque a 0003 foi aplicada
-  da máquina local; **na próxima migration, rodar antes de implantar**.
-- **Senhas no log de build** do Easypanel (ver acima).
+As quatro foram atacadas em 29/07. **Duas fecharam em código; duas dependem de
+uma ação sua no painel** — não há como fazê-las daqui.
+
+**Fechadas:**
+
+- ~~**Migration no deploy**~~ — o `ENTRYPOINT` do `Dockerfile` da raiz agora
+  roda `alembic upgrade head` antes de qualquer processo, para o `app` e para o
+  `worker`. Falha aborta o container de propósito: subir a API contra um schema
+  velho é pior do que não subir. Um `pg_advisory_lock` serializa os dois, que
+  sobem juntos. (O `docker-compose.prod.yml` já tinha um serviço `migracao`
+  dedicado — o buraco era só o caminho do Easypanel.)
+- ~~**Readiness cego**~~ — `/health/ready` só olhava o banco, então a falta do
+  Redis não aparecia em lugar nenhum. Agora relata **banco, fila e storage**.
+  Responde 200 mesmo degradado, de propósito: sem fila tudo funciona menos o
+  enfileiramento, e um 5xx faria o `HEALTHCHECK` derrubar a API inteira.
+  **Alerte pelo campo `status`, não pelo código HTTP.**
+
+**Ficam com você — precisam do painel:**
+
+- **Redis**: continua não existindo no Easypanel. O que mudou é que agora a
+  falta *aparece*: `/health/ready` diz `"fila": "indisponível"`. Roteiro em
+  `docs/EASYPANEL.md` §3.
+- **Bucket privado**: `backend/scripts/verificar_storage.py` troca "conferir no
+  painel" por uma prova. `--canario` grava um objeto, tenta baixá-lo **sem
+  credencial nenhuma** e exige uma recusa; apaga o objeto no fim e sai com
+  código 1 se o bucket for público. **Rode antes do primeiro modelo real** —
+  daqui não deu: o `.env` local aponta o S3 para o MinIO, e as chaves do
+  Supabase vivem no Easypanel.
+- **Senhas no log de build**: a causa é o Easypanel passar variáveis de
+  **projeto** como `--build-arg`. O `Dockerfile` da raiz não declara `ARG`
+  nenhum e não precisa de segredo para construir — então a correção é
+  **declarar os segredos no Environment do SERVIÇO**, e rotacionar o que já
+  circulou. Passo a passo em `docs/EASYPANEL.md` §6.
 
 ---
 

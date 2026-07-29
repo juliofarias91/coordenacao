@@ -10,6 +10,13 @@
 *.md   text eol=lf
 *.ps1  text eol=crlf
 
+# Script de shell e Dockerfile SEMPRE em LF, mesmo com o working copy em
+# Windows: eles rodam dentro do container Linux. Um `#!/bin/sh` que chega com
+# CRLF vira `/bin/sh\r`, e o container morre com "bad interpreter" — erro que
+# não aparece em nada nesta máquina, só no deploy.
+*.sh       text eol=lf
+Dockerfile text eol=lf
+
 *.ifc  binary
 *.rvt  binary
 *.png  binary

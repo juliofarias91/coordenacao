@@ -171,10 +171,27 @@ rsync -az /var/lib/docker/volumes/spbim-prod_backups/_data/ backup@outro-host:/s
 | O quê | Como |
 |---|---|
 | API viva | `GET /api/v1/health` → `{"status":"ok"}` |
-| API + banco | `GET /api/v1/health/ready` → `{"banco":"ok"}` |
+| Banco, fila e storage | `GET /api/v1/health/ready` — ver abaixo |
 | Containers | `docker compose -f docker-compose.prod.yml ps` (coluna `STATUS`) |
 | Fila | `docker compose ... exec worker celery -A app.workers.celery_app.celery inspect active` |
 | Backup recente | `ultimo_sucesso.txt` no volume — se tiver mais de 26 h, alerte |
+| Bucket privado | `python -m scripts.verificar_storage --canario` (sai 1 se público) |
+
+Desde 29/07/2026 o readiness relata os **três** componentes de que a plataforma
+depende, e não só o banco:
+
+```json
+{"status": "degradado", "banco": "ok",
+ "fila": "indisponível", "storage": "ok"}
+```
+
+**Ele responde 200 mesmo degradado.** Sem fila tudo funciona menos o
+enfileiramento; devolver 5xx trocaria uma degradação por uma queda, e o
+`HEALTHCHECK` do container derrubaria a API por causa de um Redis fora do ar.
+**Alerte pelo campo `status`, não pelo código HTTP** — um monitor configurado
+só para "responde 200?" nunca vai acusar fila indisponível, que é exatamente o
+modo de falha silencioso desta plataforma: o upload é aceito, e a análise
+simplesmente nunca sai.
 
 Aponte um monitor externo (UptimeRobot, Better Stack) para `/api/v1/health/ready`.
 Um health check que roda dentro do servidor não avisa quando o servidor cai.
@@ -209,11 +226,13 @@ A trilha responde o que o log não guarda: quem, quando e o diff.
 **Upload de modelo devolve 413** → limite do nginx (`client_max_body_size`) ou
 do proxy de borda. O backend aceita até 512 MB.
 
-**Auditoria automática não roda** → confira nesta ordem: (1) o `worker` está de
-pé? (2) a versão tem arquivo (`arquivo_url` preenchido)? (3) a disciplina
-declara checklists? (4) os critérios estão marcados como `auto`? O endpoint
-`POST /versoes/{id}/auditar-automatico` roda síncrono e devolve os erros na
-resposta — é o caminho mais rápido para descobrir.
+**Auditoria automática não roda** → comece por `/api/v1/health/ready`: se
+`fila` não estiver `ok`, é o Redis e o resto da lista não importa. Depois:
+(1) o `worker` está de pé? (2) a versão tem arquivo (`arquivo_url`
+preenchido)? (3) a disciplina declara checklists? (4) os critérios estão
+marcados como `auto`? O endpoint `POST /versoes/{id}/auditar-automatico` roda
+síncrono e devolve os erros na resposta — é o caminho mais rápido para
+descobrir.
 
 **Fila fora do ar** → o upload continua funcionando e responde que a análise
 não foi enfileirada. Suba o `redis` e use o botão *Auditoria automática* na
