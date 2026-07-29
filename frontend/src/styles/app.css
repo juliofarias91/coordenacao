@@ -2679,3 +2679,21 @@ td.num {
   white-space: nowrap;
 }
 
+
+/* --- "Herdado da disciplina", no cadastro de modelo ---------------------- */
+/* Nao e alerta nem estado: e a previa do que vem de graca ao escolher a
+   disciplina. Superficie neutra, sem cor semantica -- se fosse amarelo ou azul
+   viraria aviso, e nao ha nada a avisar aqui. */
+.modelo-herdado {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink-2);
+}
+.modelo-herdado b {
+  color: var(--ink);
+}

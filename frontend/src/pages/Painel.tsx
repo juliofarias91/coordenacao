@@ -12,11 +12,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { useAuth } from '@/auth/AuthContext'
 import TabelaMatriz, { corDoPercentual } from '@/components/Matriz'
 import { Cabecalho, Erro, Segmented, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { AuditoriaEstado, LinhaPainel, Matriz, Painel as PainelDados } from '@/lib/types'
+import NovoModelo from '@/pages/NovoModelo'
 import { rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 
 const ROTULO_ESTADO: Record<AuditoriaEstado, [string, string]> = {
@@ -49,12 +51,15 @@ function Barra({ pct }: { pct: number | null }) {
 
 export default function Painel() {
   const { projeto, carregando } = useProjeto()
+  const { usuario } = useAuth()
   const { L } = useI18n()
+  const podeCriar = !!usuario?.permissoes.includes('admin_cadastro')
   const navegar = useNavigate()
   const [modo, setModo] = useState<'lista' | 'matriz'>('lista')
   const [dados, setDados] = useState<PainelDados | null>(null)
   const [matriz, setMatriz] = useState<Matriz | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [criando, setCriando] = useState(false)
 
   const carregar = useCallback(async () => {
     if (!projeto) return
@@ -151,7 +156,31 @@ export default function Painel() {
         <button className="btn" onClick={baixarControle}>
           {L('Exportar controle (.xlsx)', 'Export control (.xlsx)')}
         </button>
+        {/* Some para quem não administra cadastros: `POST /modelos` exige
+            `admin_cadastro`, e um botão que só devolve 403 é pior do que botão
+            nenhum. A guarda de verdade continua no backend — isto é
+            conveniência de navegação. Note que a criação usa DUAS permissões:
+            `admin_cadastro` para o modelo e `executar` para a versão. */}
+        {podeCriar && (
+          <button className="btn pri" onClick={() => setCriando(true)}>
+            + {L('Novo modelo', 'New model')}
+          </button>
+        )}
       </div>
+
+      {criando && (
+        <NovoModelo
+          projetoId={projeto.id}
+          projetoCodigo={projeto.codigo}
+          onCancelar={() => setCriando(false)}
+          onCriado={() => {
+            setCriando(false)
+            // Recarrega a lista: o modelo novo tem de aparecer sem F5, senão
+            // quem cadastra dez seguidos não sabe se o anterior entrou.
+            carregar()
+          }}
+        />
+      )}
 
       <Erro mensagem={erro} />
 
