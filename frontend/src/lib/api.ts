@@ -212,9 +212,21 @@ export const api = {
 
   // ------------------------------------------------------------ standards
   standards: {
-    listar: (projetoId: string) =>
-      requisitar<T.Page<T.Standard>>(`/standards${qs({ projeto_id: projetoId })}`),
+    /** `tipo` filtra na API, não no cliente: as diretrizes do PEB e os padrões
+     *  de nomenclatura moram na mesma tabela, e trazer tudo para descartar
+     *  metade cresceria com o projeto. */
+    listar: (projetoId: string, tipo?: string) =>
+      requisitar<T.Page<T.Standard>>(`/standards${qs({ projeto_id: projetoId, tipo })}`),
     criar: (corpo: Record<string, unknown>) => escrever<T.Standard>('/standards', 'POST', corpo),
+    remover: (id: string) => requisitar<void>(`/standards/${id}`, { method: 'DELETE' }),
+    enviarImagem: (id: string, arquivo: File) => {
+      const form = new FormData()
+      form.append('arquivo', arquivo)
+      return requisitar<T.Standard>(`/standards/${id}/imagem`, { method: 'POST', body: form })
+    },
+    /** URL ASSINADA e temporária — o bucket nunca é público. */
+    imagemUrl: (id: string) =>
+      requisitar<{ url: string | null }>(`/standards/${id}/imagem-url`),
     atualizar: (id: string, corpo: Record<string, unknown>) =>
       escrever<T.Standard>(`/standards/${id}`, 'PATCH', corpo),
   },

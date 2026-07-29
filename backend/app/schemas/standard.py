@@ -9,8 +9,24 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.comum import ESCRITA, Identificado
 
-# Tipos de standard (especificação, seção 2.3).
-TIPOS_STANDARD = ("nomenclatura", "conjunto_esperado", "vocabulario", "mapeamento")
+# Tipos de standard (especificação, seção 2.3), mais os dois do PEB.
+#
+# `diretriz` e `setorizacao` entraram com a tela de PEB e NÃO exigiram
+# migration: `standard.tipo` é coluna de TEXTO no banco, não enum do Postgres —
+# quem restringe é o `pattern` daqui. Uma tabela separada para diretriz teria
+# duplicado projeto_id, RLS, CRUD e trilha para guardar título e texto.
+#
+#   diretriz     — uma regra do PEB. `nome` é o título, `referencia` é o texto.
+#   setorizacao  — a imagem de referência de um setor. `nome` é o setor
+#                  (ADMIN, COLO1…), `referencia_url` é a chave no S3.
+TIPOS_STANDARD = (
+    "nomenclatura",
+    "conjunto_esperado",
+    "vocabulario",
+    "mapeamento",
+    "diretriz",
+    "setorizacao",
+)
 
 
 class StandardBase(BaseModel):
@@ -18,10 +34,12 @@ class StandardBase(BaseModel):
 
     nome: str = Field(min_length=1, max_length=200)
     tipo: str = Field(
-        pattern=r"^(nomenclatura|conjunto_esperado|vocabulario|mapeamento)$",
+        pattern=r"^(nomenclatura|conjunto_esperado|vocabulario|mapeamento|diretriz|setorizacao)$",
         description=(
             "nomenclatura=padrão de nome · conjunto_esperado=lista fechada (worksets) · "
-            "vocabulario=dicionário (IfcElementAssembly) · mapeamento=de/para (Revit↔Tekla↔IFC)"
+            "vocabulario=dicionário (IfcElementAssembly) · mapeamento=de/para (Revit↔Tekla↔IFC) · "
+            "diretriz=regra do PEB (nome=título, referencia=texto) · "
+            "setorizacao=imagem do setor (nome=setor, referencia_url=chave no S3)"
         ),
     )
     referencia: str | None = Field(default=None, max_length=300)
@@ -40,7 +58,8 @@ class StandardUpdate(BaseModel):
 
     nome: str | None = Field(default=None, min_length=1, max_length=200)
     tipo: str | None = Field(
-        default=None, pattern=r"^(nomenclatura|conjunto_esperado|vocabulario|mapeamento)$"
+        default=None,
+        pattern=r"^(nomenclatura|conjunto_esperado|vocabulario|mapeamento|diretriz|setorizacao)$",
     )
     referencia: str | None = Field(default=None, max_length=300)
     conteudo: dict[str, Any] | None = None

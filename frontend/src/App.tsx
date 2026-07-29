@@ -27,6 +27,7 @@ import MembrosProjeto from '@/pages/MembrosProjeto'
 import ModeloView from '@/pages/Modelo'
 import Notificacoes from '@/pages/Notificacoes'
 import Painel from '@/pages/Painel'
+import Peb from '@/pages/Peb'
 import Placeholder from '@/pages/Placeholder'
 import Portal from '@/pages/Portal'
 import Relatorios from '@/pages/Relatorios'
@@ -40,23 +41,17 @@ import { ProjetoProvider } from '@/projeto/ProjetoContext'
  *  texto viajaria no chunk principal em toda abertura do painel. */
 const Privacidade = lazy(() => import('@/pages/Privacidade'))
 
-/** Telas que ainda não têm conteúdo. Ganham corpo nas fases indicadas. */
+/** Telas que ainda não têm conteúdo. Ganham corpo nas fases indicadas.
+ *
+ *  VAZIO desde que o PEB ganhou tela — não havia mais nenhuma. O mecanismo
+ *  fica: uma tela nova entra aqui primeiro, dizendo o que vai ser, em vez de
+ *  virar um item de menu que leva a lugar nenhum. */
 const PENDENTES: Array<{
   rota: string
   titulo: [string, string]
   descricao: [string, string]
   fase: number
-}> = [
-  {
-    rota: 'peb',
-    titulo: ['PEB · diretrizes', 'BEP · guidelines'],
-    descricao: [
-      'Documentos normativos que originam os critérios (BEP, A5.37, BIM Forum).',
-      'Normative documents the criteria come from (BEP, A5.37, BIM Forum).',
-    ],
-    fase: 1,
-  },
-]
+}> = []
 
 /** As URLs de antes de 29/07/2026, quando toda tela era global e o projeto
  *  vivia no `localStorage`. Continuam funcionando, redirecionando para o
@@ -184,6 +179,7 @@ export default function App() {
               {/* Quem participa DESTE projeto — outra pergunta que `/membros`,
                   que é o cadastro de contas da organização. */}
               <Route path="membros" element={<MembrosProjeto />} />
+              <Route path="peb" element={<Peb />} />
               {PENDENTES.map((t) => (
                 <Route
                   key={t.rota}

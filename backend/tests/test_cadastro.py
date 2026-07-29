@@ -312,9 +312,7 @@ def _criar_criterio(client: TestClient, projeto_id, codigo: str, **extra) -> dic
     return r.json()
 
 
-def test_criterio_e_bilingue_e_unico_no_projeto(
-    autenticado: TestClient, cenario: Cenario
-) -> None:
+def test_criterio_e_bilingue_e_unico_no_projeto(autenticado: TestClient, cenario: Cenario) -> None:
     c = _criar_criterio(autenticado, cenario.projeto.id, "SATELLITE")
     assert c["nome_pt"] and c["nome_en"]
 
@@ -332,9 +330,7 @@ def test_criterio_e_bilingue_e_unico_no_projeto(
     assert r.status_code == 409, "o código é normalizado, então 'satellite' colide com 'SATELLITE'"
 
 
-def test_um_criterio_serve_a_varios_checklists(
-    autenticado: TestClient, cenario: Cenario
-) -> None:
+def test_um_criterio_serve_a_varios_checklists(autenticado: TestClient, cenario: Cenario) -> None:
     """CA central da SP-106: editar o critério reflete em todos os checklists."""
     projeto_id = str(cenario.projeto.id)
     model_name = _criar_criterio(autenticado, cenario.projeto.id, "MODEL_NAME")
@@ -385,9 +381,7 @@ def test_checklist_recusa_criterio_repetido(autenticado: TestClient, cenario: Ce
     assert r.status_code == 409
 
 
-def test_put_de_checklist_substitui_a_composicao(
-    autenticado: TestClient, cenario: Cenario
-) -> None:
+def test_put_de_checklist_substitui_a_composicao(autenticado: TestClient, cenario: Cenario) -> None:
     projeto_id = str(cenario.projeto.id)
     a = _criar_criterio(autenticado, cenario.projeto.id, "AAA")
     b = _criar_criterio(autenticado, cenario.projeto.id, "BBB")
@@ -404,9 +398,7 @@ def test_put_de_checklist_substitui_a_composicao(
     assert [i["criterio_id"] for i in r.json()["itens"]] == [b["id"]]
 
 
-def test_criterio_em_uso_nao_pode_ser_removido(
-    autenticado: TestClient, cenario: Cenario
-) -> None:
+def test_criterio_em_uso_nao_pode_ser_removido(autenticado: TestClient, cenario: Cenario) -> None:
     c = _criar_criterio(autenticado, cenario.projeto.id, "EM_USO")
     autenticado.put(
         f"{API}/checklists/geral/itens",
@@ -433,3 +425,99 @@ def test_ordem_do_checklist_e_preservada(autenticado: TestClient, cenario: Cenar
         json={"projeto_id": projeto_id, "itens": [{"criterio_id": cid} for cid in esperado]},
     )
     assert [i["criterio_id"] for i in r.json()["itens"]] == esperado
+
+
+# --------------------------------------------------------- PEB (diretrizes)
+# Diretriz e imagem de setorização são `standard` com `tipo` próprio, e não
+# tabela nova: `standard.tipo` é coluna de TEXTO, então os dois tipos não
+# custaram migration. O que se protege aqui é essa decisão — se alguém trocar o
+# campo por um enum do Postgres, estes testes quebram e obrigam a pensar.
+
+
+@requer_banco
+def test_diretriz_do_peb_e_um_standard(autenticado: TestClient, cenario: Cenario) -> None:
+    r = autenticado.post(
+        f"{API}/standards",
+        json={
+            "projeto_id": str(cenario.projeto.id),
+            "nome": "Sistema de coordenadas",
+            "tipo": "diretriz",
+            "referencia": "Ponto base compartilhado nos eixos A/0.01.",
+        },
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["tipo"] == "diretriz"
+
+    # O filtro por tipo é o que separa as diretrizes dos padrões de
+    # nomenclatura na mesma tabela — sem ele a tela do PEB listaria os dois.
+    so_diretrizes = autenticado.get(
+        f"{API}/standards", params={"projeto_id": str(cenario.projeto.id), "tipo": "diretriz"}
+    ).json()["itens"]
+    assert [s["nome"] for s in so_diretrizes] == ["Sistema de coordenadas"]
+
+
+@requer_banco
+def test_setorizacao_tambem_e_standard(autenticado: TestClient, cenario: Cenario) -> None:
+    """`nome` é o setor; a imagem entra depois, por `/standards/{id}/imagem`."""
+    r = autenticado.post(
+        f"{API}/standards",
+        json={"projeto_id": str(cenario.projeto.id), "nome": "ADMIN", "tipo": "setorizacao"},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["referencia_url"] is None
+
+
+@requer_banco
+def test_tipo_de_standard_desconhecido_e_recusado(
+    autenticado: TestClient, cenario: Cenario
+) -> None:
+    """O `pattern` do schema é o que restringe, já que a coluna é texto livre.
+    Sem ele, um erro de digitação criaria um tipo que nenhuma tela lista."""
+    r = autenticado.post(
+        f"{API}/standards",
+        json={"projeto_id": str(cenario.projeto.id), "nome": "X", "tipo": "diretrizes"},
+    )
+    assert r.status_code == 422
+
+
+@requer_banco
+def test_remover_standard(autenticado: TestClient, cenario: Cenario) -> None:
+    criado = autenticado.post(
+        f"{API}/standards",
+        json={"projeto_id": str(cenario.projeto.id), "nome": "Some", "tipo": "diretriz"},
+    ).json()
+
+    assert autenticado.delete(f"{API}/standards/{criado['id']}").status_code == 204
+    assert autenticado.get(f"{API}/standards/{criado['id']}").status_code == 404
+
+
+@requer_banco
+def test_remover_nomenclatura_nao_apaga_a_disciplina(
+    autenticado: TestClient, cenario: Cenario
+) -> None:
+    """`ON DELETE SET NULL`: a disciplina existe independentemente do padrão de
+    nome que se resolveu usar nela."""
+    padrao = autenticado.post(
+        f"{API}/standards",
+        json={
+            "projeto_id": str(cenario.projeto.id),
+            "nome": "Nomenclatura de arquivos",
+            "tipo": "nomenclatura",
+        },
+    ).json()
+    disciplina = autenticado.post(
+        f"{API}/disciplinas",
+        json={
+            "projeto_id": str(cenario.projeto.id),
+            "macro": "S",
+            "disc": "SITE",
+            "sub": "NONE",
+            "nomenclatura_id": padrao["id"],
+        },
+    ).json()
+
+    assert autenticado.delete(f"{API}/standards/{padrao['id']}").status_code == 204
+
+    sobreviveu = autenticado.get(f"{API}/disciplinas/{disciplina['id']}")
+    assert sobreviveu.status_code == 200, "apagar o padrão levou a disciplina junto"
+    assert sobreviveu.json()["nomenclatura_id"] is None

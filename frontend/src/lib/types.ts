@@ -8,7 +8,19 @@ export type EmpresaPapel = 'trade' | 'bim' | 'fornecedor' | 'coordenacao'
 export type ChecklistTipo = 'geral' | 'ifc' | '4d' | 'lod300' | 'lod350' | 'lod400' | 'lod500'
 export type CriterioNivel = 'modelo' | 'elemento'
 export type Automacao = 'auto' | 'design_automation' | 'manual'
-export type TipoStandard = 'nomenclatura' | 'conjunto_esperado' | 'vocabulario' | 'mapeamento'
+/** `diretriz` e `setorizacao` vieram com a tela de PEB e moram na MESMA tabela
+ *  dos outros: `standard.tipo` é coluna de texto, não enum do Postgres, então
+ *  não custaram migration.
+ *    diretriz     — regra do PEB. `nome` é o título, `referencia` é o texto.
+ *    setorizacao  — imagem de um setor. `nome` é o setor, `referencia_url` é a
+ *                   chave no S3. */
+export type TipoStandard =
+  | 'nomenclatura'
+  | 'conjunto_esperado'
+  | 'vocabulario'
+  | 'mapeamento'
+  | 'diretriz'
+  | 'setorizacao'
 
 export type Page<T> = { itens: T[]; proximo_cursor: string | null }
 

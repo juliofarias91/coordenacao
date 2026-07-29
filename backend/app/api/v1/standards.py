@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,7 +25,9 @@ from app.schemas.standard import (
     StandardOut,
     StandardUpdate,
 )
+from app.services import storage
 from app.services.escopo import exigir, exigir_projeto
+from app.services.storage import StorageError
 
 router = APIRouter(tags=["standards"])
 
@@ -84,6 +86,103 @@ def atualizar(
     return StandardOut.model_validate(standard)
 
 
+@router.delete("/standards/{standard_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remover(
+    standard_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+    _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+) -> None:
+    """Apaga o standard.
+
+    A disciplina que o referenciava em `nomenclatura_id` fica sem padrão — é a
+    FK com `ON DELETE SET NULL`. Não se apaga a disciplina junto: ela existe
+    independentemente do padrão de nome que se resolveu usar nela.
+    """
+    db.delete(exigir(db, Standard, standard_id, "standard"))
+    db.flush()
+
+
+# ------------------------------------------------------ imagem de setorização
+# 4 MB: são plantas de setor exportadas como imagem, não fotografia. Acima
+# disso quase sempre é PNG sem compressão de algo que caberia num JPEG.
+IMAGEM_TAMANHO_MAX = 4 * 1024 * 1024
+IMAGEM_TIPOS = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+}
+
+
+@router.post("/standards/{standard_id}/imagem", response_model=StandardOut)
+async def enviar_imagem(
+    standard_id: uuid.UUID,
+    arquivo: UploadFile = File(...),
+    db: Session = Depends(get_tenant_db),
+    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+) -> StandardOut:
+    """Anexa uma imagem ao standard — hoje, a planta de um setor no PEB.
+
+    Guarda a CHAVE do objeto em `referencia_url`, não uma URL pública: o bucket
+    é privado, e quem quiser ver pede uma URL assinada em `/imagem-url`. O
+    protótipo embutia a imagem como data-URL no navegador, o que não sobrevive a
+    um F5 nem chega ao colega do lado.
+    """
+    standard = exigir(db, Standard, standard_id, "standard")
+
+    ext = storage.extensao_segura(arquivo.filename or "", set(IMAGEM_TIPOS))
+    if not ext:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"formato não aceito; use {', '.join(sorted(IMAGEM_TIPOS))}",
+        )
+
+    conteudo = await arquivo.read()
+    if len(conteudo) > IMAGEM_TAMANHO_MAX:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"imagem acima de {IMAGEM_TAMANHO_MAX // (1024 * 1024)} MB",
+        )
+
+    try:
+        standard.referencia_url = storage.enviar(
+            user.org_id,
+            f"standards/{standard_id}/imagem{ext}",
+            conteudo,
+            IMAGEM_TIPOS[ext],
+        )
+    except StorageError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+
+    db.flush()
+    return StandardOut.model_validate(standard)
+
+
+@router.get("/standards/{standard_id}/imagem-url")
+def obter_url_da_imagem(
+    standard_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+) -> dict[str, str | None]:
+    """URL temporária de leitura. O bucket nunca é público."""
+    standard = exigir(db, Standard, standard_id, "standard")
+    if not standard.referencia_url:
+        return {"url": None}
+    # Um standard de outro tipo pode ter uma URL EXTERNA aqui (link para o PDF
+    # da norma). Assinar isso daria erro; devolver como veio é o certo.
+    if standard.referencia_url.startswith(("http://", "https://")):
+        return {"url": standard.referencia_url}
+    try:
+        return {"url": storage.url_assinada(standard.referencia_url)}
+    except StorageError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+
+
 # --------------------------------------------------------------- nomenclatura
 @router.get("/projetos/{projeto_id}/nomenclatura", response_model=NomenclaturaOut)
 def obter_nomenclatura(
@@ -92,11 +191,17 @@ def obter_nomenclatura(
     _: CurrentUser = Depends(requer_permissao("ver_painel")),
 ) -> NomenclaturaOut:
     exigir_projeto(db, projeto_id)
-    padrao = db.execute(
-        select(NomenclaturaPadrao)
-        .where(NomenclaturaPadrao.projeto_id == projeto_id, NomenclaturaPadrao.vigente.is_(True))
-        .order_by(NomenclaturaPadrao.created_at.desc())
-    ).scalars().first()
+    padrao = (
+        db.execute(
+            select(NomenclaturaPadrao)
+            .where(
+                NomenclaturaPadrao.projeto_id == projeto_id, NomenclaturaPadrao.vigente.is_(True)
+            )
+            .order_by(NomenclaturaPadrao.created_at.desc())
+        )
+        .scalars()
+        .first()
+    )
     if padrao is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

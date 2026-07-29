@@ -2697,3 +2697,45 @@ td.num {
 .modelo-herdado b {
   color: var(--ink);
 }
+
+/* --- PEB: imagens de setorizacao ---------------------------------------- */
+.peb-setores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.peb-setor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+.peb-setor-nome {
+  font-weight: 650;
+  font-size: 13.5px;
+}
+.peb-setor img {
+  display: block;
+  width: 100%;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+}
+/* Tracejado: e o sinal de "aqui caberia algo", o mesmo do estado vazio de
+   pagina. Solido pareceria um campo desabilitado. */
+.peb-setor-vazio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-lg);
+  color: var(--ink-3);
+  font-size: 12px;
+  text-align: center;
+}
+/* `label` fazendo papel de botao: o input de arquivo fica escondido dentro
+   dela, que e como se troca o visual do seletor nativo sem JavaScript. */
+.peb-setor-envio {
+  align-self: flex-start;
+  cursor: pointer;
+}
