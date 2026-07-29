@@ -27,6 +27,7 @@ import { useI18n } from '@/i18n'
 import {
   GRUPOS,
   ITENS_ADMIN,
+  ITENS_CONFIG,
   ITENS_GLOBAIS,
   ITENS_PROJETO,
   type GrupoNav,
@@ -165,6 +166,9 @@ export default function Shell() {
   /** O painel administrativo é a TERCEIRA área com sidebar própria. `casa` e
    *  não igualdade: `/admin/usuarios` também está dentro dele. */
   const emAdmin = casa('/admin', pathname)
+  /** E a configuração do projeto é a QUARTA. Vive DENTRO de um projeto, então
+   *  precisa ser checada antes dele — senão o menu do projeto ganharia. */
+  const emConfig = !!emProjeto && casa('configuracao', trilho)
 
   const [recolhida, setRecolhida] = useState(leRecolhida)
   const [gruposOff, setGruposOff] = useState<Record<string, boolean>>({})
@@ -214,7 +218,13 @@ export default function Shell() {
   //
   // `permissoes` do /auth/me já vem resolvido: o backend aplica o padrão do
   // papel quando o usuário não tem lista própria.
-  const doEscopo = emAdmin ? ITENS_ADMIN : emProjeto ? ITENS_PROJETO : ITENS_GLOBAIS
+  const doEscopo = emAdmin
+    ? ITENS_ADMIN
+    : emConfig
+      ? ITENS_CONFIG
+      : emProjeto
+        ? ITENS_PROJETO
+        : ITENS_GLOBAIS
   const itens = doEscopo.filter(
     (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
   )
@@ -224,11 +234,13 @@ export default function Shell() {
    *  está vindo), e o item vira um rótulo apagado em vez de um link quebrado. */
   const destino = useCallback(
     (item: ItemNav): string | null => {
-      // `admin` e `global` já trazem o caminho absoluto; só o de projeto
-      // precisa do id, que não está no item.
-      if (item.escopo !== 'projeto') return item.rota
+      // `admin` e `global` já trazem o caminho absoluto; os de projeto e de
+      // configuração precisam do id, que não está no item.
+      if (item.escopo === 'global' || item.escopo === 'admin') return item.rota
       const alvo = projeto ?? referencia
-      return alvo ? rotaProjeto(alvo.id, item.rota) : null
+      if (!alvo) return null
+      const tela = item.escopo === 'config' ? `configuracao/${item.rota}` : item.rota
+      return rotaProjeto(alvo.id, tela)
     },
     [projeto, referencia],
   )
@@ -240,9 +252,13 @@ export default function Shell() {
   // de rota nenhuma — o aninhamento correto resolveu o caso especial.
   const atual =
     itens
-      .filter((i) =>
-        i.escopo === 'projeto' ? !!emProjeto && casa(i.rota, trilho) : casa(i.rota, pathname),
-      )
+      .filter((i) => {
+        if (i.escopo === 'config') {
+          return emConfig && casa(`configuracao/${i.rota}`, trilho)
+        }
+        if (i.escopo === 'projeto') return !!emProjeto && casa(i.rota, trilho)
+        return casa(i.rota, pathname)
+      })
       .sort((a, b) => b.rota.length - a.rota.length)[0] ?? (emProjeto ? undefined : itens[0])
 
   const escuro = theme === 'dark'

@@ -13,7 +13,9 @@ export type Automacao = 'auto' | 'design_automation' | 'manual'
  *  não custaram migration.
  *    diretriz     — regra do PEB. `nome` é o título, `referencia` é o texto.
  *    setorizacao  — imagem de um setor. `nome` é o setor, `referencia_url` é a
- *                   chave no S3. */
+ *                   chave no S3.
+ *    mandate      — exigência do contratante (BIM Mandate). Mesmo formato da
+ *                   diretriz; o que separa as duas listas é o tipo. */
 export type TipoStandard =
   | 'nomenclatura'
   | 'conjunto_esperado'
@@ -21,6 +23,7 @@ export type TipoStandard =
   | 'mapeamento'
   | 'diretriz'
   | 'setorizacao'
+  | 'mandate'
 
 export type Page<T> = { itens: T[]; proximo_cursor: string | null }
 

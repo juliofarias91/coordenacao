@@ -21,9 +21,17 @@
   /* --- superfícies -------------------------------------------------------
      A hierarquia vem do ESPAÇAMENTO entre os níveis, não dos valores
      absolutos (kit §7.2). Três degraus: fundo < painel < painel elevado. */
-  --canvas: #eef1f5;
+  /* O FUNDO É BRANCO, não cinza-azulado. Era `#eef1f5`, e num tema claro isso
+     invertia a hierarquia: o card ficava mais claro que a página, quando o
+     esperado é o oposto — a superfície elevada é a que se destaca do fundo.
+     Agora a página é branca e o card se separa dela pela BORDA, que é o que o
+     escuro também faz (lá a hierarquia é de luminância porque há espaço para
+     três degraus escuros; aqui não há três degraus acima do branco).
+     `--panel-2` continua sendo o degrau abaixo, para o que precisa recuar:
+     cabeçalho de grupo, chip em repouso, célula neutra. */
+  --canvas: #ffffff;
   --panel: #ffffff;
-  --panel-2: #f4f6fa;
+  --panel-2: #f6f8fb;
   --popover: #ffffff;
 
   /* --- tinta -------------------------------------------------------------

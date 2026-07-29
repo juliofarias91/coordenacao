@@ -64,7 +64,7 @@ export type ItemNav = {
   /** Onde a tela vive. `projeto` significa `/projetos/:projetoId/<rota>`: a
    *  tela não existe sem um projeto escolhido, e o escolhido está na URL.
    *  `global` é o que vale para a organização inteira. */
-  escopo: 'global' | 'projeto' | 'admin'
+  escopo: 'global' | 'projeto' | 'admin' | 'config'
   /** Fase do roadmap em que a tela é implementada de verdade. */
   fase: number
   /** Some do menu para quem não tem a permissão. É conveniência de navegação,
@@ -240,6 +240,19 @@ export const ITENS_PROJETO: ItemNav[] = [
     fase: 1,
   },
   {
+    // Logo abaixo do PEB, e não dentro dele: são documentos de autores
+    // diferentes. O mandate é o que o CLIENTE exige; o PEB é como a equipe se
+    // propõe a atender. Quando discordam, prevalece o mandate — e para isso
+    // ele precisa estar registrado à parte.
+    rota: 'mandate',
+    pt: 'BIM Mandate',
+    en: 'BIM Mandate',
+    path: IC.selo,
+    grupo: 'projeto',
+    escopo: 'projeto',
+    fase: 1,
+  },
+  {
     rota: 'configuracao',
     pt: 'Configurações do projeto',
     en: 'Project setup',
@@ -379,8 +392,88 @@ export const ITENS_ADMIN: ItemNav[] = [
   },
 ]
 
+/** O menu da CONFIGURAÇÃO DO PROJETO — a quarta área com barra própria.
+ *
+ *  Eram sete abas numa linha só. Aba serve para alternar entre visões do MESMO
+ *  assunto, e aqui são assuntos distintos: quem cadastra projetista não está a
+ *  meio caminho de escolher cores. Sete rótulos como "Nomenclaturas & padrões"
+ *  também não cabem lado a lado sem quebrar a linha.
+ *
+ *  `rota` é o caminho DENTRO da configuração; o prefixo sai de
+ *  `rotaProjeto(id, 'configuracao/<rota>')`. */
+export const ITENS_CONFIG: ItemNav[] = [
+  {
+    // A PORTA DE SAÍDA, no mesmo lugar em que o menu do projeto tem
+    // "Projetos": o primeiro item de uma área contextual é por onde se volta.
+    // `escopo: 'projeto'` porque o destino é uma tela do projeto, não da
+    // configuração — é o que faz `destino()` montar o caminho sem o prefixo
+    // `configuracao/`.
+    rota: 'modelos',
+    pt: 'Voltar ao projeto',
+    en: 'Back to project',
+    path: IC.casa,
+    grupo: 'topo',
+    escopo: 'projeto',
+    fase: 1,
+  },
+  {
+    rota: 'projeto',
+    pt: 'Projeto & Cliente',
+    en: 'Project & Client',
+    path: IC.casa,
+    grupo: 'topo',
+    escopo: 'config',
+    fase: 1,
+  },
+  {
+    rota: 'disciplinas',
+    pt: 'Disciplinas',
+    en: 'Disciplines',
+    path: IC.cubo,
+    grupo: 'topo',
+    escopo: 'config',
+    fase: 1,
+  },
+  {
+    rota: 'projetistas',
+    pt: 'Projetistas',
+    en: 'Designers',
+    path: IC.pessoas,
+    grupo: 'topo',
+    escopo: 'config',
+    fase: 1,
+  },
+  {
+    rota: 'nomenclaturas',
+    pt: 'Nomenclaturas & padrões',
+    en: 'Nomenclatures & standards',
+    path: IC.livro,
+    grupo: 'topo',
+    escopo: 'config',
+    fase: 1,
+  },
+  {
+    rota: 'cores',
+    pt: 'Cores',
+    en: 'Colors',
+    path: IC.selo,
+    grupo: 'topo',
+    escopo: 'config',
+    fase: 1,
+  },
+  {
+    rota: 'cliente',
+    pt: 'Convidar cliente',
+    en: 'Invite client',
+    path: IC.elo,
+    grupo: 'topo',
+    escopo: 'config',
+    fase: 4,
+  },
+]
+
 /** Tudo, para quem precisa resolver uma rota em rótulo (o breadcrumb).
  *  `Set` porque `PROJETOS` aparece nas duas listas e é o mesmo objeto. */
 export const ITENS_NAV: ItemNav[] = [
-  ...new Set([...ITENS_GLOBAIS, ...ITENS_PROJETO, ...ITENS_ADMIN]),
+  ...new Set([...ITENS_GLOBAIS, ...ITENS_PROJETO, ...ITENS_ADMIN, ...ITENS_CONFIG]),
 ]

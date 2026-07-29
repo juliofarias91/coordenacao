@@ -9,7 +9,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Campo, Cabecalho, Chips, Editor, Erro, Segmented, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
-import type { Automacao, ChecklistTipo, CriterioComUso, CriterioNivel } from '@/lib/types'
+import type {
+  Automacao,
+  ChecklistTipo,
+  CriterioComUso,
+  CriterioNivel,
+  Standard,
+} from '@/lib/types'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
 const CHECKLISTS: Array<[ChecklistTipo, string, string]> = [
@@ -36,6 +42,13 @@ type Rascunho = {
   automacao: Automacao
   parametro_esperado: string
   instrucao: string
+  /** O standard que o critério consulta — nomenclatura, lista de worksets,
+   *  dicionário. Existe no modelo desde a Fase 1 e não tinha campo na tela:
+   *  quem quisesse ligar um critério a um padrão não conseguia. */
+  standard_id: string
+  /** O que faz o item passar, por escrito. É o que o auditor lê antes de
+   *  marcar aprovado — e sem ele o critério vira uma pergunta sem gabarito. */
+  criterio_aceitacao: string
 }
 
 const VAZIO: Rascunho = {
@@ -47,6 +60,8 @@ const VAZIO: Rascunho = {
   automacao: 'manual',
   parametro_esperado: '',
   instrucao: '',
+  standard_id: '',
+  criterio_aceitacao: '',
 }
 
 export default function Criterios() {
@@ -59,10 +74,21 @@ export default function Criterios() {
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [modo, setModo] = useState<'biblioteca' | 'checklist'>('biblioteca')
+  const [standards, setStandards] = useState<Standard[]>([])
+  /** Filtro por categoria. `''` é "Todos" — string vazia e não `null` porque é
+   *  o valor de um chip, e o par de tipos simplifica a comparação abaixo. */
+  const [filtroCategoria, setFiltroCategoria] = useState('')
 
   const carregar = useCallback(async () => {
     if (!projeto) return
-    setCriterios((await api.criterios.listar(projeto.id)).itens)
+    const [cs, ss] = await Promise.all([
+      api.criterios.listar(projeto.id),
+      // Para o seletor de padrão de referência. Falha silenciosa: sem
+      // standards o seletor fica com "nenhum" e o resto da tela funciona.
+      api.standards.listar(projeto.id).catch(() => ({ itens: [] as Standard[] })),
+    ])
+    setCriterios(cs.itens)
+    setStandards(ss.itens)
   }, [projeto])
 
   const carregarChecklist = useCallback(async () => {
@@ -80,8 +106,19 @@ export default function Criterios() {
   }, [modo, carregarChecklist])
 
   const categorias = useMemo(
-    () => [...new Set(criterios.map((c) => c.categoria).filter(Boolean))] as string[],
+    () => ([...new Set(criterios.map((c) => c.categoria).filter(Boolean))] as string[]).sort(),
     [criterios],
+  )
+
+  /** A lista depois do filtro. Se a categoria filtrada deixar de existir —
+   *  porque o último critério dela foi editado ou removido —, o filtro cai
+   *  sozinho para "Todos" em vez de mostrar uma lista vazia sem explicação. */
+  const visiveis = useMemo(
+    () =>
+      filtroCategoria && categorias.includes(filtroCategoria)
+        ? criterios.filter((c) => c.categoria === filtroCategoria)
+        : criterios,
+    [criterios, categorias, filtroCategoria],
   )
 
   if (carregando) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
@@ -109,6 +146,8 @@ export default function Criterios() {
       automacao: rascunho.automacao,
       parametro_esperado: rascunho.parametro_esperado || null,
       instrucao: rascunho.instrucao || null,
+      standard_id: rascunho.standard_id || null,
+      criterio_aceitacao: rascunho.criterio_aceitacao || null,
     }
     try {
       if (rascunho.id) await api.criterios.atualizar(rascunho.id, corpo)
@@ -262,6 +301,34 @@ export default function Criterios() {
                   onChange={(e) => setRascunho({ ...rascunho, parametro_esperado: e.target.value })}
                 />
               </Campo>
+              <Campo rotulo={L('Padrão de referência', 'Reference standard')} largo>
+                <select
+                  className="f"
+                  value={rascunho.standard_id}
+                  onChange={(e) => setRascunho({ ...rascunho, standard_id: e.target.value })}
+                >
+                  <option value="">{L('— nenhum —', '— none —')}</option>
+                  {standards.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      {st.nome} · {st.tipo}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo rotulo={L('Critério de aceitação', 'Acceptance criterion')} largo>
+                <textarea
+                  className="f"
+                  rows={2}
+                  placeholder={L(
+                    'O que faz este item passar. Ex.: "todos os elementos têm 4D_AREA preenchido com um setor válido".',
+                    'What makes this item pass. E.g. "every element has 4D_AREA filled with a valid sector".',
+                  )}
+                  value={rascunho.criterio_aceitacao}
+                  onChange={(e) =>
+                    setRascunho({ ...rascunho, criterio_aceitacao: e.target.value })
+                  }
+                />
+              </Campo>
               <Campo rotulo={L('Instrução de verificação', 'Verification instruction')} largo>
                 <textarea
                   className="f"
@@ -273,8 +340,35 @@ export default function Criterios() {
             </Editor>
           )}
 
+          {/* FILTRO POR CATEGORIA. A biblioteca cresce por categoria — aspectos
+              gerais, organização do navegador, parâmetros, IFC, LOD —, e sem o
+              filtro achar um critério vira rolagem. As categorias saem dos
+              próprios critérios: não há lista fechada, e inventar uma faria a
+              tela discordar do que está cadastrado. */}
+          {categorias.length > 0 && (
+            <div className="filters">
+              <button
+                type="button"
+                className={`chip${filtroCategoria === '' ? ' on' : ''}`}
+                onClick={() => setFiltroCategoria('')}
+              >
+                {L('Todos', 'All')}
+              </button>
+              {categorias.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`chip${filtroCategoria === cat ? ' on' : ''}`}
+                  onClick={() => setFiltroCategoria(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="card">
-            {criterios.map((c) => {
+            {visiveis.map((c) => {
               const auto = AUTOMACOES.find(([v]) => v === c.automacao)
               return (
                 <div className="libitem" key={c.id}>
@@ -302,6 +396,8 @@ export default function Criterios() {
                     automacao: c.automacao,
                     parametro_esperado: c.parametro_esperado ?? '',
                     instrucao: c.instrucao ?? '',
+                    standard_id: c.standard_id ?? '',
+                    criterio_aceitacao: c.criterio_aceitacao ?? '',
                   })}>
                     {L('Editar', 'Edit')}
                   </button>
@@ -313,9 +409,13 @@ export default function Criterios() {
                 </div>
               )
             })}
-            {criterios.length === 0 && (
+            {visiveis.length === 0 && (
               <div className="empty">
-                <b>{L('Biblioteca vazia', 'Empty library')}</b>
+                <b>
+                  {filtroCategoria
+                    ? L('Nada nesta categoria', 'Nothing in this category')
+                    : L('Biblioteca vazia', 'Empty library')}
+                </b>
                 {L(
                   'Os critérios derivam do PEB e do A5.37. Cadastre-os uma vez e reutilize em todos os checklists.',
                   'Criteria derive from the BEP and A5.37. Register them once and reuse across every checklist.',

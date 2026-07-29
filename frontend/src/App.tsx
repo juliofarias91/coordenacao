@@ -7,7 +7,16 @@ import Shell from '@/layout/Shell'
 import Admin from '@/pages/admin'
 import Apontamentos from '@/pages/Apontamentos'
 import Auditoria from '@/pages/Auditoria'
+import BimMandate from '@/pages/BimMandate'
 import Configuracao from '@/pages/configuracao'
+import {
+  CfgCliente,
+  CfgCores,
+  CfgDisciplinas,
+  CfgNomenclaturas,
+  CfgProjetistas,
+  CfgProjeto,
+} from '@/pages/configuracao/paginas'
 import Configuracoes from '@/pages/Configuracoes'
 import Criterios from '@/pages/Criterios'
 import Home from '@/pages/Home'
@@ -174,12 +183,24 @@ export default function App() {
               <Route path="auditoria/:checklist" element={<Auditoria />} />
               <Route path="auditoria" element={<Navigate to="geral" replace />} />
               <Route path="relatorios" element={<Relatorios />} />
-              <Route path="configuracao" element={<Configuracao />} />
+              {/* CONFIGURAÇÃO — a quarta área com sidebar própria. Eram sete
+                  abas numa linha só; cada uma virou rota, e `Configuracao`
+                  ficou com a guarda de projeto e o `Outlet`. */}
+              <Route path="configuracao" element={<Configuracao />}>
+                <Route index element={<Navigate to="projeto" replace />} />
+                <Route path="projeto" element={<CfgProjeto />} />
+                <Route path="disciplinas" element={<CfgDisciplinas />} />
+                <Route path="projetistas" element={<CfgProjetistas />} />
+                <Route path="nomenclaturas" element={<CfgNomenclaturas />} />
+                <Route path="cores" element={<CfgCores />} />
+                <Route path="cliente" element={<CfgCliente />} />
+              </Route>
               <Route path="criterios" element={<Criterios />} />
               {/* Quem participa DESTE projeto — outra pergunta que `/membros`,
                   que é o cadastro de contas da organização. */}
               <Route path="membros" element={<MembrosProjeto />} />
               <Route path="peb" element={<Peb />} />
+              <Route path="mandate" element={<BimMandate />} />
               {PENDENTES.map((t) => (
                 <Route
                   key={t.rota}

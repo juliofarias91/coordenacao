@@ -26,6 +26,7 @@ TIPOS_STANDARD = (
     "mapeamento",
     "diretriz",
     "setorizacao",
+    "mandate",
 )
 
 
@@ -34,12 +35,13 @@ class StandardBase(BaseModel):
 
     nome: str = Field(min_length=1, max_length=200)
     tipo: str = Field(
-        pattern=r"^(nomenclatura|conjunto_esperado|vocabulario|mapeamento|diretriz|setorizacao)$",
+        pattern=r"^(nomenclatura|conjunto_esperado|vocabulario|mapeamento|diretriz|setorizacao|mandate)$",
         description=(
             "nomenclatura=padrão de nome · conjunto_esperado=lista fechada (worksets) · "
             "vocabulario=dicionário (IfcElementAssembly) · mapeamento=de/para (Revit↔Tekla↔IFC) · "
             "diretriz=regra do PEB (nome=título, referencia=texto) · "
-            "setorizacao=imagem do setor (nome=setor, referencia_url=chave no S3)"
+            "setorizacao=imagem do setor (nome=setor, referencia_url=chave no S3) · "
+            "mandate=exigência do contratante (BIM Mandate; nome=título, referencia=texto)"
         ),
     )
     referencia: str | None = Field(default=None, max_length=300)
@@ -59,7 +61,7 @@ class StandardUpdate(BaseModel):
     nome: str | None = Field(default=None, min_length=1, max_length=200)
     tipo: str | None = Field(
         default=None,
-        pattern=r"^(nomenclatura|conjunto_esperado|vocabulario|mapeamento|diretriz|setorizacao)$",
+        pattern=r"^(nomenclatura|conjunto_esperado|vocabulario|mapeamento|diretriz|setorizacao|mandate)$",
     )
     referencia: str | None = Field(default=None, max_length=300)
     conteudo: dict[str, Any] | None = None
