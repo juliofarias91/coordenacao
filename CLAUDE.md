@@ -186,8 +186,12 @@ Ao continuar:
   projeto sendo que nenhuma das duas APIs é por projeto.
 - **As seis telas de Auditoria são uma só**, parametrizada pela rota
   (`auditoria/:checklist`) sobre a matriz que o backend já servia por
-  checklist. `LOD300` e `LOD350` estão no menu mas não no enum do banco — ver
-  `CHECKLISTS_SEM_BANCO`.
+  checklist. Recorte novo entra primeiro em `CHECKLISTS_SEM_BANCO` (hoje
+  vazio), que faz a tela dizer o que falta em vez de tomar um 422.
+- **`projeto_membro` registra participação e NÃO autoriza** (migration 0004).
+  Quem decide continua sendo `requer_permissao` sobre as permissões de
+  organização. `tests/test_membros.py::test_participacao_nao_e_permissao`
+  existe para que ligar as duas coisas seja uma decisão, não um acidente.
 - `backend/app/api/v1/` tem o padrão de rota (permissão via `requer_permissao`, sessão via `get_tenant_db`, 404 via `services/escopo.py`).
 - `backend/app/services/auditoria.py` concentra as regras da execução — leia antes de mexer em estado de round.
 - `backend/app/services/automacao/executor.py` tem o registro de verificadores: para automatizar um critério novo, acrescente uma entrada em `VERIFICADORES` ou dê a ele um `parametro_esperado`.
@@ -199,6 +203,7 @@ Ao continuar:
 - `fila_disponivel()` checa o broker por socket antes de qualquer `delay()`; sem isso um Redis fora do ar prende a requisição por ~107 s. **`storage.endpoint_alcancavel()` é a mesma ideia para o S3**, e existe porque o `/health/ready` a reintroduziu: `head_bucket` contra endpoint fora do ar custa ~45 s com o cliente normal e ~8 s mesmo com timeout curto e uma tentativa. Num endpoint que o monitoramento chama a cada 30 s, isso transforma "o storage caiu" em "a API caiu".
 - O autor da trilha vem do `AutorMiddleware`, não de `get_current_user`: rota síncrona roda em threadpool e a `ContextVar` definida lá dentro não volta para o chamador.
 - `_garantir_id` no `before_flush`: defaults de coluna só são avaliados no INSERT, então sem ele toda criação entra na trilha sem dizer o que foi criada.
+- **O `pg_advisory_lock` do `alembic/env.py` vai numa CONEXÃO SEPARADA.** No SQLAlchemy 2.0 o primeiro `execute()` abre transação implícita; tomando o lock na conexão do Alembic, `context.begin_transaction()` vira no-op e **ninguém commita** — o `upgrade head` imprime "Running upgrade", sai com código 0 e não grava nada. Por isso o `entrypoint.sh` confere `alembic current` contra head em vez de confiar no código de saída.
 
 **Ao criar gráfico:** as cores saem de token de tema (`var(--macro-X)`), nunca do hex da API — o modo escuro tem passos próprios. A paleta foi validada; se mexer nela, revalide.
 

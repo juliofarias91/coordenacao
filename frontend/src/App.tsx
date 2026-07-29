@@ -15,6 +15,7 @@ import Integracoes from '@/pages/Integracoes'
 import Kpis from '@/pages/Kpis'
 import Login from '@/pages/Login'
 import Membros from '@/pages/Membros'
+import MembrosProjeto from '@/pages/MembrosProjeto'
 import ModeloView from '@/pages/Modelo'
 import Notificacoes from '@/pages/Notificacoes'
 import Painel from '@/pages/Painel'
@@ -44,19 +45,6 @@ const PENDENTES: Array<{
     descricao: [
       'Documentos normativos que originam os critérios (BEP, A5.37, BIM Forum).',
       'Normative documents the criteria come from (BEP, A5.37, BIM Forum).',
-    ],
-    fase: 1,
-  },
-  {
-    // O item já está no menu, mas a tela precisa de banco: não existe HOJE
-    // nenhum vínculo usuário↔projeto — o usuário pertence à organização e,
-    // opcionalmente, a uma empresa. Um placeholder que diz isso é mais honesto
-    // do que um item de menu que não leva a lugar nenhum.
-    rota: 'membros',
-    titulo: ['Membros do projeto', 'Project members'],
-    descricao: [
-      'Quem participa deste projeto e com que papel nele. Depende de uma tabela de vínculo usuário↔projeto, que ainda não existe: hoje o acesso é da organização inteira. Enquanto isso, use Gestão de membros.',
-      'Who takes part in this project and in what role. Depends on a user↔project link table that does not exist yet: today access is organization-wide. Until then, use Member management.',
     ],
     fase: 1,
   },
@@ -160,6 +148,9 @@ export default function App() {
               <Route path="relatorios" element={<Relatorios />} />
               <Route path="configuracao" element={<Configuracao />} />
               <Route path="criterios" element={<Criterios />} />
+              {/* Quem participa DESTE projeto — outra pergunta que `/membros`,
+                  que é o cadastro de contas da organização. */}
+              <Route path="membros" element={<MembrosProjeto />} />
               {PENDENTES.map((t) => (
                 <Route
                   key={t.rota}

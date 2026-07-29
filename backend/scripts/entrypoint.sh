@@ -26,5 +26,19 @@ export ALEMBIC_LOCK_ID="${ALEMBIC_LOCK_ID:-728301}"
 echo "[entrypoint] alembic upgrade head"
 alembic upgrade head
 
+# CONFERE que o banco ficou mesmo em head, e não só que o comando saiu com 0.
+#
+# Não é redundância: em 29/07/2026 um erro no `env.py` fez o `upgrade head`
+# imprimir "Running upgrade 0003 -> 0004", sair com código 0 e NÃO GRAVAR NADA
+# — a transação do Alembic virava no-op e ninguém commitava. `set -e` não pega
+# isso, porque nada falhou; o container subiria contra o schema velho, que é
+# exatamente o que este entrypoint existe para impedir.
+if ! alembic current 2>/dev/null | grep -q '(head)'; then
+    echo "[entrypoint] ERRO: o banco nao ficou em head depois do upgrade." >&2
+    echo "[entrypoint] revisao atual:" >&2
+    alembic current >&2
+    exit 1
+fi
+
 echo "[entrypoint] iniciando: $*"
 exec "$@"

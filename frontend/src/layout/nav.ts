@@ -79,15 +79,13 @@ const IC = {
 export const CHECKLISTS = ['geral', '4d', 'lod300', 'lod350', 'lod400', 'lod500'] as const
 export type Checklist = (typeof CHECKLISTS)[number]
 
-/** Os que o enum `ChecklistTipo` do backend ainda NÃO tem.
+/** Recortes que existem no menu mas ainda não no enum `ChecklistTipo` do
+ *  backend. Hoje: NENHUM — `lod300` e `lod350` entraram na migration 0004.
  *
- *  Entram no menu mesmo assim: a estrutura pedida é de seis recortes, e
- *  esconder dois faria a interface mentir sobre o que se planeja auditar. Mas
- *  a tela deles diz que falta a migration em vez de chamar a API e receber um
- *  422 — erro de validação bruto não explica nada a quem coordena obra.
- *
- *  Saem daqui quando a 0004 acrescentar os dois valores ao enum. */
-export const CHECKLISTS_SEM_BANCO: readonly Checklist[] = ['lod300', 'lod350']
+ *  A lista fica porque o mecanismo é o que importa: um recorte novo entra
+ *  primeiro aqui, e a tela dele diz o que falta em vez de chamar a API e
+ *  devolver um 422 de validação, que não explica nada a quem coordena obra. */
+export const CHECKLISTS_SEM_BANCO: readonly Checklist[] = []
 
 export function checklistTemBanco(c: Checklist): boolean {
   return !CHECKLISTS_SEM_BANCO.includes(c)

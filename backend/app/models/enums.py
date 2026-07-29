@@ -39,9 +39,17 @@ class VersaoFormato(enum.StrEnum):
 
 
 class ChecklistTipo(enum.StrEnum):
+    """Os recortes de auditoria. A ordem é a da progressão real de LOD, e
+    importa: é ela que o Postgres guarda no tipo e que um `ORDER BY` sobre a
+    coluna respeita. LOD300 e LOD350 entraram na migration 0004 — o enum ia de
+    lod400 a lod500 direto, pulando justamente os dois níveis em que a
+    coordenação mais trabalha."""
+
     GERAL = "geral"
     IFC = "ifc"
     QUATRO_D = "4d"
+    LOD300 = "lod300"
+    LOD350 = "lod350"
     LOD400 = "lod400"
     LOD500 = "lod500"
 

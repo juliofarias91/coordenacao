@@ -3,7 +3,9 @@
 export type MacroDisc = 'A' | 'C' | 'M' | 'S'
 export type EmpresaTipo = 'propria' | 'terceirizada'
 export type EmpresaPapel = 'trade' | 'bim' | 'fornecedor' | 'coordenacao'
-export type ChecklistTipo = 'geral' | 'ifc' | '4d' | 'lod400' | 'lod500'
+/** A ordem é a da progressão real de LOD, e é a mesma do enum no Postgres.
+ *  `lod300` e `lod350` entraram na migration 0004. */
+export type ChecklistTipo = 'geral' | 'ifc' | '4d' | 'lod300' | 'lod350' | 'lod400' | 'lod500'
 export type CriterioNivel = 'modelo' | 'elemento'
 export type Automacao = 'auto' | 'design_automation' | 'manual'
 export type TipoStandard = 'nomenclatura' | 'conjunto_esperado' | 'vocabulario' | 'mapeamento'
@@ -430,4 +432,20 @@ export type Execucao = {
   sem_verificador: number
   erros: string[]
   resumo: string
+}
+
+/** Membro de um projeto (migration 0004).
+ *
+ *  REGISTRA PARTICIPAÇÃO, NÃO AUTORIZA. `papel` é o papel combinado NESTE
+ *  projeto; `usuario_papel_org` é o da organização, e é ele que ainda decide o
+ *  que a pessoa consegue fazer de fato. Os dois vêm juntos porque a pergunta
+ *  de quem coordena é sobre o par. */
+export type Membro = Base & {
+  projeto_id: string
+  usuario_id: string
+  papel: string
+  funcao: string | null
+  usuario_nome: string | null
+  usuario_login: string | null
+  usuario_papel_org: string | null
 }

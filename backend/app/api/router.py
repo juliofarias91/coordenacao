@@ -26,6 +26,7 @@ from app.api.v1 import (
     health,
     ingest,
     kpis,
+    membros,
     modelos,
     notificacoes,
     organizacao,
@@ -50,6 +51,7 @@ api_router.include_router(usuarios.router)
 api_router.include_router(standards.router)
 api_router.include_router(disciplinas.router)
 api_router.include_router(criterios.router)
+api_router.include_router(membros.router)
 
 # Fase 2 — execução
 api_router.include_router(modelos.router)

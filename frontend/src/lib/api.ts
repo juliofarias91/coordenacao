@@ -392,6 +392,18 @@ export const api = {
       ),
   },
 
+  /** Membros de um projeto (migration 0004). Registra participação e papel
+   *  combinado — NÃO autoriza: quem decide continua sendo a permissão de
+   *  organização do token. */
+  membros: {
+    listar: (projetoId: string) => requisitar<T.Membro[]>(`/projetos/${projetoId}/membros`),
+    adicionar: (projetoId: string, corpo: Record<string, unknown>) =>
+      escrever<T.Membro>(`/projetos/${projetoId}/membros`, 'POST', corpo),
+    atualizar: (id: string, corpo: Record<string, unknown>) =>
+      escrever<T.Membro>(`/membros/${id}`, 'PATCH', corpo),
+    remover: (id: string) => requisitar<void>(`/membros/${id}`, { method: 'DELETE' }),
+  },
+
   convites: {
     listar: (projetoId: string) =>
       requisitar<T.Convite[]>(`/projetos/${projetoId}/convites`),

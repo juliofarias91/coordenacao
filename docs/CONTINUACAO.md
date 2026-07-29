@@ -88,15 +88,31 @@ usasse.
 idioma, tema e **troca da própria senha** — que a API sempre permitiu a
 qualquer usuário e a interface só oferecia a quem administra cadastros.
 
-### O que fica para a etapa 2
+### Etapa 2 — o banco que faltava (migration 0004)
 
-- **LOD300 e LOD350** estão no menu mas **não existem no banco**: o enum
-  `ChecklistTipo` tem `geral, ifc, 4d, lod400, lod500`. A tela deles diz isso em
-  vez de chamar a API e receber um 422. Entram na **migration 0004**.
-- **Membros do projeto** é placeholder: não existe nenhum vínculo
-  usuário↔projeto — o usuário pertence à organização e, opcionalmente, a uma
-  empresa. Decidido criar a tabela `projeto_membro` com papel no projeto.
-- **Preferências de notificação** — falta coluna em `usuario`.
+- **LOD300 e LOD350** entraram no enum `checklist_tipo`, **antes de `lod400`**:
+  o Postgres guarda a ordem de declaração, e acrescentá-los no fim faria
+  qualquer `ORDER BY` listar LOD300 depois de LOD500. As seis telas de auditoria
+  passaram a responder.
+- **`projeto_membro`** — vínculo usuário↔projeto com papel *nele* e função. A
+  tabela **NÃO AUTORIZA**, e isso é deliberado: registra participação, e quem
+  decide continua sendo `requer_permissao` sobre as permissões de organização.
+  Ligar as duas coisas mudaria como as 72 rotas autorizam e é decisão à parte —
+  há um teste (`test_participacao_nao_e_permissao`) que trava isso justamente
+  para que a mudança seja consciente.
+- Continua pendente: **preferências de notificação** (falta coluna em `usuario`).
+
+**Um bug meu, encontrado ao aplicar a 0004 e que valia o susto.** O
+`pg_advisory_lock` que eu tinha posto no `env.py` era tomado NA CONEXÃO DO
+ALEMBIC — e no SQLAlchemy 2.0 o primeiro `execute()` abre uma transação
+implícita. Resultado: `context.begin_transaction()` encontrava a transação já
+aberta, virava no-op, e **ninguém commitava**. O `alembic upgrade head`
+imprimia "Running upgrade 0003 -> 0004", saía com **código 0** e não gravava
+nada. Falha silenciosa num comando que o container roda sozinho no deploy.
+
+Corrigido de duas formas: o lock vai numa **conexão separada** (é de sessão,
+sobrevive ao commit), e o `entrypoint.sh` passou a **conferir `alembic current`
+contra head** depois do upgrade, em vez de confiar no código de saída.
 
 ---
 

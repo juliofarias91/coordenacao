@@ -237,3 +237,52 @@ class Disciplina(OrgMixin, TimestampMixin, Base):
 
     projeto: Mapped[Projeto] = relationship(back_populates="disciplinas")
     projetista: Mapped[Empresa | None] = relationship()
+
+
+class ProjetoMembro(OrgMixin, TimestampMixin, Base):
+    """Quem participa de um projeto, e com que papel NELE.
+
+    Até a migration 0004 não existia vínculo nenhum entre usuário e projeto: o
+    usuário pertencia à organização e, opcionalmente, a uma empresa. Isso
+    respondia "quem tem conta" mas não "quem está no CPQ11" — e a segunda é a
+    pergunta de quem coordena, porque a mesma pessoa é auditora num projeto e
+    só leitora noutro.
+
+    O QUE ESTA TABELA AINDA NÃO FAZ, e é deliberado: ela NÃO autoriza. Toda
+    rota da API continua decidindo por `requer_permissao`, que lê as permissões
+    de organização do token. Um membro registrado aqui não ganha acesso, e um
+    não-membro não perde — o que ela dá é a lista de quem trabalha no projeto e
+    o papel combinado com cada um.
+
+    Fazer o contrário exigiria que toda consulta de todo endpoint passasse a
+    checar participação, mudança que atinge as 72 rotas e o RLS junto. Com esta
+    tabela no lugar, essa mudança passa a ser possível; sem ela, nem isso.
+    """
+
+    __tablename__ = "projeto_membro"
+    __table_args__ = (
+        # Uma linha por pessoa por projeto. Sem isto, "adicionar" duas vezes
+        # criaria dois vínculos com papéis diferentes e nada diria qual vale.
+        UniqueConstraint("projeto_id", "usuario_id", name="uq_membro_projeto_usuario"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    projeto_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("projeto.id", ondelete="CASCADE"), nullable=False
+    )
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("usuario.id", ondelete="CASCADE"), nullable=False
+    )
+    # O MESMO enum do papel de organização, e não um novo: um segundo
+    # vocabulário obrigaria a manter um mapa entre os dois, e o mapa
+    # divergiria. 'coordenador' significa a mesma coisa nos dois lugares — o
+    # que muda é o alcance.
+    papel: Mapped[PapelUsuario] = mapped_column(
+        pg_enum(PapelUsuario, "papel_usuario"), nullable=False
+    )
+    # Por que esta pessoa está no projeto: 'coordenação de estruturas',
+    # 'auditoria 4D'. Texto livre porque é combinado de contrato, não enum.
+    funcao: Mapped[str | None] = mapped_column(Text)
+
+    projeto: Mapped[Projeto] = relationship()
+    usuario: Mapped[Usuario] = relationship()
