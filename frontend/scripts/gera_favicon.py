@@ -59,11 +59,12 @@ _LENTE = (27.5, 27.5)
 # ele avança ALÉM da borda — assim mexer no raio da lente não descola o cabo.
 _CABO_ATE = 11.0 * ESCALA
 
-# Compensação ÓPTICA. A lupa é um disco pesado em cima à esquerda com um cabo
-# fino embaixo à direita: a tinta pesa para cima e para a esquerda, e centrar
-# pela caixa delimitadora deixa a peça parecendo deslocada. Meio pixel para
-# baixo e para a direita devolve o equilíbrio.
-NUDGE = (0.6, 0.6)
+# Compensação ÓPTICA. A lupa é um disco pesado de um lado com um cabo fino do
+# outro: centrar pela caixa delimitadora deixa a peça parecendo deslocada para
+# o lado do disco. Meio pixel na direção do cabo devolve o equilíbrio — por
+# isso o nudge segue `_DIR_CABO` em vez de ser um par de números fixos, que
+# ficariam errados no espelhamento.
+NUDGE_NA_DIAGONAL = 0.85
 
 # --- sombra ---------------------------------------------------------------
 # 45° para SUDESTE: em SVG e em imagem o y cresce para BAIXO, então x e y
@@ -71,7 +72,11 @@ NUDGE = (0.6, 0.6)
 PASSO = 1.4  # menor que ESP_ANEL: os passos se sobrepõem
 ALCANCE = 96.0  # atravessa o disco inteiro na diagonal
 N_PASSOS = int(ALCANCE / PASSO)
-ALFA_SOMBRA = 0.17
+# O CABO APONTA CONTRA A SOMBRA e a sombra ficou MAIS LEVE por causa disso.
+# Com o cabo a nordeste e a sombra a sudeste, a sombra do cabo não se esconde
+# mais atrás do próprio cabo: ela cruza o vazio abaixo da lente e vira a maior
+# mancha da peça. A 0.17 ela competia com o glifo; a 0.13 volta a ser sombra.
+ALFA_SOMBRA = 0.13
 
 BRANCO = "#ffffff"
 ROXO = "#6a3dae"  # `--purple` do tema claro
@@ -86,15 +91,24 @@ SOMBRA = "#2b2b2b"
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent / "public"
 
-# Meia-diagonal unitária: o cabo e a sombra andam nesta direção.
+# Meia-diagonal unitária: tudo o que anda a 45° anda em passos deste tamanho.
 _D = 0.70710678
+
+# A LUPA É ESPELHADA NA VERTICAL: o cabo aponta para o NORDESTE, não para o
+# sudeste. Uma direção só governa o cabo inteiro — ponta, comprimento e o
+# empurrão óptico saem daqui. Espelhar de novo é trocar o sinal do y.
+_DIR_CABO = (_D, -_D)
+
+# --- sombra ---------------------------------------------------------------
+DIR_SOMBRA = (1.0, 1.0)  # sudeste, em passos de PASSO
 
 
 def _pontas_do_cabo(lente: tuple[float, float]) -> tuple[tuple[float, float], ...]:
     """Onde o cabo começa (na borda da lente) e onde termina."""
     lx, ly = lente
-    de = (lx + R_LENTE * _D, ly + R_LENTE * _D)
-    ate = (de[0] + _CABO_ATE * _D, de[1] + _CABO_ATE * _D)
+    dx, dy = _DIR_CABO
+    de = (lx + R_LENTE * dx, ly + R_LENTE * dy)
+    ate = (de[0] + _CABO_ATE * dx, de[1] + _CABO_ATE * dy)
     return de, ate
 
 
@@ -106,14 +120,18 @@ def _centragem() -> tuple[float, float]:
     """
     lx, ly = _LENTE
     _, ate = _pontas_do_cabo(_LENTE)
+    # A caixa é o envelope de DUAS peças: a lente com metade do anel para fora,
+    # e a ponta arredondada do cabo. `min`/`max` em vez de "esquerda = lente,
+    # direita = cabo" — assim espelhar o cabo não exige reescrever a conta.
+    r_ext = R_LENTE + ESP_ANEL / 2
     meia_ponta = ESP_CABO / 2
-    esq = lx - R_LENTE - ESP_ANEL / 2
-    topo = ly - R_LENTE - ESP_ANEL / 2
-    dir_ = ate[0] + meia_ponta
-    base = ate[1] + meia_ponta
+    esq = min(lx - r_ext, ate[0] - meia_ponta)
+    dir_ = max(lx + r_ext, ate[0] + meia_ponta)
+    topo = min(ly - r_ext, ate[1] - meia_ponta)
+    base = max(ly + r_ext, ate[1] + meia_ponta)
     return (
-        CENTRO[0] - (esq + dir_) / 2 + NUDGE[0],
-        CENTRO[1] - (topo + base) / 2 + NUDGE[1],
+        CENTRO[0] - (esq + dir_) / 2 + _DIR_CABO[0] * NUDGE_NA_DIAGONAL,
+        CENTRO[1] - (topo + base) / 2 + _DIR_CABO[1] * NUDGE_NA_DIAGONAL,
     )
 
 
@@ -138,7 +156,8 @@ def _glifo_svg(cor: str) -> str:
 
 def svg() -> str:
     passos = "".join(
-        f'<use href="#g" transform="translate({i * PASSO:.2f} {i * PASSO:.2f})"/>'
+        f'<use href="#g" transform="translate('
+        f"{i * PASSO * DIR_SOMBRA[0]:.2f} {i * PASSO * DIR_SOMBRA[1]:.2f})\"/>"
         for i in range(1, N_PASSOS + 1)
     )
     cx, cy = CENTRO
@@ -199,7 +218,9 @@ def png(lado_final: int) -> Image.Image:
     camada = Image.new("RGBA", (tam, tam), (0, 0, 0, 0))
     ds = ImageDraw.Draw(camada)
     for i in range(1, N_PASSOS + 1):
-        _glifo_png(ds, k, i * PASSO, i * PASSO, (*cinza, 255))
+        _glifo_png(
+            ds, k, i * PASSO * DIR_SOMBRA[0], i * PASSO * DIR_SOMBRA[1], (*cinza, 255)
+        )
     recorte = Image.new("L", (tam, tam), 0)
     ImageDraw.Draw(recorte).ellipse([cx - r, cy - r, cx + r, cy + r], fill=255)
     camada.putalpha(Image.eval(camada.getchannel("A"), lambda a: int(a * ALFA_SOMBRA)))
