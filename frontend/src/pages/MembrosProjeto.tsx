@@ -126,7 +126,11 @@ export default function MembrosProjeto() {
   return (
     <>
       <Cabecalho
-        titulo={L('Membros do projeto', 'Project members')}
+        // "Membros", igual ao item do menu. O contexto já é o projeto — a
+        // barra inteira é dele e o breadcrumb diz qual —, e o subtítulo logo
+        // abaixo nomeia o projeto. Repetir "do projeto" no título era a mesma
+        // redundância que tirou o código do projeto do caminho de volta.
+        titulo={L('Membros', 'Members')}
         sub={L(
           `Quem participa do ${projeto.codigo} e com que papel nele. É registro de participação, não de acesso: o que cada pessoa consegue fazer continua vindo das permissões dela na organização.`,
           `Who takes part in ${projeto.codigo} and in what role. This records participation, not access: what each person can actually do still comes from their organization permissions.`,

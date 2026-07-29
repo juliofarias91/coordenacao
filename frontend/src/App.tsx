@@ -16,6 +16,7 @@ import Kpis from '@/pages/Kpis'
 import Login from '@/pages/Login'
 import {
   PaginaClientes,
+  PaginaGerenciarMembros,
   PaginaLogs,
   PaginaOrganizacao,
   PaginaProjetos,
@@ -141,8 +142,11 @@ export default function App() {
               <Route path="clientes" element={<PaginaClientes />} />
               <Route path="projetos" element={<PaginaProjetos />} />
             </Route>
-            {/* O antigo item de Home apontava para cá; agora mora no painel. */}
-            <Route path="membros" element={<Navigate to="/admin/usuarios" replace />} />
+            {/* A MESMA TELA de `/admin/usuarios`, por duas portas: aqui, no
+                grupo Gestão da Home, para quem coordena; e lá, junto de
+                organização, clientes e logs, para quem administra o tenant.
+                Uma implementação só — o que muda é a barra lateral em volta. */}
+            <Route path="membros" element={<PaginaGerenciarMembros />} />
             {/* Da CONTA, não de um projeto. `configuracoes` (plural) é a conta;
                 `configuracao` (singular), dentro de um projeto, é o projeto.
                 Nomes próximos, escopos distintos — o plural marca a diferença

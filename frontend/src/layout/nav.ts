@@ -23,11 +23,14 @@ export type GrupoNav =
   | 'topo'
   | 'acompanhamento'
   | 'organizacao'
+  | 'gestao'
   | 'visao'
-  | 'auditoria'
   | 'projeto'
+  | 'auditoria'
   | 'cadastro'
 
+/** A ORDEM AQUI É A ORDEM NA TELA. Cada área usa só os seus grupos; os das
+ *  outras simplesmente não têm itens e não são renderizados. */
 export const GRUPOS: Array<{ chave: GrupoNav; pt: string; en: string }> = [
   /** Sem rótulo, e só na Home e no painel administrativo. O primeiro item da
    *  tela inicial é o destino padrão de quem entra — um cabeçalho acima dele só
@@ -36,12 +39,15 @@ export const GRUPOS: Array<{ chave: GrupoNav; pt: string; en: string }> = [
   // Home
   { chave: 'acompanhamento', pt: 'Acompanhamento', en: 'Tracking' },
   { chave: 'organizacao', pt: 'Organização', en: 'Organization' },
-  // Projeto. Aqui o topo TEM rótulo: dentro de um projeto nenhum item é o
-  // "destino padrão" — painel e KPIs são duas leituras do mesmo projeto, e
-  // nomeá-las como um conjunto é o que as distingue dos outros dois grupos.
+  { chave: 'gestao', pt: 'Gestão', en: 'Management' },
+  // Projeto, na sequência do trabalho: primeiro o que se lê (Visão geral),
+  // depois o que se define uma vez (Projeto), e por fim o que se executa a cada
+  // round (Auditoria). Auditoria por último porque é o grupo mais longo — sete
+  // itens acima dos outros dois empurrariam para fora da vista o que se
+  // configura antes de auditar.
   { chave: 'visao', pt: 'Visão geral', en: 'Overview' },
-  { chave: 'auditoria', pt: 'Auditoria', en: 'Audit' },
   { chave: 'projeto', pt: 'Projeto', en: 'Project' },
+  { chave: 'auditoria', pt: 'Auditoria', en: 'Audit' },
   // Painel administrativo
   { chave: 'cadastro', pt: 'Cadastro', en: 'Records' },
 ]
@@ -172,6 +178,23 @@ export const ITENS_GLOBAIS: ItemNav[] = [
     escopo: 'global',
     fase: 2,
   },
+
+  // Gestão: as pessoas.
+  {
+    // A MESMA TELA que `/admin/usuarios`, por duas portas de propósito: quem
+    // coordena entra por aqui várias vezes por semana, e quem administra o
+    // tenant a encontra junto de organização, clientes e logs. Uma
+    // implementação só (`pages/admin/Usuarios.tsx`) — o que difere é a barra
+    // lateral em volta, porque as duas áreas respondem perguntas diferentes.
+    rota: '/membros',
+    pt: 'Gerenciar membros',
+    en: 'Manage members',
+    path: IC.pessoas,
+    grupo: 'gestao',
+    escopo: 'global',
+    fase: 1,
+    exigePermissao: 'admin_cadastro',
+  },
 ]
 
 /** `Projetos`, o mesmo item da Home — e é o MESMO objeto, não uma cópia.
@@ -183,9 +206,57 @@ export const ITENS_GLOBAIS: ItemNav[] = [
  *  duas divergirem no dia em que alguém trocasse o ícone de um lado só. */
 const PROJETOS = ITENS_GLOBAIS[0]!
 
-/** O menu de dentro de um projeto. */
+/** O menu de dentro de um projeto.
+ *
+ *  A ORDEM DENTRO DE CADA GRUPO É A ORDEM NA TELA, e a sequência dos grupos
+ *  está em `GRUPOS`: primeiro o que se LÊ (Visão geral), depois o que se DEFINE
+ *  uma vez (Projeto), e por fim o que se EXECUTA a cada round (Auditoria).
+ */
 export const ITENS_PROJETO: ItemNav[] = [
   PROJETOS,
+
+  // Visão geral: a leitura do projeto inteiro num número só.
+  {
+    rota: 'kpis',
+    pt: 'KPIs',
+    en: 'KPIs',
+    path: IC.barras,
+    grupo: 'visao',
+    escopo: 'projeto',
+    fase: 4,
+  },
+
+  // Projeto: o que se define uma vez e passa a valer para todos os rounds.
+  // A ordem é a de quem monta um projeto do zero — as diretrizes primeiro, a
+  // configuração em seguida, e os modelos só depois de haver disciplina para
+  // classificá-los.
+  {
+    rota: 'peb',
+    pt: 'PEB · diretrizes',
+    en: 'BEP · guidelines',
+    path: IC.prancheta,
+    grupo: 'projeto',
+    escopo: 'projeto',
+    fase: 1,
+  },
+  {
+    rota: 'configuracao',
+    pt: 'Configurações do projeto',
+    en: 'Project setup',
+    path: IC.ajustes,
+    grupo: 'projeto',
+    escopo: 'projeto',
+    fase: 1,
+  },
+  {
+    rota: 'criterios',
+    pt: 'Biblioteca de critérios',
+    en: 'Criteria library',
+    path: IC.livro,
+    grupo: 'projeto',
+    escopo: 'projeto',
+    fase: 1,
+  },
   {
     // Chamava-se "Painel de controle", herança do nome da planilha que a tela
     // substitui. O que ela lista são MODELOS — e a URL passou a dizer isso
@@ -195,18 +266,21 @@ export const ITENS_PROJETO: ItemNav[] = [
     pt: 'Modelos',
     en: 'Models',
     path: IC.grade,
-    grupo: 'visao',
+    grupo: 'projeto',
     escopo: 'projeto',
     fase: 2,
   },
   {
-    rota: 'kpis',
-    pt: 'KPIs',
-    en: 'KPIs',
-    path: IC.barras,
-    grupo: 'visao',
+    // Só "Membros": o contexto já é o projeto — a barra inteira é dele, e o
+    // breadcrumb diz qual. Repetir "do projeto" no rótulo era a mesma redundância
+    // que fez o caminho de volta deixar de mostrar o código do projeto.
+    rota: 'membros',
+    pt: 'Membros',
+    en: 'Members',
+    path: IC.pessoas,
+    grupo: 'projeto',
     escopo: 'projeto',
-    fase: 4,
+    fase: 1,
   },
 
   // Auditoria: os seis recortes, e o relatório que sai deles.
@@ -229,44 +303,6 @@ export const ITENS_PROJETO: ItemNav[] = [
     grupo: 'auditoria',
     escopo: 'projeto',
     fase: 2,
-  },
-
-  // Projeto: o que se define uma vez e passa a valer para os rounds.
-  {
-    rota: 'criterios',
-    pt: 'Biblioteca de critérios',
-    en: 'Criteria library',
-    path: IC.livro,
-    grupo: 'projeto',
-    escopo: 'projeto',
-    fase: 1,
-  },
-  {
-    rota: 'peb',
-    pt: 'PEB · diretrizes',
-    en: 'BEP · guidelines',
-    path: IC.prancheta,
-    grupo: 'projeto',
-    escopo: 'projeto',
-    fase: 1,
-  },
-  {
-    rota: 'membros',
-    pt: 'Membros do projeto',
-    en: 'Project members',
-    path: IC.cubo,
-    grupo: 'projeto',
-    escopo: 'projeto',
-    fase: 1,
-  },
-  {
-    rota: 'configuracao',
-    pt: 'Configurações do projeto',
-    en: 'Project setup',
-    path: IC.ajustes,
-    grupo: 'projeto',
-    escopo: 'projeto',
-    fase: 1,
   },
 ]
 

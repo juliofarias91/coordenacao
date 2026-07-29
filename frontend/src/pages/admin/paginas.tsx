@@ -10,7 +10,8 @@
  *  útil, que é poder ler os cinco títulos e subtítulos em sequência e notar
  *  quando dois estão dizendo a mesma coisa.
  */
-import { Cabecalho } from '@/components/ui'
+import { useAuth } from '@/auth/AuthContext'
+import { Cabecalho, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import AbaClientes from '@/pages/admin/Clientes'
 import AbaOrganizacao from '@/pages/admin/Organizacao'
@@ -18,12 +19,23 @@ import AbaProjetos from '@/pages/admin/Projetos'
 import AbaTrilha from '@/pages/admin/Trilha'
 import AbaUsuarios from '@/pages/admin/Usuarios'
 
-export function PaginaUsuarios() {
+/** A gestão de contas da organização.
+ *
+ *  Serve a DUAS ROTAS de propósito: `/membros`, no grupo Gestão da Home, e
+ *  `/admin/usuarios`, dentro do painel administrativo. Quem coordena entra pela
+ *  primeira várias vezes por semana; quem administra o tenant a encontra na
+ *  segunda, junto de organização, clientes e logs.
+ *
+ *  Uma implementação só — o que muda é a barra lateral em volta. O título
+ *  acompanha a porta pela qual se entrou, porque "Gerenciar membros" e
+ *  "Usuários" são o mesmo cadastro visto de dois lugares.
+ */
+export function PaginaUsuarios({ titulo }: { titulo?: string }) {
   const { L } = useI18n()
   return (
     <>
       <Cabecalho
-        titulo={L('Usuários', 'Users')}
+        titulo={titulo ?? L('Usuários', 'Users')}
         sub={L(
           'Quem entra na plataforma, com que papel e com que permissões. O papel define o padrão; a lista de permissões, quando preenchida, prevalece sobre ele. Para dizer quem participa de um projeto específico, abra o projeto e vá em Membros.',
           'Who gets into the platform, with what role and permissions. The role sets the default; an explicit permission list overrides it. To say who takes part in a specific project, open the project and go to Members.',
@@ -32,6 +44,30 @@ export function PaginaUsuarios() {
       <AbaUsuarios />
     </>
   )
+}
+
+/** A mesma tela, entrada pela Home. Guarda a permissão por conta própria: no
+ *  painel administrativo quem faz isso é o `Admin`, que aqui não existe. */
+export function PaginaGerenciarMembros() {
+  const { L } = useI18n()
+  const { usuario } = useAuth()
+
+  if (!usuario?.permissoes.includes('admin_cadastro')) {
+    return (
+      <>
+        <Cabecalho titulo={L('Gerenciar membros', 'Manage members')} />
+        <Vazio
+          titulo={L('Sem permissão', 'No permission')}
+          texto={L(
+            'Gerenciar membros exige a permissão "Administrar cadastros". Peça a um administrador.',
+            'Managing members requires the "Manage records" permission. Ask an administrator.',
+          )}
+        />
+      </>
+    )
+  }
+
+  return <PaginaUsuarios titulo={L('Gerenciar membros', 'Manage members')} />
 }
 
 export function PaginaLogs() {

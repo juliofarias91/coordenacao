@@ -42,8 +42,18 @@ import { useTheme } from '@/theme/ThemeProvider'
  *  espaço a ninguém, só esconde nove rótulos. */
 const CHAVE_NAV = 'spbim_nav_recolhida'
 /** Ordem dos grupos, arrastada pelo usuário. Por login: duas pessoas no mesmo
- *  navegador não herdam a organização uma da outra. */
-const CHAVE_ORDEM = 'spbim_nav_ordem'
+ *  navegador não herdam a organização uma da outra.
+ *
+ *  A CHAVE É VERSIONADA (`_v2`), e é preciso subir a versão sempre que a ordem
+ *  PADRÃO dos grupos mudar em `nav.ts`. `ordenarGrupos` respeita a ordem salva
+ *  e só anexa os grupos novos no fim — o que significa que, sem trocar a chave,
+ *  quem já usou a plataforma continuaria vendo a sequência antiga e a mudança
+ *  simplesmente não apareceria para ele. Foi o que ia acontecer com a
+ *  reordenação de 29/07/2026, em que Projeto passou à frente de Auditoria.
+ *
+ *  Trocar a chave descarta a ordem que a pessoa tinha arrastado. É o preço: ou
+ *  isso, ou a ordem padrão nunca mais muda para quem já entrou uma vez. */
+const CHAVE_ORDEM = 'spbim_nav_ordem_v2'
 
 function leRecolhida(): boolean {
   try {
