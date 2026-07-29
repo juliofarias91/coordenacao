@@ -376,7 +376,15 @@ nav .ic {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 20px;
+  /* NO MESMO TRILHO DO CONTEÚDO. A borda de baixo continua atravessando a tela
+     inteira — é ela que separa o chrome do conteúdo —, mas o que está DENTRO da
+     barra fica alinhado com o `main`, que é centrado e limitado a 1180px.
+     Sem isto, o breadcrumb começava na borda esquerda e a busca terminava na
+     direita, enquanto o card embaixo parava no meio: os controles pareciam
+     pertencer a outra tela.
+     O `30px` é o padding horizontal do `main`; o `max()` garante que em tela
+     estreita a barra volte ao respiro mínimo em vez de calcular negativo. */
+  padding: 0 max(20px, calc((100% - var(--w-main)) / 2 + 30px));
   border-bottom: 1px solid var(--line);
   /* A opaca vem primeiro DE PROPÓSITO: navegador sem `color-mix` descarta a
      segunda e fica com a barra sólida. Sem o fallback, o descarte deixaria a
@@ -413,8 +421,14 @@ nav .ic {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Sem sublinhado, mesmo sendo link. O crumb do cliente é um `<a>` e vinha
+     sublinhado por padrão do navegador — o que fazia UM item da trilha parecer
+     de outra natureza que os vizinhos, quando os três são a mesma coisa: onde
+     eu estou. O hover é que anuncia o que clica. */
+  text-decoration: none;
   transition: opacity var(--dur-fast);
 }
+a.tb-crumb:hover,
 button.tb-crumb:hover,
 select.tb-crumb:hover {
   opacity: 0.6;
@@ -512,10 +526,16 @@ select.tb-crumb {
   font-weight: 700;
 }
 
+/* CENTRADO na coluna, não encostado à esquerda.
+   O limite de 1180px é proposital (ver CLAUDE.md), mas encostá-lo à esquerda
+   deixava um vão morto crescente à direita em tela larga — e, pior, o
+   conteúdo terminava a meio caminho enquanto a topbar ia até a borda, o que
+   fazia a busca e o avatar flutuarem longe de tudo o que comandam. */
 main {
   padding: 26px 30px 70px;
   max-width: var(--w-main);
   width: 100%;
+  margin: 0 auto;
 }
 .top {
   display: flex;
@@ -2409,41 +2429,6 @@ td.num {
 }
 .buscaitem .pill { flex: none; }
 
-/* --- Sair no rodape da sidebar ------------------------------------------- */
-.side-foot {
-  flex: none;
-  padding: 8px;
-  border-top: 1px solid var(--line);
-}
-.side-sair {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  height: 36px;
-  padding: 0 8px;
-  border: none;
-  border-radius: var(--r-md);
-  background: none;
-  color: var(--ink-3);
-  font-size: 13.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  transition: color var(--dur-fast), background var(--dur-fast);
-}
-/* Vermelho só no hover: em repouso, um item permanentemente vermelho na
-   sidebar competiria com o estado semântico das telas. */
-.side-sair:hover {
-  color: var(--bad);
-  background: var(--bad-bg);
-}
-.app[data-nav='off'] .side-sair {
-  gap: 0;
-  padding: 0;
-  justify-content: center;
-}
-
 /* --- Grupos arrastaveis --------------------------------------------------- */
 .nav-grupo-cab[draggable='true'] {
   cursor: grab;
@@ -2576,22 +2561,12 @@ td.num {
   color: var(--ink);
   background: var(--hover-ink);
 }
+/* Uma linha só: o rótulo diz para onde se volta, e o código do projeto vive no
+   breadcrumb da topbar. Duas linhas aqui faziam o bloco parecer o cabeçalho do
+   projeto, competindo com o destino de verdade. */
 .nav-volta .nav-rot {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-/* O codigo do projeto responde "onde estou"; a segunda linha, "por onde saio".
-   O codigo leva o peso porque e o que se procura ao bater o olho. */
-.nav-volta b {
   font-size: 13px;
-  font-weight: 650;
-  color: var(--ink);
-}
-.nav-volta i {
-  font-style: normal;
-  font-size: 10.5px;
-  color: var(--ink-3);
+  font-weight: 600;
 }
 /* Recolhida sobra so a seta, centrada como os icones dos itens. */
 .app[data-nav='off'] .nav-volta {

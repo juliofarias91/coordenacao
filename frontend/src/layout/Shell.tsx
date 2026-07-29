@@ -142,7 +142,9 @@ function casa(alvo: string, caminho: string): boolean {
 }
 
 export default function Shell() {
-  const { usuario, sair } = useAuth()
+  // Sem `sair` aqui: a saída mora no painel da conta (`UsuarioMenu`), que é
+  // quem a chama. O Shell não tem mais botão de sair.
+  const { usuario } = useAuth()
   const { lang, setLang, L } = useI18n()
   const { theme, setTheme } = useTheme()
   const { projeto, projetos, referencia, selecionar } = useProjeto()
@@ -275,10 +277,11 @@ export default function Shell() {
           {emProjeto && (
             <NavLink className="nav-volta" to="/" title={L('Todos os projetos', 'All projects')}>
               <Icone path={CHEVRON_ESQ} tam={15} />
-              <span className="nav-rot">
-                <b>{projeto?.codigo ?? '—'}</b>
-                <i>{L('todos os projetos', 'all projects')}</i>
-              </span>
+              {/* Só "Projetos", e não o código do projeto: quem está aqui já vê
+                  o código no breadcrumb da topbar, e repeti-lo fazia o item
+                  parecer o cabeçalho do projeto em vez do que ele é — a porta
+                  de saída. Um botão de voltar diz PARA ONDE se volta. */}
+              <span className="nav-rot">{L('Projetos', 'Projects')}</span>
             </NavLink>
           )}
 
@@ -346,21 +349,11 @@ export default function Shell() {
           })}
         </div>
 
-        {/* Sair também aqui, como no VDCity (`sidebarSignOut`): quem procura a
-            saída olha primeiro o pé da barra lateral. Convive com o do menu da
-            conta — são dois caminhos para a mesma porta, e nenhum deles fica
-            no meio dos botões que se usa o dia todo. */}
-        {usuario && (
-          <div className="side-foot">
-            <button type="button" className="side-sair" onClick={sair} title={L('Sair', 'Exit')}>
-              <Icone
-                path="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
-                tam={17}
-              />
-              <span className="nav-rot">{L('Sair', 'Exit')}</span>
-            </button>
-          </div>
-        )}
+        {/* SAIR NÃO FICA AQUI. Esteve no rodapé da sidebar por um dia e saiu:
+            é ação destrutiva, e a regra do sistema (CLAUDE.md) é que ela mora
+            dentro do painel da conta, nunca exposta numa barra que se usa o dia
+            todo — um clique errado derrubaria a sessão no meio de uma auditoria.
+            O caminho é o avatar na topbar. */}
       </aside>
 
       <div className="col">

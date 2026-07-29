@@ -23,16 +23,23 @@ export type GrupoNav =
   | 'topo'
   | 'acompanhamento'
   | 'organizacao'
+  | 'visao'
   | 'auditoria'
   | 'projeto'
   | 'cadastro'
 
 export const GRUPOS: Array<{ chave: GrupoNav; pt: string; en: string }> = [
+  /** Sem rótulo, e só na Home e no painel administrativo. O primeiro item da
+   *  tela inicial é o destino padrão de quem entra — um cabeçalho acima dele só
+   *  acrescenta uma linha entre a pessoa e o lugar aonde ela ia. */
   { chave: 'topo', pt: '', en: '' },
   // Home
   { chave: 'acompanhamento', pt: 'Acompanhamento', en: 'Tracking' },
   { chave: 'organizacao', pt: 'Organização', en: 'Organization' },
-  // Projeto
+  // Projeto. Aqui o topo TEM rótulo: dentro de um projeto nenhum item é o
+  // "destino padrão" — painel e KPIs são duas leituras do mesmo projeto, e
+  // nomeá-las como um conjunto é o que as distingue dos outros dois grupos.
+  { chave: 'visao', pt: 'Visão geral', en: 'Overview' },
   { chave: 'auditoria', pt: 'Auditoria', en: 'Audit' },
   { chave: 'projeto', pt: 'Projeto', en: 'Project' },
   // Painel administrativo
@@ -174,7 +181,7 @@ export const ITENS_PROJETO: ItemNav[] = [
     pt: 'Painel de controle',
     en: 'Control panel',
     path: IC.grade,
-    grupo: 'topo',
+    grupo: 'visao',
     escopo: 'projeto',
     fase: 2,
   },
@@ -183,7 +190,7 @@ export const ITENS_PROJETO: ItemNav[] = [
     pt: 'KPIs',
     en: 'KPIs',
     path: IC.barras,
-    grupo: 'topo',
+    grupo: 'visao',
     escopo: 'projeto',
     fase: 4,
   },
