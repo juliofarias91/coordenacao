@@ -81,12 +81,12 @@ export default function UsuarioMenu() {
             <span className="pill">{usuario.papel}</span>
           </div>
 
-          {/* Administração vive aqui, e não na sidebar: é o andar de cima
-              (organização, projetos, usuários), não mais uma tela do fluxo de
-              auditoria. A sidebar responde "o que faço neste projeto"; a conta
-              responde "quem sou eu e o que administro".
-              A guarda real continua no `requer_permissao` de cada rota — isto
-              aqui é só conveniência de navegação. */}
+          {/* As duas portas que saem daqui, e só elas: o andar de cima da
+              organização, e as configurações da própria conta. A sidebar
+              responde "o que faço neste projeto"; a conta responde "quem sou
+              eu e o que administro".
+              A guarda real continua no `requer_permissao` de cada rota — o
+              sumiço do item é só conveniência de navegação. */}
           {podeAdministrar && (
             <Link
               to="/admin"
@@ -105,11 +105,34 @@ export default function UsuarioMenu() {
                 strokeLinejoin="round"
                 aria-hidden="true"
               >
-                <path d="M12 1v6M12 17v6M4.2 4.2l4.3 4.3M15.5 15.5l4.3 4.3M1 12h6M17 12h6M4.2 19.8l4.3-4.3M15.5 8.5l4.3-4.3" />
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
-              {L('Administração', 'Administration')}
+              {L('Painel administrativo', 'Admin panel')}
             </Link>
           )}
+
+          <Link
+            to="/configuracoes"
+            className="useritem"
+            role="menuitem"
+            onClick={() => setAberto(false)}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 1v6M12 17v6M4.2 4.2l4.3 4.3M15.5 15.5l4.3 4.3M1 12h6M17 12h6M4.2 19.8l4.3-4.3M15.5 8.5l4.3-4.3" />
+            </svg>
+            {L('Configurações', 'Settings')}
+          </Link>
 
           <button type="button" className="usersair" onClick={sair} role="menuitem">
             {L('Sair', 'Exit')}

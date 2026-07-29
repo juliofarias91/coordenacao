@@ -1,9 +1,16 @@
-/** Busca global da topbar — Ctrl+K.
+/** Busca global da topbar — campo FIXO E EXPANDIDO, mais Ctrl+K.
  *
  *  Não veio do VDCity: lá cada seção tem a própria busca e não existe uma
  *  unificada. Aqui ela procura no vocabulário desta plataforma — projeto,
  *  cliente, modelo e critério —, que é o que se procura de cabeça: "onde está
  *  o CPQ11-C-STRC", "qual era o critério de workset".
+ *
+ *  Até 29/07/2026 era uma `.pillact` que nascia redonda e abria um painel no
+ *  clique. A regra dos "rótulos que crescem" existe para caber VÁRIAS
+ *  ferramentas na topbar sem virar fileira de ícones mudos — e a busca não é
+ *  mais uma delas: é o atalho de maior alcance da barra, e escondê-la atrás de
+ *  um clique fazia com que só quem já sabia do Ctrl+K a usasse. Um campo
+ *  aberto se anuncia sozinho.
  *
  *  Consulta as rotas que já existem em vez de um endpoint novo: são listas de
  *  cadastro, pequenas, e o filtro é local. Um `/busca` no backend só se paga
@@ -58,12 +65,14 @@ export default function BuscaGlobal() {
   const caixa = useRef<HTMLDivElement>(null)
   const campo = useRef<HTMLInputElement>(null)
 
-  // Ctrl+K de qualquer lugar. É o atalho que quem usa ferramenta de trabalho
-  // tenta primeiro, antes de procurar o campo com o mouse.
+  // Ctrl+K de qualquer lugar. Com o campo já visível ele deixa de ser a única
+  // porta e passa a ser o atalho de quem não quer tirar a mão do teclado.
   useEffect(() => {
     function atalho(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
+        campo.current?.focus()
+        campo.current?.select()
         setAberto(true)
       }
     }
@@ -73,8 +82,6 @@ export default function BuscaGlobal() {
 
   useEffect(() => {
     if (!aberto) return
-    campo.current?.focus()
-
     function fora(e: MouseEvent) {
       if (caixa.current && !caixa.current.contains(e.target as Node)) setAberto(false)
     }
@@ -86,6 +93,10 @@ export default function BuscaGlobal() {
     setAberto(false)
     setTermo('')
     setCursor(0)
+    // Tira o foco junto: o campo é fixo, então continuar focado depois de
+    // escolher um resultado deixaria o cursor piscando numa barra que já
+    // cumpriu o papel, e a próxima tecla digitada reabriria o painel.
+    campo.current?.blur()
   }, [])
 
   // Carrega uma vez por abertura. O cadastro muda devagar; recarregar a cada
@@ -178,39 +189,46 @@ export default function BuscaGlobal() {
 
   return (
     <div className="busca" ref={caixa}>
-      <button
-        type="button"
-        className={`pillact${aberto ? ' on' : ''}`}
-        onClick={() => setAberto(!aberto)}
-        title={`${rotulo} (Ctrl+K)`}
-        aria-label={rotulo}
-      >
-        <span className="rot">{rotulo}</span>
-        <span className="ico">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" />
-          </svg>
-        </span>
-      </button>
+      {/* O CAMPO É A BARRA, e não um gatilho para ela. Fica sempre montado —
+          desmontá-lo ao fechar perderia o foco no meio da digitação. */}
+      <div className="buscabarra">
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" />
+        </svg>
+        <input
+          ref={campo}
+          className="f"
+          value={termo}
+          aria-label={rotulo}
+          onChange={(e) => {
+            setTermo(e.target.value)
+            setAberto(true)
+          }}
+          onFocus={() => setAberto(true)}
+          onKeyDown={teclado}
+          placeholder={L(
+            'Projeto, cliente, modelo, critério…',
+            'Project, client, model, criterion…',
+          )}
+        />
+        {/* O atalho fica escrito no próprio campo: é como se descobre que ele
+            existe sem ler documentação. Vira "esc" enquanto há o que fechar. */}
+        <kbd>{aberto ? 'esc' : 'Ctrl K'}</kbd>
+      </div>
 
       {aberto && (
         <div className="buscapainel">
-          <div className="buscacampo">
-            <input
-              ref={campo}
-              className="f"
-              value={termo}
-              onChange={(e) => setTermo(e.target.value)}
-              onKeyDown={teclado}
-              placeholder={L(
-                'Projeto, cliente, modelo, critério…',
-                'Project, client, model, criterion…',
-              )}
-            />
-            <kbd>esc</kbd>
-          </div>
-
           <div className="buscalista">
             {carregando && <div className="empty">{L('Carregando…', 'Loading…')}</div>}
             {!carregando && !termo.trim() && (

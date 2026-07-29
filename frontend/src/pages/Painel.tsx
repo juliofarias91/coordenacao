@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import TabelaMatriz, { corDoPercentual } from '@/components/Matriz'
 import { Cabecalho, Erro, Segmented, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
@@ -22,11 +23,6 @@ const CLASSE_ESTADO: Record<AuditoriaEstado, string> = {
   publicado: 'pill ok',
   nao_publicado: 'pill',
   desatualizado: 'pill alerta',
-}
-
-function corDoPercentual(pct: number | null): string {
-  if (pct === null) return 'var(--na)'
-  return pct >= 90 ? 'var(--ok)' : pct >= 60 ? 'var(--wait)' : 'var(--bad)'
 }
 
 function Barra({ pct }: { pct: number | null }) {
@@ -238,74 +234,16 @@ export default function Painel() {
           </table>
         </div>
       ) : (
-        <div className="card" style={{ overflowX: 'auto' }}>
-          <table className="mx">
-            <thead>
-              <tr>
-                <th>{L('Modelo', 'Model')}</th>
-                {matriz?.areas.map((a) => (
-                  <th key={a} style={{ textAlign: 'center' }}>
-                    {a}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {matriz?.linhas.map((linha) => (
-                <tr key={linha.modelo_id}>
-                  <td>
-                    <div className="mcell">
-                      <span className="macro" style={{ background: linha.cor_macro ?? 'var(--na)' }} />
-                      <div>
-                        <div className="code">{linha.codigo}</div>
-                        <div className="mmeta">
-                          {linha.disciplina_codigo} · {linha.versao ?? '—'}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  {matriz.areas.map((area) => {
-                    const celula = linha.celulas[area]
-                    if (!celula) {
-                      return (
-                        <td key={area} className="cell">
-                          <span className="cellpct" style={{ color: 'var(--na)' }}>
-                            N/A
-                          </span>
-                        </td>
-                      )
-                    }
-                    const pct = celula.aprovacao_pct
-                    return (
-                      <td key={area} className="cell">
-                        <span
-                          className="cellpct"
-                          style={{
-                            color: corDoPercentual(pct),
-                            background: pct === null ? 'var(--na-bg)' : undefined,
-                          }}
-                        >
-                          {pct === null ? '—' : `${Math.round(pct)}%`}
-                        </span>
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-              {matriz?.linhas.length === 0 && (
-                <tr>
-                  <td colSpan={(matriz?.areas.length ?? 0) + 1} className="empty">
-                    <b>{L('Sem auditoria de especificação', 'No specification audit')}</b>
-                    {L(
-                      'A matriz mostra as disciplinas que declaram o checklist LOD 500 e as áreas do seu escopo.',
-                      'The matrix shows disciplines declaring the LOD 500 checklist and their scoped areas.',
-                    )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        // A mesma tabela das telas de Auditoria, e não uma cópia: a regra de
+        // cor divergiria na primeira vez que alguém mexesse numa delas.
+        <TabelaMatriz
+          matriz={matriz}
+          vazioTitulo={L('Sem auditoria de especificação', 'No specification audit')}
+          vazioTexto={L(
+            'A matriz mostra as disciplinas que declaram o checklist LOD 500 e as áreas do seu escopo.',
+            'The matrix shows disciplines declaring the LOD 500 checklist and their scoped areas.',
+          )}
+        />
       )}
     </>
   )

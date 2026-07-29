@@ -43,6 +43,85 @@ qualquer profundidade). **A renderização em si não foi verificada em navegado
 
 ---
 
+## 29/07 — a navegação remontada (etapa 1 de 2)
+
+A estrutura do menu passou a ser a que a coordenação pediu. O que mudou de
+fundo: **a sidebar é contextual**. Fora de um projeto ela mostra o que vale
+para a organização; dentro, o que se faz naquele projeto, com um caminho de
+volta no topo trazendo o código do projeto.
+
+```
+fora do projeto     Projetos · Apontamentos · Gestão de membros · Integrações
+dentro do projeto   ← CPQ11 · Painel · KPIs
+                    Auditoria: geral · 4D · LOD300 · LOD350 · LOD400 · LOD500 · Relatórios
+                    Projeto: Critérios · PEB · Membros · Configurações
+```
+
+**Duas telas estavam no menu errado desde sempre, e o backend já dizia isso:**
+
+- **Apontamentos** virou central. `projeto_id` sempre foi filtro *opcional* na
+  API — era a interface que insistia em passá-lo, e o efeito era que ver as
+  pendências de dois projetos exigia trocar de projeto e somar de cabeça. Agora
+  lista tudo, com o projeto virando coluna e filtro. Criar continua exigindo um
+  projeto: `projeto_id` é NOT NULL na tabela.
+- **Integrações** subiu para o nível da organização. A tela sequer usava o
+  contexto de projeto.
+
+**As seis auditorias são uma tela só.** A matriz sempre recebeu `?checklist=`;
+o painel a chamava com `lod500` fixo e os outros cinco recortes existiam na API
+sem porta na interface. Viraram entradas de menu porque é assim que se
+trabalha: abre-se "a LOD400", não "a matriz, e então escolhe-se LOD400".
+`components/Matriz.tsx` é a tabela, compartilhada com o painel — duplicá-la
+garantiria que a regra de cor divergisse na primeira mexida.
+
+**Gestão de membros** saiu da Administração e virou `/membros`. Administração é
+o que se configura uma vez; membro entra e sai o tempo todo, e estava dois
+cliques abaixo do que devia.
+
+**A busca virou barra fixa.** Era uma `.pillact` que nascia redonda. A regra
+dos "rótulos que crescem" existe para caber várias ferramentas na topbar sem
+virar fileira de ícones mudos — e a busca não é mais uma delas: é o atalho de
+maior alcance da barra, e escondê-la fazia com que só quem já sabia do Ctrl+K a
+usasse.
+
+**Configurações da conta** (`/configuracoes`) nasceu com dados pessoais,
+idioma, tema e **troca da própria senha** — que a API sempre permitiu a
+qualquer usuário e a interface só oferecia a quem administra cadastros.
+
+### O que fica para a etapa 2
+
+- **LOD300 e LOD350** estão no menu mas **não existem no banco**: o enum
+  `ChecklistTipo` tem `geral, ifc, 4d, lod400, lod500`. A tela deles diz isso em
+  vez de chamar a API e receber um 422. Entram na **migration 0004**.
+- **Membros do projeto** é placeholder: não existe nenhum vínculo
+  usuário↔projeto — o usuário pertence à organização e, opcionalmente, a uma
+  empresa. Decidido criar a tabela `projeto_membro` com papel no projeto.
+- **Preferências de notificação** — falta coluna em `usuario`.
+
+---
+
+## 29/07 — duas descobertas ao caçar o "sistema bugado"
+
+**A plataforma estava vazia, e era isso.** A organização SPBIM tem 1 projeto,
+1 cliente e 2 usuários — e zero empresas, disciplinas, critérios, modelos,
+standards, auditorias e apontamentos. Toda tela abria legitimamente vazia.
+O `scripts/dados/cpq11.yaml` tem o projeto de referência inteiro (9 empresas,
+10 disciplinas, 30 critérios, 35 itens de checklist, 5 modelos) e **nunca foi
+importado**. Decisão do usuário: **não importar** — o piloto vai receber dado
+real, cadastrado pela própria plataforma.
+
+A API em si está sã: 30 endpoints que as telas chamam foram exercitados com
+token real, **29 passam**, e a única falha é `checklist=lod300` → 422.
+
+**Sobraram 10 organizações de teste no banco do piloto**, de 28 e 29/07 — os
+testes criam uma organização por cenário e a limpeza é pulada quando uma
+asserção falha no meio. Foram apagadas (só a SPBIM restou), mas **a causa
+continua**: os testes rodam contra o mesmo banco do piloto, porque é o que o
+`.env` aponta. Pendência: banco de teste separado, ou limpeza à prova de falha
+num fixture.
+
+---
+
 ## 29/07 — o lote de telas que faltava
 
 Quatro itens da lista abaixo, todos "só tela": o backend já existia e ninguém

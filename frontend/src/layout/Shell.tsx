@@ -23,7 +23,7 @@ import BuscaGlobal from '@/components/BuscaGlobal'
 import Sino from '@/components/Sino'
 import UsuarioMenu from '@/components/UsuarioMenu'
 import { useI18n } from '@/i18n'
-import { GRUPOS, ITENS_NAV, type GrupoNav, type ItemNav } from '@/layout/nav'
+import { GRUPOS, ITENS_GLOBAIS, ITENS_PROJETO, type GrupoNav, type ItemNav } from '@/layout/nav'
 import { PREFIXO_PROJETO, rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 import { useTheme } from '@/theme/ThemeProvider'
 
@@ -183,9 +183,13 @@ export default function Shell() {
     })
   }, [])
 
+  // A SIDEBAR É CONTEXTUAL: dentro de um projeto mostra o que se faz naquele
+  // projeto; fora, o que vale para a organização. Uma lista só misturava os
+  // dois e deixava metade do menu sem sentido para quem estava na home.
+  //
   // `permissoes` do /auth/me já vem resolvido: o backend aplica o padrão do
   // papel quando o usuário não tem lista própria.
-  const itens = ITENS_NAV.filter(
+  const itens = (emProjeto ? ITENS_PROJETO : ITENS_GLOBAIS).filter(
     (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
   )
 
@@ -195,9 +199,10 @@ export default function Shell() {
   const destino = useCallback(
     (item: ItemNav): string | null => {
       if (item.escopo === 'global') return item.rota
-      return referencia ? rotaProjeto(referencia.id, item.rota) : null
+      const alvo = projeto ?? referencia
+      return alvo ? rotaProjeto(alvo.id, item.rota) : null
     },
-    [referencia],
+    [projeto, referencia],
   )
 
   // Prefixo mais longo: `modelos/:id` não está no menu, mas nasce do painel.
@@ -239,6 +244,23 @@ export default function Shell() {
         </button>
 
         <div className="nav-scroll thin-scroll">
+          {/* CAMINHO DE VOLTA. Dentro de um projeto a sidebar troca inteira,
+              então precisa haver a porta de saída — senão a única forma de
+              voltar aos projetos é o logo ou o botão do navegador.
+
+              Mostra o CÓDIGO do projeto, não "Projetos": responde ao mesmo
+              tempo "onde estou" e "por onde saio", que é o que um cabeçalho de
+              contexto tem de fazer. */}
+          {emProjeto && (
+            <NavLink className="nav-volta" to="/" title={L('Todos os projetos', 'All projects')}>
+              <Icone path={CHEVRON_ESQ} tam={15} />
+              <span className="nav-rot">
+                <b>{projeto?.codigo ?? '—'}</b>
+                <i>{L('todos os projetos', 'all projects')}</i>
+              </span>
+            </NavLink>
+          )}
+
           {grupos.map((grupo, i) => {
             const doGrupo = itens.filter((it) => it.grupo === grupo.chave)
             if (doGrupo.length === 0) return null

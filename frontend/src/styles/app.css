@@ -2259,17 +2259,76 @@ td.num {
 /* ==========================================================================
    BUSCA GLOBAL (Ctrl+K) · SAIR NA SIDEBAR · GRUPOS ARRASTAVEIS
    ========================================================================== */
+/* A busca deixou de ser pílula e virou BARRA FIXA (29/07/2026).
+   `flex: 1` com `max-width`: ela toma o meio da topbar e encolhe antes de
+   empurrar o breadcrumb ou as ações — numa tela estreita quem some é a largura
+   dela, não as ferramentas do canto. */
 .busca {
   position: relative;
+  flex: 1 1 360px;
+  min-width: 0;
+  max-width: 480px;
+}
+.buscabarra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  color: var(--ink-3);
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.buscabarra:focus-within {
+  border-color: var(--accent);
+  background: var(--panel-2);
+}
+.buscabarra svg {
   flex: none;
+}
+/* O input não desenha borda própria: quem é o controle visível é a barra em
+   volta. Duas bordas concêntricas a 34px de altura viram um sulco. */
+.buscabarra .f {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+}
+.buscabarra .f:focus {
+  outline: none;
+  box-shadow: none;
+}
+.buscabarra kbd {
+  flex: none;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+/* Abaixo de 820px a sidebar some e o dock assume; a busca cede o lugar ao
+   breadcrumb, que é o que diz onde se está. */
+@media (max-width: 820px) {
+  .busca {
+    display: none;
+  }
 }
 .buscapainel {
   position: absolute;
-  top: calc(100% + 14px);
-  /* Ancora à esquerda e cresce para a direita: o painel é largo e, preso à
-     direita como o do sino, transbordaria a topbar em telas médias. */
+  /* Colado embaixo da barra, não a 14px dela: agora existe um campo visível a
+     que o painel pertence, e o vão de antes o fazia flutuar solto. */
+  top: calc(100% + 6px);
+  /* Acompanha a largura da barra: os dois são o mesmo controle. */
   left: 0;
-  width: 460px;
+  right: 0;
+  min-width: 320px;
   max-width: 88vw;
   overflow: hidden;
   background: var(--popover);
@@ -2480,4 +2539,50 @@ td.num {
 }
 .doc .sub {
   margin-bottom: 4px;
+}
+
+/* --- Caminho de volta da sidebar contextual ------------------------------- */
+/* Dentro de um projeto a sidebar troca inteira, e este bloco e a porta de
+   saida. Fica ACIMA dos grupos e com um separador embaixo: e cabecalho de
+   contexto, nao mais um item de menu -- se parecesse item, competiria com o
+   destino de verdade. */
+.nav-volta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  text-decoration: none;
+  color: var(--ink-2);
+  overflow: hidden;
+}
+.nav-volta:hover {
+  color: var(--ink);
+  background: var(--hover-ink);
+}
+.nav-volta .nav-rot {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+/* O codigo do projeto responde "onde estou"; a segunda linha, "por onde saio".
+   O codigo leva o peso porque e o que se procura ao bater o olho. */
+.nav-volta b {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.nav-volta i {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+/* Recolhida sobra so a seta, centrada como os icones dos itens. */
+.app[data-nav='off'] .nav-volta {
+  gap: 0;
+  padding: 0;
+  justify-content: center;
 }

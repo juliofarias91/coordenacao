@@ -176,10 +176,18 @@ servindo o build, que é o arranjo de produção, e `-Parar` encerra.
 Ao continuar:
 - **A URL carrega o projeto**: toda tela de auditoria vive em
   `/projetos/:projetoId/<tela>` e o projeto corrente sai de lá, não do
-  `localStorage` (que sobrou como memória do último visitado). Tela nova de
-  projeto entra em `ITENS_NAV` com `escopo: 'projeto'` e `rota` sendo só o
-  segmento — quem monta o caminho é `rotaProjeto()`, em
-  `frontend/src/projeto/ProjetoContext.tsx`. Nunca escreva `/painel` à mão.
+  `localStorage` (que sobrou como memória do último visitado). Quem monta o
+  caminho é `rotaProjeto()`, em `frontend/src/projeto/ProjetoContext.tsx`.
+  Nunca escreva `/painel` à mão.
+- **A sidebar é contextual** (`frontend/src/layout/nav.ts`): `ITENS_GLOBAIS`
+  fora de um projeto, `ITENS_PROJETO` dentro. Tela nova entra numa das duas
+  listas — na global se a API dela não recebe `projeto_id`, na de projeto se
+  recebe. Errar isso foi o que deixou Apontamentos e Integrações no menu de
+  projeto sendo que nenhuma das duas APIs é por projeto.
+- **As seis telas de Auditoria são uma só**, parametrizada pela rota
+  (`auditoria/:checklist`) sobre a matriz que o backend já servia por
+  checklist. `LOD300` e `LOD350` estão no menu mas não no enum do banco — ver
+  `CHECKLISTS_SEM_BANCO`.
 - `backend/app/api/v1/` tem o padrão de rota (permissão via `requer_permissao`, sessão via `get_tenant_db`, 404 via `services/escopo.py`).
 - `backend/app/services/auditoria.py` concentra as regras da execução — leia antes de mexer em estado de round.
 - `backend/app/services/automacao/executor.py` tem o registro de verificadores: para automatizar um critério novo, acrescente uma entrada em `VERIFICADORES` ou dê a ele um `parametro_esperado`.

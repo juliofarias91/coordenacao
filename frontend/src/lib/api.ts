@@ -369,9 +369,15 @@ export const api = {
   },
 
   apontamentos: {
-    listar: (projetoId: string, filtros: { status?: string; prioridade?: string } = {}) =>
+    /** `projetoId` NULO lista os de todos os projetos — é a central da Home.
+     *  O backend sempre tratou `projeto_id` como filtro opcional; era a
+     *  interface que insistia em passá-lo. */
+    listar: (
+      projetoId: string | null,
+      filtros: { status?: string; prioridade?: string } = {},
+    ) =>
       requisitar<T.Page<T.Apontamento>>(
-        `/apontamentos${qs({ projeto_id: projetoId, limite: 200, ...filtros })}`,
+        `/apontamentos${qs({ projeto_id: projetoId ?? '', limite: 200, ...filtros })}`,
       ),
     criar: (corpo: Record<string, unknown>) =>
       escrever<T.Apontamento>('/apontamentos', 'POST', corpo),
