@@ -252,6 +252,13 @@ backend    289 testes; a suíte inteira leva ~1h contra o Supabase
 frontend   tsc limpo, build ok
 ```
 
+**As telas FORAM conferidas em navegador**, e por quem pediu: o usuário
+acompanhou em `localhost:8000` ao longo da construção e deu por bom o painel
+recolhível da auditoria, as abas da configuração e o favicon. É a primeira vez
+neste documento que essa linha não é uma ressalva — nas seções anteriores ela
+aparece como pendência porque não há automação de browser nesta máquina, e
+continua valendo para o que foi feito antes de hoje.
+
 ---
 
 ## 29/07 — a auditoria geral virou planilha de verdade
