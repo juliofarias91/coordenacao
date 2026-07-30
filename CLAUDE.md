@@ -258,14 +258,20 @@ ordem. O que varia entre os arquivos é a resposta, nunca a pergunta.
   ao_registrar_versao`, chamado pelas DUAS rotas que criam versão (a manual e o
   webhook do ACC). Só a geral: os recortes de LOD e o 4D são trabalho dirigido,
   e abrir os seis encheria o painel de rounds que ninguém abriu.
-- **`/auditoria/geral` NÃO é a matriz por área.** A matriz busca a célula por
-  `(versao_id, area)` (`services/painel.py:279`) e `abrir_auditoria` só recebe
-  `area` nas auditorias de especificação — uma auditoria com `area = NULL` não
-  casa com coluna nenhuma, e a tela mostrava uma grade de travessões. A geral
-  usa `ControleGeral` (a aba GENERAL AUDIT - CONTROL: um modelo por linha) e
-  `auditoria/geral/:modeloId` abre a planilha editável, `pages/PlanilhaGeral.tsx`.
-  **Isto vale para os outros quatro recortes sem área também** (4D, LOD300,
-  LOD350) — eles seguem na matriz e seguem vazios; ver decisão aberta.
+- **Cada recorte usa a tela que a sua PERGUNTA pede**, e a divisão é
+  `CHECKLISTS_POR_AREA` em `services/auditoria.py`:
+  - **geral e LOD 300** não têm área: um modelo por linha (`ControleGeral`, a
+    aba `... - CONTROL` das planilhas), e a linha abre a planilha editável.
+  - **LOD 400 e LOD 500** são POR ÁREA, e a matriz modelo × área é literalmente
+    a aba `LOD 500 - OVERVIEW` deles. Desde 30/07/2026 `POST /auditar` abre
+    **uma auditoria por área da disciplina** nesses dois; antes `area` só era
+    gravada se o chamador a informasse, e ninguém informava — daí a matriz
+    permanentemente vazia. Quem resolveu a dúvida foram os arquivos: os
+    controles de 400 e 500 em `Bases/` têm uma aba por área.
+  - **O LOD 350 não existe mais na navegação** (30/07/2026): não há arquivo de
+    referência dele em projeto nenhum. O valor continua no enum do banco —
+    tirar valor de enum no Postgres exige recriar o tipo e trava se houver
+    linha usando.
 - **A planilha salva no BLUR, campo por campo.** Não há botão "salvar
   planilha", porque não há rascunho: cada célula é um PATCH e a aprovação volta
   recalculada do servidor. A tela **nunca** calcula percentual — duas contas de

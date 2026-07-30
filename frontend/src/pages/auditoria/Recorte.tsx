@@ -46,17 +46,13 @@ const EXPLICACAO: Record<Checklist, [string, string]> = {
     'Geometria com dimensão, forma e posição definidas, e a informação que acompanha cada categoria de elemento. Ainda é projeto, não fabricação.',
     'Geometry with defined size, shape and location, plus the information required of each element category. Still design, not fabrication.',
   ],
-  lod350: [
-    'Acrescenta as interfaces entre sistemas — suportes, aberturas, o que um sistema precisa saber do outro. É o nível em que a compatibilização acontece.',
-    'Adds interfaces between systems — supports, openings, what one system needs to know about another. This is where coordination happens.',
-  ],
   lod400: [
-    'Detalhe de fabricação e montagem. O modelo passa a valer como instrução de obra.',
-    'Fabrication and assembly detail. The model becomes a construction instruction.',
+    'Detalhe de fabricação e montagem — o modelo passa a valer como instrução de obra. Auditado POR ÁREA: cada modelo responde separadamente em ADMN, COLO1, SITE e nas demais áreas do escopo da disciplina.',
+    'Fabrication and assembly detail — the model becomes a construction instruction. Audited BY AREA: each model answers separately in ADMN, COLO1, SITE and the other areas in its discipline’s scope.',
   ],
   lod500: [
-    'As-built verificado em campo. É o que alimenta a operação depois da entrega.',
-    'Field-verified as-built. This is what feeds operations after handover.',
+    'As-built verificado em campo, o que alimenta a operação depois da entrega. Também por área.',
+    'Field-verified as-built, what feeds operations after handover. Also by area.',
   ],
 }
 
@@ -159,10 +155,11 @@ export default function Recorte() {
       ) : (
         <TabelaMatriz
           matriz={matriz}
+          projetoId={projeto.id}
           vazioTitulo={L('Nada auditado neste recorte', 'Nothing audited in this scope')}
           vazioTexto={L(
-            'A matriz mostra modelo × área, e as auditorias deste recorte são abertas SEM área — por isso ela aparece vazia mesmo havendo auditoria. É uma pendência conhecida (docs/CONTINUACAO.md): decidir entre abrir uma auditoria por área da disciplina ou a matriz passar a mostrar o que não tem área.',
-            'The matrix shows model × area, and this scope’s audits are opened WITHOUT an area — which is why it looks empty even when audits exist. This is a known pending decision (docs/CONTINUACAO.md): whether to open one audit per discipline area, or have the matrix also show what has no area.',
+            'A matriz mostra modelo × área. Se está vazia, nenhuma disciplina do projeto declara este recorte — ou as disciplinas que o declaram estão sem áreas no escopo. Os dois se definem em Configurações do projeto › Disciplinas.',
+            'The matrix shows model × area. If it is empty, no discipline in the project declares this scope — or the ones that do have no areas in scope. Both are set under Project setup › Disciplines.',
           )}
         />
       )}

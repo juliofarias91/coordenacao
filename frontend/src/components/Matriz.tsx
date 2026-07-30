@@ -9,8 +9,11 @@
  *  Duplicá-la seria garantir que a regra de cor divergisse entre as telas na
  *  primeira vez que alguém mexesse numa delas.
  */
+import { Link } from 'react-router-dom'
+
 import { useI18n } from '@/i18n'
 import type { Matriz } from '@/lib/types'
+import { rotaProjeto } from '@/projeto/ProjetoContext'
 
 /** Verde ≥90, âmbar ≥60, vermelho abaixo. Sai de token de tema, nunca de hex
  *  da API: o modo escuro tem passos próprios. */
@@ -21,10 +24,14 @@ export function corDoPercentual(pct: number | null): string {
 
 export default function TabelaMatriz({
   matriz,
+  projetoId,
   vazioTitulo,
   vazioTexto,
 }: {
   matriz: Matriz | null
+  /** Sem ele a célula não vira link — é o caso do painel, que já está dentro
+   *  da lista de modelos e não tem para onde levar. */
+  projetoId?: string
   vazioTitulo?: string
   vazioTexto?: string
 }) {
@@ -74,17 +81,37 @@ export default function TabelaMatriz({
                   )
                 }
                 const pct = celula.aprovacao_pct
+                const numero = (
+                  <span
+                    className="cellpct"
+                    style={{
+                      color: corDoPercentual(pct),
+                      background: pct === null ? 'var(--na-bg)' : undefined,
+                    }}
+                  >
+                    {pct === null ? '—' : `${Math.round(pct)}%`}
+                  </span>
+                )
+                // A CÉLULA LEVA AO MODELO. Ela sempre teve `auditoria_id` na
+                // resposta da API e não fazia nada com ele: quem via 47% na
+                // matriz tinha de achar o modelo na lista para descobrir POR
+                // QUE. Sem projeto na mão o número fica sem link, em vez de um
+                // caminho quebrado.
                 return (
                   <td key={area} className="cell">
-                    <span
-                      className="cellpct"
-                      style={{
-                        color: corDoPercentual(pct),
-                        background: pct === null ? 'var(--na-bg)' : undefined,
-                      }}
-                    >
-                      {pct === null ? '—' : `${Math.round(pct)}%`}
-                    </span>
+                    {projetoId ? (
+                      <Link
+                        to={rotaProjeto(projetoId, `modelos/${linha.modelo_id}`)}
+                        title={L(
+                          `Abrir ${linha.codigo} — área ${area}`,
+                          `Open ${linha.codigo} — area ${area}`,
+                        )}
+                      >
+                        {numero}
+                      </Link>
+                    ) : (
+                      numero
+                    )}
                   </td>
                 )
               })}

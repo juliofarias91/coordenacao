@@ -40,6 +40,20 @@ from app.models import (
 )
 from app.models.enums import AuditoriaEstado, ChecklistTipo, CheckStatus
 
+# OS RECORTES QUE SE AUDITAM POR ÁREA, e não sobre o arquivo inteiro.
+#
+# Sai do processo real, não de preferência: os controles de LOD 400 e 500 da
+# coordenação (`Bases/LOD*_SPECIFIC AUDIT_CONTROL.xlsx`) têm UMA ABA POR ÁREA —
+# ADMN, COLO1..COLO4, SITE, UTLS, GUAR —, cada uma com o round e o percentual de
+# cada modelo dentro dela. Os de geral e 4D não têm: são do arquivo.
+#
+# Esta constante é o que faz a matriz modelo × área ter conteúdo. Ela nasceu
+# vazia porque `area` só era gravada quando o chamador a informava, e ninguém
+# informava — ver `api/v1/auditorias.py::_areas_do_checklist`.
+CHECKLISTS_POR_AREA: frozenset[ChecklistTipo] = frozenset(
+    {ChecklistTipo.LOD400, ChecklistTipo.LOD500}
+)
+
 
 def checklists_da_versao(db: Session, versao: VersaoModelo) -> list[ChecklistTipo]:
     """Auditorias aplicáveis, definidas na disciplina do modelo (SP-105)."""

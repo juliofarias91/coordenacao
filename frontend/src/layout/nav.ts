@@ -101,7 +101,16 @@ const IC = {
  *
  *  `lod300` e `lod350` são novos no enum `ChecklistTipo` (migration 0004).
  */
-export const CHECKLISTS = ['geral', '4d', 'lod300', 'lod350', 'lod400', 'lod500'] as const
+/** O LOD 350 SAIU (30/07/2026), a pedido. Não é limpeza de código: ele nunca
+ *  teve arquivo de referência. A pasta `Bases/` tem controle de geral, 4D, LOD
+ *  300, 400 e 500 — de 350, nada, em nenhum projeto. Um recorte no menu que a
+ *  coordenação não audita é uma tela que só pode estar vazia.
+ *
+ *  O VALOR CONTINUA NO ENUM do banco (`checklist_tipo`). Tirar um valor de enum
+ *  no Postgres exige recriar o tipo, e qualquer linha de `auditoria` ou
+ *  `checklist_item` que o use travaria a migration. Sai da NAVEGAÇÃO; se um dia
+ *  voltar, volta acrescentando uma string aqui. */
+export const CHECKLISTS = ['geral', '4d', 'lod300', 'lod400', 'lod500'] as const
 export type Checklist = (typeof CHECKLISTS)[number]
 
 /** Recortes que existem no menu mas ainda não no enum `ChecklistTipo` do
@@ -120,7 +129,6 @@ export const ROTULO_CHECKLIST: Record<Checklist, [string, string]> = {
   geral: ['Auditoria geral', 'General audit'],
   '4d': ['Auditoria 4D', '4D audit'],
   lod300: ['Auditoria LOD300', 'LOD300 audit'],
-  lod350: ['Auditoria LOD350', 'LOD350 audit'],
   lod400: ['Auditoria LOD400', 'LOD400 audit'],
   lod500: ['Auditoria LOD500', 'LOD500 audit'],
 }

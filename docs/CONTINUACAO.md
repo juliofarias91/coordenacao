@@ -501,7 +501,15 @@ backend já existe.
     contradiz "SSO autentica, não provisiona" (`docs/SUPABASE.md`). O que falta
     é a tela de convite + definição de senha.
 
-### Precisa de UMA decisão sua (achado de 29/07)
+### ~~Precisa de UMA decisão sua~~ — RESOLVIDA em 30/07 pelos próprios arquivos
+
+Os controles de LOD 400 e 500 em `Bases/` têm **uma aba por área** (ADMN,
+COLO1…COLO4, SITE, UTLS, GUAR), cada uma com o round e o percentual de cada
+modelo. Não havia o que decidir: a auditoria de especificação é por área no
+processo real. `POST /auditar` passou a abrir uma auditoria por área da
+disciplina nesses dois recortes, e a matriz — que é a aba `LOD 500 - OVERVIEW`
+deles — ganhou conteúdo. O texto abaixo fica como registro do que se decidiu e
+por quê.
 
 12. **As auditorias sem área e a matriz.** `abrir_auditoria` só grava `area`
     quando o chamador a informa, e nenhum caminho normal informa. Resultado:

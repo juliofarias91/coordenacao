@@ -1,0 +1,1537 @@
+# GERADO das planilhas de controle reais de `Bases/` — ver o gerador em
+# scratchpad/gerar_cpq11.py. Empresas, disciplinas, areas e nomes de
+# arquivo sao os do projeto; resultado de auditoria NAO vem daqui.
+#
+#   python -m scripts.onboarding scripts/dados/cpq11-real.yaml
+
+organizacao:
+  nome: SPBIM
+  slug: spbim
+projeto:
+  codigo: CPQ11
+  nome: CPQ11 — Data Center
+  cliente: Microsoft
+  coordenacao: SPBIM
+  bep_ref: A5.3.2 · Construction BEP
+  status: ativo
+nomenclatura:
+- k: PROJETO
+  vals:
+  - CPQ11
+- k: DISC
+  vals:
+  - ARCH
+  - BASM
+  - CIVL
+  - DALI
+  - DASM
+  - ELEC
+  - EPMS
+  - FALM
+  - FPRT
+  - LAND
+  - MECH
+  - PLMB
+  - ROIP
+  - SCTY
+  - STRC
+  - SYST
+  - TCOM
+- k: SUB
+  vals:
+  - ALUF
+  - ARCH
+  - BLPR
+  - CEIL
+  - CHAI
+  - COMN
+  - CONC
+  - DEVS
+  - DIES
+  - DPFN
+  - DRNG
+  - ELEC
+  - ERTH
+  - FACD
+  - FALM
+  - FENC
+  - FLOO
+  - FNSH
+  - FPRT
+  - FURN
+  - GATE
+  - HM90
+  - HMET
+  - INFR
+  - LAND
+  - LOCK
+  - MECH
+  - METK
+  - METL
+  - NEWJ
+  - NPWT
+  - OHCD
+  - PART
+  - PAVM
+  - PLMB
+  - ROOF
+  - SGNH
+  - SGNV
+  - SHLV
+  - SIGN
+  - SPDA
+  - STON
+  - WMES
+  - WOOD
+  - WTRP
+- k: SETOR
+  vals:
+  - C12A
+  - C345
+  - DATA
+  - GUAR
+  - PUMP
+  - SITE
+  - UTLS
+- k: SW
+  vals:
+  - R22
+  - R24
+empresas:
+- nome: ALTAMIRA
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: ARE ARQUITETURA
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1130'
+- nome: AUTOBRÁS
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1116'
+- nome: BLACKBOX
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1114'
+- nome: CADBIM
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1128'
+- nome: CONTRACTING
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: FCH
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1126'
+- nome: FERNANDES
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1121'
+- nome: FM SECURITY
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: GARCIA
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1119'
+- nome: GEOFIX
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1122'
+- nome: GEOFIX/TECNOGEO
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: IB TECH
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1113'
+- nome: IDEIA DRYWALL
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1101'
+- nome: INOVAGLASS
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1109'
+- nome: ITS
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1107'
+- nome: MADEPISO
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: MEGADOORS
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1108'
+- nome: MENDES HOLLER
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1112'
+- nome: MENDES HOLLER, IDEIA, SERV OBRAS
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1111'
+- nome: METASA
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1125'
+- nome: MODAX
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1121'
+- nome: OMNITRADE
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1110'
+- nome: ORGANISMO VIVO
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: PETROTANQUE
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1117'
+- nome: PGMAK
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1129'
+- nome: PMD
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: RACIONAL
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1106'
+- nome: RBV
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: S-VALE
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1104'
+- nome: SEGURPRO
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1115'
+- nome: SERCOP
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1103'
+- nome: SERCOP, SERV OBRAS
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1124'
+- nome: SERV OBRAS
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1120'
+- nome: SMVIDROS
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1102'
+- nome: SPBIM
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1127'
+- nome: STARCENTER
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1118'
+- nome: STEINER
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: STONE
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: T2B
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: TECNOGEO
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1123'
+- nome: TENAX
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: VISUAL GEAC
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+- nome: ZEUS/PORTEX
+  tipo: terceirizada
+  papeis:
+  - trade
+  - bim
+  codigo_acc: '1105'
+disciplinas:
+- macro: A
+  disc: ARCH
+  sub: ALUF
+  projetista: SMVIDROS
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - SITE
+  - UTLS
+- macro: A
+  disc: ARCH
+  sub: ARCH
+  projetista: ARE ARQUITETURA
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: BLPR
+  projetista: INOVAGLASS
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: CEIL
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: CHAI
+  projetista: S-VALE
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: COMN
+  projetista: CONTRACTING
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: A
+  disc: ARCH
+  sub: FACD
+  projetista: OMNITRADE
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: A
+  disc: ARCH
+  sub: FENC
+  projetista: SERCOP
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: FNSH
+  projetista: MENDES HOLLER, IDEIA, SERV OBRAS
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - SITE
+  - UTLS
+- macro: A
+  disc: ARCH
+  sub: FURN
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: A
+  disc: ARCH
+  sub: HM90
+  projetista: ZEUS/PORTEX
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: A
+  disc: ARCH
+  sub: HMET
+  projetista: S-VALE
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: METL
+  projetista: SERCOP
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: NEWJ
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: OHCD
+  projetista: MEGADOORS
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: A
+  disc: ARCH
+  sub: PART
+  projetista: IDEIA DRYWALL
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: ROOF
+  projetista: OMNITRADE
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: A
+  disc: ARCH
+  sub: SGNH
+  projetista: CONTRACTING
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: SGNV
+  projetista: VISUAL GEAC
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: SHLV
+  projetista: ALTAMIRA
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: A
+  disc: ARCH
+  sub: STON
+  projetista: STONE
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: A
+  disc: ARCH
+  sub: WMES
+  projetista: S-VALE
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: A
+  disc: ARCH
+  sub: WOOD
+  projetista: MADEPISO
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: A
+  disc: ARCH
+  sub: WTRP
+  projetista: ITS
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: BASM
+  sub: DEVS
+  projetista: BLACKBOX
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: BASM
+  sub: INFR
+  projetista: MENDES HOLLER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: CIVL
+  sub: DRNG
+  projetista: GARCIA
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: CIVL
+  sub: ERTH
+  projetista: GARCIA
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: CIVL
+  sub: LOCK
+  projetista: STEINER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: CIVL
+  sub: PAVM
+  projetista: GARCIA
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: CIVL
+  sub: SIGN
+  projetista: CONTRACTING
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: S
+  disc: DALI
+  sub: DEVS
+  projetista: AUTOBRÁS
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: S
+  disc: DASM
+  sub: DEVS
+  projetista: IB TECH
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+- macro: M
+  disc: ELEC
+  sub: ELEC
+  projetista: MENDES HOLLER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: M
+  disc: ELEC
+  sub: SPDA
+  projetista: MENDES HOLLER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: S
+  disc: EPMS
+  sub: DEVS
+  projetista: BLACKBOX
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: M
+  disc: FALM
+  sub: FALM
+  projetista: MENDES HOLLER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: M
+  disc: FPRT
+  sub: FPRT
+  projetista: MENDES HOLLER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: M
+  disc: FPRT
+  sub: METK
+  projetista: PETROTANQUE
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: LAND
+  sub: LAND
+  projetista: ORGANISMO VIVO
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: M
+  disc: MECH
+  sub: MECH
+  projetista: STARCENTER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: M
+  disc: PLMB
+  sub: DIES
+  projetista: MENDES HOLLER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: M
+  disc: PLMB
+  sub: METK
+  projetista: STARCENTER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: M
+  disc: PLMB
+  sub: NPWT
+  projetista: STARCENTER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: M
+  disc: PLMB
+  sub: PLMB
+  projetista: MENDES HOLLER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: S
+  disc: ROIP
+  sub: DEVS
+  projetista: IB TECH
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: S
+  disc: SCTY
+  sub: DEVS
+  projetista: SEGURPRO
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: S
+  disc: SCTY
+  sub: GATE
+  projetista: FM SECURITY
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: S
+  disc: SCTY
+  sub: INFR
+  projetista: MENDES HOLLER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: STRC
+  sub: CHAI
+  projetista: S-VALE
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: STRC
+  sub: CONC
+  projetista: SERV OBRAS
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: STRC
+  sub: DPFN
+  projetista: GEOFIX/TECNOGEO
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: STRC
+  sub: FENC
+  projetista: SERCOP, SERV OBRAS
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: C
+  disc: STRC
+  sub: FLOO
+  projetista: MODAX
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: S
+  disc: SYST
+  sub: INFR
+  projetista: MENDES HOLLER
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+- macro: S
+  disc: TCOM
+  sub: DEVS
+  projetista: BLACKBOX
+  checklists:
+  - geral
+  - lod400
+  - lod500
+  areas:
+  - ADMN
+  - COLO1
+  - COLO2
+  - COLO3
+  - COLO4
+  - GUAR
+  - SITE
+  - UTLS
+  - WASTE SHED
+modelos:
+- codigo: CPQ11-ARCH-ALUF-DATA-R24.RVT
+  disciplina: ARCH-ALUF
+  instaladora: SMVIDROS
+  modeladora: ARE ARQUITETURA
+- codigo: CPQ11-ARCH-ALUF-SITE-R24.RVT
+  disciplina: ARCH-ALUF
+  instaladora: SMVIDROS
+  modeladora: ARE ARQUITETURA
+- codigo: CPQ11-ARCH-ARCH-DATA-R24.RVT
+  disciplina: ARCH-ARCH
+  instaladora: ARE ARQUITETURA
+  modeladora: ARE ARQUITETURA
+- codigo: CPQ11-ARCH-ARCH-SITE-R24.RVT
+  disciplina: ARCH-ARCH
+  instaladora: ARE ARQUITETURA
+  modeladora: ARE ARQUITETURA
+- codigo: CPQ11-ARCH-BLPR-GUAR-R24.RVT
+  disciplina: ARCH-BLPR
+  instaladora: INOVAGLASS
+  modeladora: INOVAGLASS
+- codigo: CPQ11-ARCH-CEIL-DATA-R24.RVT
+  disciplina: ARCH-CEIL
+  instaladora: null
+  modeladora: T2B
+- codigo: CPQ11-ARCH-CEIL-SITE-R24.RVT
+  disciplina: ARCH-CEIL
+  instaladora: null
+  modeladora: T2B
+- codigo: CPQ11-ARCH-CHAI-SITE-R24.RVT
+  disciplina: ARCH-CHAI
+  instaladora: S-VALE
+  modeladora: SPBIM
+- codigo: CPQ11-ARCH-COMN-DATA-R24.RVT
+  disciplina: ARCH-COMN
+  instaladora: CONTRACTING
+  modeladora: CONTRACTING
+- codigo: CPQ11-ARCH-FACD-DATA-R24.RVT
+  disciplina: ARCH-FACD
+  instaladora: OMNITRADE
+  modeladora: CADBIM
+- codigo: CPQ11-ARCH-FENC-SITE-R24.RVT
+  disciplina: ARCH-FENC
+  instaladora: SERCOP
+  modeladora: ARE ARQUITETURA
+- codigo: CPQ11-ARCH-FNSH-DATA-R24.RVT
+  disciplina: ARCH-FNSH
+  instaladora: MENDES HOLLER, IDEIA, SERV OBRAS
+  modeladora: ARE ARQUITETURA
+- codigo: CPQ11-ARCH-FNSH-SITE-R24.RVT
+  disciplina: ARCH-FNSH
+  instaladora: MENDES HOLLER, IDEIA, SERV OBRAS
+  modeladora: ARE ARQUITETURA
+- codigo: CPQ11-ARCH-FURN-DATA-R24.RVT
+  disciplina: ARCH-FURN
+  instaladora: null
+  modeladora: CONTRACTING
+- codigo: CPQ11-ARCH-HM90-DATA-R24.RVT
+  disciplina: ARCH-HM90
+  instaladora: ZEUS/PORTEX
+  modeladora: SPBIM
+- codigo: CPQ11-ARCH-HMET-DATA-R24.RVT
+  disciplina: ARCH-HMET
+  instaladora: S-VALE
+  modeladora: SPBIM
+- codigo: CPQ11-ARCH-HMET-SITE-R24.RVT
+  disciplina: ARCH-HMET
+  instaladora: S-VALE
+  modeladora: SPBIM
+- codigo: CPQ11-ARCH-METL-SITE-R24.RVT
+  disciplina: ARCH-METL
+  instaladora: SERCOP
+  modeladora: ARE ARQUITETURA
+- codigo: CPQ11-ARCH-NEWJ-SITE-R24.RVT
+  disciplina: ARCH-NEWJ
+  instaladora: null
+  modeladora: null
+- codigo: CPQ11-ARCH-OHCD-DATA-R24.RVT
+  disciplina: ARCH-OHCD
+  instaladora: MEGADOORS
+  modeladora: MEGADOORS
+- codigo: CPQ11-ARCH-PART-C12A-R24.RVT
+  disciplina: ARCH-PART
+  instaladora: IDEIA DRYWALL
+  modeladora: FCH
+- codigo: CPQ11-ARCH-PART-C345-R24.RVT
+  disciplina: ARCH-PART
+  instaladora: IDEIA DRYWALL
+  modeladora: FCH
+- codigo: CPQ11-ARCH-PART-SITE-R24.RVT
+  disciplina: ARCH-PART
+  instaladora: IDEIA DRYWALL
+  modeladora: FCH
+- codigo: CPQ11-ARCH-ROOF-DATA-R24.RVT
+  disciplina: ARCH-ROOF
+  instaladora: OMNITRADE
+  modeladora: CADBIM
+- codigo: CPQ11-ARCH-SGNH-SITE-R24.RVT
+  disciplina: ARCH-SGNH
+  instaladora: CONTRACTING
+  modeladora: CONTRACTING
+- codigo: CPQ11-ARCH-SGNV-SITE-R24.RVT
+  disciplina: ARCH-SGNV
+  instaladora: VISUAL GEAC
+  modeladora: CONTRACTING
+- codigo: CPQ11-ARCH-SHLV-DATA-R24.RVT
+  disciplina: ARCH-SHLV
+  instaladora: ALTAMIRA
+  modeladora: ALTAMIRA
+- codigo: CPQ11-ARCH-STON-SITE-R24.RVT
+  disciplina: ARCH-STON
+  instaladora: STONE
+  modeladora: STONE
+- codigo: CPQ11-ARCH-WMES-DATA-R24.RVT
+  disciplina: ARCH-WMES
+  instaladora: S-VALE
+  modeladora: SPBIM
+- codigo: CPQ11-ARCH-WOOD-DATA-R24.RVT
+  disciplina: ARCH-WOOD
+  instaladora: MADEPISO
+  modeladora: MADEPISO
+- codigo: CPQ11-ARCH-WTRP-DATA-R24.RVT
+  disciplina: ARCH-WTRP
+  instaladora: ITS
+  modeladora: RBV
+- codigo: CPQ11-ARCH-WTRP-SITE-R24.RVT
+  disciplina: ARCH-WTRP
+  instaladora: ITS
+  modeladora: RBV
+- codigo: CPQ11-BASM-DEVS-DATA-R24.RVT
+  disciplina: BASM-DEVS
+  instaladora: BLACKBOX
+  modeladora: BLACKBOX
+- codigo: CPQ11-BASM-DEVS-PUMP-R24.RVT
+  disciplina: BASM-DEVS
+  instaladora: BLACKBOX
+  modeladora: BLACKBOX
+- codigo: CPQ11-BASM-INFR-DATA-R24.RVT
+  disciplina: BASM-INFR
+  instaladora: MENDES HOLLER
+  modeladora: PGMAK
+- codigo: CPQ11-BASM-INFR-PUMP-R24.RVT
+  disciplina: BASM-INFR
+  instaladora: MENDES HOLLER
+  modeladora: PGMAK
+- codigo: CPQ11-CIVL-DRNG-SITE-R24.RVT
+  disciplina: CIVL-DRNG
+  instaladora: GARCIA
+  modeladora: CADBIM
+- codigo: CPQ11-CIVL-ERTH-SITE-R24.RVT
+  disciplina: CIVL-ERTH
+  instaladora: GARCIA
+  modeladora: CADBIM
+- codigo: CPQ11-CIVL-LOCK-SITE-R24.RVT
+  disciplina: CIVL-LOCK
+  instaladora: STEINER
+  modeladora: PMD
+- codigo: CPQ11-CIVL-PAVM-SITE-R24.RVT
+  disciplina: CIVL-PAVM
+  instaladora: GARCIA
+  modeladora: CADBIM
+- codigo: CPQ11-CIVL-SIGN-SITE-R24.RVT
+  disciplina: CIVL-SIGN
+  instaladora: CONTRACTING
+  modeladora: CONTRACTING
+- codigo: CPQ11-DALI-DEVS-DATA-R24.RVT
+  disciplina: DALI-DEVS
+  instaladora: AUTOBRÁS
+  modeladora: AUTOBRÁS
+- codigo: CPQ11-DASM-DEVS-DATA-R24.RVT
+  disciplina: DASM-DEVS
+  instaladora: IB TECH
+  modeladora: IB TECH
+- codigo: CPQ11-ELEC-ELEC-DATA-R24.RVT
+  disciplina: ELEC-ELEC
+  instaladora: MENDES HOLLER
+  modeladora: PGMAK
+- codigo: CPQ11-ELEC-ELEC-SITE-R24.RVT
+  disciplina: ELEC-ELEC
+  instaladora: MENDES HOLLER
+  modeladora: PGMAK
+- codigo: CPQ11-ELEC-SPDA-DATA-R24.RVT
+  disciplina: ELEC-SPDA
+  instaladora: MENDES HOLLER
+  modeladora: MENDES HOLLER
+- codigo: CPQ11-ELEC-SPDA-SITE-R24.RVT
+  disciplina: ELEC-SPDA
+  instaladora: MENDES HOLLER
+  modeladora: MENDES HOLLER
+- codigo: CPQ11-EPMS-DEVS-DATA-R24.RVT
+  disciplina: EPMS-DEVS
+  instaladora: BLACKBOX
+  modeladora: BLACKBOX
+- codigo: CPQ11-EPMS-DEVS-SITE-R24.RVT
+  disciplina: EPMS-DEVS
+  instaladora: BLACKBOX
+  modeladora: BLACKBOX
+- codigo: CPQ11-FALM-FALM-DATA-R24.RVT
+  disciplina: FALM-FALM
+  instaladora: MENDES HOLLER
+  modeladora: MENDES HOLLER
+- codigo: CPQ11-FALM-FALM-SITE-R24.RVT
+  disciplina: FALM-FALM
+  instaladora: MENDES HOLLER
+  modeladora: MENDES HOLLER
+- codigo: CPQ11-FPRT-FPRT-DATA-R24.RVT
+  disciplina: FPRT-FPRT
+  instaladora: MENDES HOLLER
+  modeladora: MENDES HOLLER
+- codigo: CPQ11-FPRT-FPRT-SITE-R24.RVT
+  disciplina: FPRT-FPRT
+  instaladora: MENDES HOLLER
+  modeladora: MENDES HOLLER
+- codigo: CPQ11-FPRT-METK-UTLS-R24.RVT
+  disciplina: FPRT-METK
+  instaladora: PETROTANQUE
+  modeladora: CADBIM
+- codigo: CPQ11-LAND-LAND-SITE-R24.RVT
+  disciplina: LAND-LAND
+  instaladora: ORGANISMO VIVO
+  modeladora: CONTRACTING
+- codigo: CPQ11-MECH-MECH-DATA-R24.RVT
+  disciplina: MECH-MECH
+  instaladora: STARCENTER
+  modeladora: STARCENTER
+- codigo: CPQ11-MECH-MECH-GUAR-R24.RVT
+  disciplina: MECH-MECH
+  instaladora: STARCENTER
+  modeladora: STARCENTER
+- codigo: CPQ11-PLMB-DIES-SITE-R24.RVT
+  disciplina: PLMB-DIES
+  instaladora: MENDES HOLLER
+  modeladora: MENDES HOLLER
+- codigo: CPQ11-PLMB-METK-UTLS-R24.RVT
+  disciplina: PLMB-METK
+  instaladora: STARCENTER
+  modeladora: STARCENTER
+- codigo: CPQ11-PLMB-NPWT-DATA-R24.RVT
+  disciplina: PLMB-NPWT
+  instaladora: STARCENTER
+  modeladora: STARCENTER
+- codigo: CPQ11-PLMB-NPWT-SITE-R24.RVT
+  disciplina: PLMB-NPWT
+  instaladora: STARCENTER
+  modeladora: STARCENTER
+- codigo: CPQ11-PLMB-PLMB-DATA-R24.RVT
+  disciplina: PLMB-PLMB
+  instaladora: MENDES HOLLER
+  modeladora: PGMAK
+- codigo: CPQ11-PLMB-PLMB-SITE-R24.RVT
+  disciplina: PLMB-PLMB
+  instaladora: MENDES HOLLER
+  modeladora: PGMAK
+- codigo: CPQ11-ROIP-DEVS-DATA-R24.RVT
+  disciplina: ROIP-DEVS
+  instaladora: IB TECH
+  modeladora: IB TECH
+- codigo: CPQ11-ROIP-DEVS-GUAR-R24.RVT
+  disciplina: ROIP-DEVS
+  instaladora: IB TECH
+  modeladora: IB TECH
+- codigo: CPQ11-SCTY-DEVS-DATA-R24.RVT
+  disciplina: SCTY-DEVS
+  instaladora: SEGURPRO
+  modeladora: SEGURPRO
+- codigo: CPQ11-SCTY-DEVS-SITE-R24.RVT
+  disciplina: SCTY-DEVS
+  instaladora: SEGURPRO
+  modeladora: SEGURPRO
+- codigo: CPQ11-SCTY-GATE-SITE-R24.RVT
+  disciplina: SCTY-GATE
+  instaladora: FM SECURITY
+  modeladora: FM SECURITY
+- codigo: CPQ11-SCTY-INFR-DATA-R24.RVT
+  disciplina: SCTY-INFR
+  instaladora: MENDES HOLLER
+  modeladora: PGMAK
+- codigo: CPQ11-SCTY-INFR-SITE-R24.RVT
+  disciplina: SCTY-INFR
+  instaladora: MENDES HOLLER
+  modeladora: PGMAK
+- codigo: CPQ11-STRC-CHAI-SITE-R24.RVT
+  disciplina: STRC-CHAI
+  instaladora: S-VALE
+  modeladora: SPBIM
+- codigo: CPQ11-STRC-CONC-DATA-R24.RVT
+  disciplina: STRC-CONC
+  instaladora: SERV OBRAS
+  modeladora: null
+- codigo: CPQ11-STRC-CONC-SITE-R24.RVT
+  disciplina: STRC-CONC
+  instaladora: SERV OBRAS
+  modeladora: TENAX
+- codigo: CPQ11-STRC-DPFN-DATA-R24.RVT
+  disciplina: STRC-DPFN
+  instaladora: GEOFIX/TECNOGEO
+  modeladora: null
+- codigo: CPQ11-STRC-DPFN-SITE-R24.RVT
+  disciplina: STRC-DPFN
+  instaladora: GEOFIX/TECNOGEO
+  modeladora: TENAX
+- codigo: CPQ11-STRC-FENC-SITE-R24.RVT
+  disciplina: STRC-FENC
+  instaladora: SERCOP, SERV OBRAS
+  modeladora: CONTRACTING
+- codigo: CPQ11-STRC-FLOO-DATA-R24.RVT
+  disciplina: STRC-FLOO
+  instaladora: MODAX
+  modeladora: MODAX
+- codigo: CPQ11-STRC-FLOO-SITE-R24.RVT
+  disciplina: STRC-FLOO
+  instaladora: MODAX
+  modeladora: MODAX
+- codigo: CPQ11-SYST-INFR-DATA-R24.RVT
+  disciplina: SYST-INFR
+  instaladora: MENDES HOLLER
+  modeladora: PGMAK
+- codigo: CPQ11-SYST-INFR-SITE-R24.RVT
+  disciplina: SYST-INFR
+  instaladora: MENDES HOLLER
+  modeladora: PGMAK
+- codigo: CPQ11-TCOM-DEVS-DATA-R24.RVT
+  disciplina: TCOM-DEVS
+  instaladora: BLACKBOX
+  modeladora: BLACKBOX
+- codigo: CPQ11-TCOM-DEVS-SITE-R24.RVT
+  disciplina: TCOM-DEVS
+  instaladora: BLACKBOX
+  modeladora: BLACKBOX

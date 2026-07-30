@@ -41,7 +41,9 @@ from app.schemas.auditoria import (
 )
 from app.services import lixeira, storage
 from app.services.auditoria import (
+    CHECKLISTS_POR_AREA,
     abrir_auditoria,
+    areas_da_versao,
     checklists_da_versao,
     itens_pendentes,
     publicar,
@@ -114,6 +116,19 @@ def auditar(
     Sem `checklist`, abre todos os que a disciplina declara — é o caminho
     normal, e evita o auditor ter de lembrar quais se aplicam. A operação é
     idempotente: repetir devolve as auditorias já abertas.
+
+    OS RECORTES DE ESPECIFICAÇÃO ABREM UMA AUDITORIA POR ÁREA. Até 30/07/2026
+    `area` só era gravada quando o chamador a informava, e nenhum caminho normal
+    informava: toda auditoria nascia com `area = NULL`. O efeito era a matriz
+    modelo × área permanentemente vazia — ela busca a célula por
+    `(versao_id, area)` e não casava com coluna nenhuma.
+
+    Quem resolveu a dúvida foram os arquivos da coordenação: os controles de LOD
+    400 e 500 em `Bases/` têm UMA ABA POR ÁREA (ADMN, COLO1…, SITE, UTLS), com o
+    round e o percentual de cada modelo dentro dela. A auditoria de
+    especificação é por área no processo real, então é por área aqui.
+
+    A geral, o IFC e o 4D continuam sem área — são do arquivo inteiro.
     """
     versao = exigir(db, VersaoModelo, versao_id, "versão")
 
@@ -127,18 +142,42 @@ def auditar(
                 "(configure em Disciplinas)"
             )
 
-    abertas = [
-        abrir_auditoria(
-            db,
-            org_id=user.org_id,
-            versao=versao,
-            checklist=c,
-            area=payload.area,
-            auditor_id=user.id,
-        )
-        for c in alvos
-    ]
+    areas_da_disciplina = areas_da_versao(db, versao)
+
+    abertas: list[Auditoria] = []
+    for c in alvos:
+        for area in _areas_do_checklist(c, payload.area, areas_da_disciplina):
+            abertas.append(
+                abrir_auditoria(
+                    db,
+                    org_id=user.org_id,
+                    versao=versao,
+                    checklist=c,
+                    area=area,
+                    auditor_id=user.id,
+                )
+            )
     return [AuditoriaOut.model_validate(a) for a in abertas]
+
+
+def _areas_do_checklist(
+    checklist: ChecklistTipo, pedida: str | None, da_disciplina: list[str]
+) -> list[str | None]:
+    """Em quantas áreas este checklist se desdobra.
+
+    `[None]` é uma auditoria só, do arquivo inteiro — e é o padrão. Uma área
+    pedida explicitamente sempre ganha: é como se auditava LOD 400 antes desta
+    mudança, e continuar aceitando mantém os links e scripts que já existiam.
+
+    Se a disciplina não declara área nenhuma, o de especificação também vira
+    uma auditoria só. Recusar seria travar o trabalho por uma configuração que
+    a coordenação talvez ainda vá preencher.
+    """
+    if pedida is not None:
+        return [pedida]
+    if checklist in CHECKLISTS_POR_AREA and da_disciplina:
+        return list(da_disciplina)
+    return [None]
 
 
 @router.get("/versoes/{versao_id}/auditorias", response_model=list[AuditoriaOut])
