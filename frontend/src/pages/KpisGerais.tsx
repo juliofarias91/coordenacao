@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { Cabecalho, Erro, Vazio } from '@/components/ui'
+import { Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { KPIs, Projeto } from '@/lib/types'
@@ -114,14 +114,6 @@ export default function KpisGerais() {
 
   return (
     <>
-      <Cabecalho
-        titulo={L('KPIs', 'KPIs')}
-        sub={L(
-          'A carteira inteira num lugar só: quanto foi entregue, quanto foi auditado e onde estão as não-conformidades abertas. Para os gráficos de evolução de um projeto, abra o projeto e vá em KPIs.',
-          'The whole portfolio in one place: how much was delivered, how much was audited, and where the open non-conformities are. For one project’s trend charts, open the project and go to KPIs.',
-        )}
-      />
-
       <Erro mensagem={erro} />
 
       {linhas.length === 0 ? (

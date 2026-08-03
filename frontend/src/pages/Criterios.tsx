@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { Campo, Cabecalho, Chips, Editor, Erro, Segmented, Vazio } from '@/components/ui'
+import { Campo, Chips, Editor, Erro, Segmented, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type {
@@ -18,12 +18,25 @@ import type {
 } from '@/lib/types'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
+/** Os recortes para os quais se pode COMPOR checklist.
+ *
+ *  ESPELHA `CHECKLISTS` de `layout/nav.ts`, e tem de espelhar: montar um
+ *  checklist para um recorte que não está na navegação produz trabalho que
+ *  ninguém consegue abrir. Era o que acontecia com dois deles até 30/07/2026 —
+ *  o enum `ChecklistTipo` do banco tem sete valores e esta lista tinha os sete:
+ *
+ *  - **`ifc`** nunca teve tela nem serviço. `grep ChecklistTipo.IFC` no backend
+ *    não acha nada: é valor de enum sem comportamento, herdado do schema base.
+ *  - **`lod350`** saiu da navegação a pedido, porque não há arquivo de
+ *    referência dele em projeto nenhum (ver a nota em `nav.ts`).
+ *
+ *  Os dois VALORES continuam no enum do Postgres — tirá-los exigiria recriar o
+ *  tipo, e qualquer linha que os use travaria a migration. Some daqui, que é
+ *  onde alguém poderia escolhê-los. */
 const CHECKLISTS: Array<[ChecklistTipo, string, string]> = [
   ['geral', 'Geral', 'General'],
-  ['ifc', 'IFC', 'IFC'],
   ['4d', '4D Parâmetros', '4D Parameters'],
   ['lod300', 'LOD 300', 'LOD 300'],
-  ['lod350', 'LOD 350', 'LOD 350'],
   ['lod400', 'LOD 400', 'LOD 400'],
   ['lod500', 'LOD 500', 'LOD 500'],
 ]
@@ -147,7 +160,6 @@ export default function Criterios() {
   if (!projeto) {
     return (
       <>
-        <Cabecalho titulo={L('Biblioteca de critérios', 'Criteria library')} />
         <Vazio
           titulo={L('Nenhum projeto', 'No project')}
           texto={L('Cadastre um projeto primeiro.', 'Register a project first.')}
@@ -239,14 +251,6 @@ export default function Criterios() {
 
   return (
     <>
-      <Cabecalho
-        titulo={L('Biblioteca de critérios', 'Criteria library')}
-        sub={L(
-          'Cada critério existe uma vez e é reutilizado nos checklists. Editar aqui reflete em todas as auditorias que o usam — é o que substitui a duplicação entre planilhas.',
-          'Each criterion exists once and is reused across checklists. Editing here reflects in every audit that uses it — this is what replaces the duplication between spreadsheets.',
-        )}
-      />
-
       <Segmented
         itens={[
           ['biblioteca', L('Biblioteca', 'Library')],

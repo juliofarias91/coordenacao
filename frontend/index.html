@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SPBIM · Central de Auditoria BIM</title>
+    <title>SPBIM · Coordenação BIM</title>
 
     <!-- O SVG primeiro: quem o entende (todo navegador atual) usa ele, e fica
          nítido em qualquer densidade de tela. O `.ico` é `alternate icon` e
@@ -16,10 +16,22 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#2547b0" />
     <script>
-      // Aplica o tema antes da primeira pintura, para não piscar branco.
+      // Aplica a APARÊNCIA antes da primeira pintura, para não piscar branco.
+      //
+      // `spbim_theme` guarda o MODO escolhido, que desde o sistema de tema do
+      // VDCity pode ser 'auto' — aí quem decide é o sistema operacional, e é
+      // por isso que este script precisa do matchMedia em vez de só ler a
+      // chave. Valores antigos ('light'/'dark') continuam válidos.
+      //
+      // A COR DE DESTAQUE não entra aqui: ela é aplicada pelo ThemeProvider em
+      // useLayoutEffect, que também roda antes da pintura. Duplicar a
+      // derivação de cor num script inline criaria duas fórmulas para divergir.
       try {
-        var t = localStorage.getItem('spbim_theme')
-        document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light')
+        var m = localStorage.getItem('spbim_theme')
+        var escuro =
+          m === 'dark' ||
+          (m === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light')
       } catch (e) {}
     </script>
   </head>

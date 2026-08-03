@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { useAuth } from '@/auth/AuthContext'
-import { Cabecalho, Campo, Editor, Erro, Segmented, Vazio } from '@/components/ui'
+import { Campo, Editor, Erro, Segmented, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { Disciplina, Standard } from '@/lib/types'
@@ -49,14 +49,6 @@ export default function Peb() {
 
   return (
     <>
-      <Cabecalho
-        titulo={L('PEB · Plano de Execução BIM', 'BEP · BIM Execution Plan')}
-        sub={L(
-          'As diretrizes do PEB ficam no radar da central de auditoria — os critérios derivam delas.',
-          'The BEP guidelines stay on the audit center radar — criteria derive from them.',
-        )}
-      />
-
       <Segmented itens={abas} valor={aba} onChange={setAba} />
 
       {aba === 'diretrizes' ? (

@@ -1,4 +1,4 @@
-/** Esqueleto da aplicação, na estrutura do `ui-kit-export` (README §2 e §4).
+/** Esqueleto da aplicação (ver "Sistema visual" no `CLAUDE.md`).
  *
  *   ┌──────────┬──────────────────────────────────────────┐
  *   │  MARCA   │  TOPBAR 56px  breadcrumb ··· ações  ⬤user │  colada, com blur
@@ -18,6 +18,7 @@
 import { useCallback, useState } from 'react'
 import { NavLink, Outlet, useLocation, useMatch } from 'react-router-dom'
 
+import ApontarErro from '@/components/ApontarErro'
 import { useAuth } from '@/auth/AuthContext'
 import BuscaGlobal from '@/components/BuscaGlobal'
 import Convidar from '@/components/Convidar'
@@ -27,6 +28,7 @@ import { useI18n } from '@/i18n'
 import {
   GRUPOS,
   ITENS_ADMIN,
+  ITENS_CONTA,
   ITENS_GLOBAIS,
   ITENS_PROJETO,
   type GrupoNav,
@@ -35,11 +37,14 @@ import {
 import { PREFIXO_PROJETO, rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 import { useTheme } from '@/theme/ThemeProvider'
 
-/** A sidebar nasce EXPANDIDA aqui, ao contrário do padrão do kit.
+/** A sidebar nasce EXPANDIDA.
  *
- *  Lá o padrão é recolhida porque as telas são full-bleed e cada pixel devolvido
- *  vira área de trabalho. Aqui `main` é limitado a 1180px: recolher não devolve
- *  espaço a ninguém, só esconde nove rótulos. */
+ *  A razão original era que `main` estava limitado a 1180px, então recolher não
+ *  devolvia espaço a ninguém — só escondia nove rótulos. **Esse limite caiu em
+ *  29/07/2026** e `main` usa a largura cheia: recolher devolve espaço de
+ *  verdade agora. Nascer expandida continua certo por outro motivo — quem abre
+ *  a plataforma pela primeira vez precisa ler os rótulos para saber o que existe,
+ *  e uma coluna de nove ícones mudos não se aprende. */
 const CHAVE_NAV = 'spbim_nav_recolhida'
 /** Ordem dos grupos, arrastada pelo usuário. Por login: duas pessoas no mesmo
  *  navegador não herdam a organização uma da outra.
@@ -165,6 +170,12 @@ export default function Shell() {
   /** O painel administrativo é a TERCEIRA área com sidebar própria. `casa` e
    *  não igualdade: `/admin/usuarios` também está dentro dele. */
   const emAdmin = casa('/admin', pathname)
+  /** E as configurações da conta são a QUARTA (31/07/2026). Mesmo mecanismo, e
+   *  pela mesma razão do `/admin`: quem entra aqui saiu do trabalho para cuidar
+   *  da própria conta, então não há contexto de projeto que a troca de barra
+   *  possa apagar. É essa a diferença em relação à configuração DO PROJETO, que
+   *  continua sendo página com abas. */
+  const emConta = casa('/configuracoes', pathname)
 
   const [recolhida, setRecolhida] = useState(leRecolhida)
   const [gruposOff, setGruposOff] = useState<Record<string, boolean>>({})
@@ -204,17 +215,25 @@ export default function Shell() {
     })
   }, [])
 
-  // A SIDEBAR É CONTEXTUAL, em três áreas: o painel administrativo, um projeto,
-  // ou a organização. Cada uma troca o menu inteiro. Uma lista só misturava
-  // tudo e deixava metade dela sem sentido conforme onde se estivesse.
+  // A SIDEBAR É CONTEXTUAL, em quatro áreas: o painel administrativo, as
+  // configurações da conta, um projeto, ou a organização. Cada uma troca o menu
+  // inteiro. Uma lista só misturava tudo e deixava metade dela sem sentido
+  // conforme onde se estivesse.
   //
-  // A ordem do ternário importa: `/admin` é checado ANTES de projeto porque as
-  // duas condições nunca coincidem, mas ler assim deixa claro que o painel
-  // administrativo tem precedência sobre qualquer contexto herdado.
+  // A ordem do ternário importa: as duas áreas de caminho ABSOLUTO (`/admin` e
+  // `/configuracoes`) vêm primeiro porque nenhuma delas vive dentro de um
+  // projeto — ler assim deixa claro que elas têm precedência sobre qualquer
+  // contexto herdado, mesmo que na prática as condições não coincidam.
   //
   // `permissoes` do /auth/me já vem resolvido: o backend aplica o padrão do
   // papel quando o usuário não tem lista própria.
-  const doEscopo = emAdmin ? ITENS_ADMIN : emProjeto ? ITENS_PROJETO : ITENS_GLOBAIS
+  const doEscopo = emAdmin
+    ? ITENS_ADMIN
+    : emConta
+      ? ITENS_CONTA
+      : emProjeto
+        ? ITENS_PROJETO
+        : ITENS_GLOBAIS
   const itens = doEscopo.filter(
     (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
   )
@@ -224,9 +243,9 @@ export default function Shell() {
    *  está vindo), e o item vira um rótulo apagado em vez de um link quebrado. */
   const destino = useCallback(
     (item: ItemNav): string | null => {
-      // `admin` e `global` já trazem o caminho absoluto; os de projeto precisam
-      // do id, que não está no item.
-      if (item.escopo === 'global' || item.escopo === 'admin') return item.rota
+      // `admin`, `conta` e `global` já trazem o caminho absoluto; os de projeto
+      // precisam do id, que não está no item.
+      if (item.escopo !== 'projeto') return item.rota
       const alvo = projeto ?? referencia
       if (!alvo) return null
       return rotaProjeto(alvo.id, item.rota)
@@ -265,7 +284,7 @@ export default function Shell() {
               logotipo de verdade. */}
           <div className="brand-txt">
             <b>SPBIM</b>
-            <span>{L('Central de Auditoria', 'Audit Center')}</span>
+            <span>{L('Coordenação BIM', 'BIM Coordination')}</span>
           </div>
         </NavLink>
 
@@ -427,6 +446,11 @@ export default function Shell() {
                 e o Ctrl+K a alcança sem o mouse. */}
             <BuscaGlobal />
             <Sino />
+            {/* Vizinho do sino de propósito: um traz o que o sistema tem a
+                dizer, o outro leva o que se tem a dizer sobre ele. Antes vivia
+                dentro do menu da conta, a dois cliques de distância e atrás de
+                um rótulo que não é sobre defeito nenhum. */}
+            <ApontarErro />
             <PillAcao
               path={escuro ? SOL : LUA}
               rotulo={escuro ? L('Claro', 'Light') : L('Escuro', 'Dark')}

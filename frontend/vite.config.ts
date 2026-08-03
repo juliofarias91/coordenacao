@@ -35,8 +35,15 @@ export default defineConfig({
     // único jeito de ter hot-reload aqui.
     watch: { usePolling: true, interval: 400 },
     // A API roda em :8000. O proxy evita CORS no desenvolvimento.
+    //
+    // `API_URL` sobrescreve o alvo, e é o que o `npm run dev:web` usa para
+    // apontar a aplicação para uma API JÁ PUBLICADA — aí o dev sobe um processo
+    // só, sem backend local. Ver `scripts/dev.mjs`.
     proxy: {
-      '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      '/api': {
+        target: process.env.API_URL || 'http://localhost:8000',
+        changeOrigin: true,
+      },
     },
   },
 })

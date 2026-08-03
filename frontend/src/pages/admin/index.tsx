@@ -14,7 +14,7 @@
  */
 import { Outlet } from 'react-router-dom'
 
-import { Cabecalho, Vazio } from '@/components/ui'
+import { Vazio } from '@/components/ui'
 import { useAuth } from '@/auth/AuthContext'
 import { useI18n } from '@/i18n'
 
@@ -25,7 +25,6 @@ export default function Admin() {
   if (!usuario?.permissoes.includes('admin_cadastro')) {
     return (
       <>
-        <Cabecalho titulo={L('Painel administrativo', 'Admin panel')} />
         <Vazio
           titulo={L('Sem permissão', 'No permission')}
           texto={L(

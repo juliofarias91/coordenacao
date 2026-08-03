@@ -1,4 +1,10 @@
-/** "Apontar erro" — o painel que qualquer pessoa abre pelo menu da conta.
+/** "Apontar erro" — a ferramenta de bug DA TOPBAR: pílula própria e painel.
+ *
+ *  Saiu do menu da conta em 31/07/2026, a pedido, e a mudança não é só de
+ *  lugar. Dentro do menu, relatar um problema custava dois cliques e um deles
+ *  era em "minha conta" — o lugar de quem vai trocar de senha, não de quem
+ *  acabou de esbarrar num defeito. Na barra é UM clique, e o ícone de inseto
+ *  se reconhece sem ler.
  *
  *  Não confundir com `Apontamentos`, que é do MODELO auditado e vira issue no
  *  ACC. Este é da PLATAFORMA e vira trabalho de quem a mantém — daí o rótulo
@@ -19,7 +25,53 @@ import { Erro } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 
-export default function ApontarErro({ onFechar }: { onFechar: () => void }) {
+export default function ApontarErro() {
+  const { L } = useI18n()
+  const [aberto, setAberto] = useState(false)
+  const rotulo = L('Apontar erro', 'Report a problem')
+
+  return (
+    <div className="erroact">
+      <button
+        type="button"
+        className={`pillact${aberto ? ' on' : ''}`}
+        onClick={() => setAberto(!aberto)}
+        title={rotulo}
+        aria-label={rotulo}
+        aria-expanded={aberto}
+      >
+        <span className="rot">{rotulo}</span>
+        <span className="ico">
+          {/* Inseto: é o desenho que a indústria inteira usa para "defeito", e
+              o único da barra que não precisa do rótulo para ser entendido. */}
+          <svg
+            width="19"
+            height="19"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m8 2 1.88 1.88M14.12 3.88 16 2M9 7.13v-1a3 3 0 1 1 6 0v1" />
+            <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6zM12 20v-9" />
+            <path d="M6.53 9C4.6 8.8 3 7.1 3 5M6 13H2M3 21c0-2.1 1.7-3.9 3.8-4" />
+            <path d="M20.97 5c0 2.1-1.6 3.8-3.5 4M22 13h-4M17.2 17c2.1.1 3.8 1.9 3.8 4" />
+          </svg>
+        </span>
+      </button>
+
+      {/* SEM fechar por clique fora e SEM Esc, ao contrário do sino e do menu
+          da conta: aqui há texto digitado, e os dois gestos que fecham aqueles
+          painéis por engano custariam o relato inteiro. Fecha-se pela pílula,
+          pelo Cancelar ou enviando. */}
+      {aberto && <Painel onFechar={() => setAberto(false)} />}
+    </div>
+  )
+}
+
+function Painel({ onFechar }: { onFechar: () => void }) {
   const { L } = useI18n()
   const { pathname, search } = useLocation()
 

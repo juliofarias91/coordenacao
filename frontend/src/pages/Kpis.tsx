@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { BarrasHorizontais, BarraEmpilhada, LinhaEvolucao } from '@/components/graficos'
-import { Cabecalho, Erro, Vazio } from '@/components/ui'
+import { Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { KPIs, Placar } from '@/lib/types'
@@ -43,7 +43,6 @@ export default function Kpis() {
   if (!projeto) {
     return (
       <>
-        <Cabecalho titulo="KPIs" />
         <Vazio
           titulo={L('Nenhum projeto', 'No project')}
           texto={L('Cadastre um projeto primeiro.', 'Register a project first.')}
@@ -56,14 +55,6 @@ export default function Kpis() {
 
   return (
     <>
-      <Cabecalho
-        titulo={L('KPIs do projeto', 'Project KPIs')}
-        sub={L(
-          'Indicadores derivados das auditorias e o placar de conformidade por fornecedor.',
-          'Indicators derived from the audits and the per-supplier compliance scorecard.',
-        )}
-      />
-
       <Erro mensagem={erro} />
 
       {kpis && (

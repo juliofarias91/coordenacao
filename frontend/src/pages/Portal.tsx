@@ -58,11 +58,11 @@ export default function Portal() {
 
   if (erro) {
     return (
-      <div className="loginwrap">
-        <div className="logincard">
-          <div className="loginlogo">SPBIM</div>
-          <div className="logintitle">{L('Link indisponível', 'Link unavailable')}</div>
-          <p className="loginsub">
+      <div className="telacheia">
+        <div className="avisocard">
+          <div className="marcatxt">SPBIM</div>
+          <div className="avisotitulo">{L('Link indisponível', 'Link unavailable')}</div>
+          <p className="avisosub">
             {L(
               'Este convite não é mais válido. Peça um novo link à coordenação.',
               'This invite is no longer valid. Ask coordination for a new link.',
@@ -73,7 +73,7 @@ export default function Portal() {
     )
   }
 
-  if (!dados) return <div className="loginwrap"><div className="hint">{L('Carregando…', 'Loading…')}</div></div>
+  if (!dados) return <div className="telacheia"><div className="hint">{L('Carregando…', 'Loading…')}</div></div>
 
   // Colunas na ordem canônica, mantendo só as que vieram na resposta.
   const colunas = Object.keys(ROTULO_COLUNA).filter((c) =>
@@ -84,7 +84,7 @@ export default function Portal() {
     <div className="portal">
       <header className="portalcab">
         <div>
-          <div className="loginlogo" style={{ fontSize: 16 }}>
+          <div className="marcatxt" style={{ fontSize: 16 }}>
             SPBIM
           </div>
           <h1>

@@ -112,7 +112,9 @@ export default function BuscaGlobal() {
           tipo: 'projeto' as const,
           titulo: `${p.codigo} · ${p.nome}`,
           detalhe: p.cliente_nome ?? '',
-          ir: () => navigate(rotaProjeto(p.id, 'modelos')),
+          // Sem segundo argumento: o destino é a `TELA_INICIAL` do projeto, a
+          // mesma do card da home.
+          ir: () => navigate(rotaProjeto(p.id)),
         })),
       ),
       api.clientes.listar().then((r) =>
@@ -217,10 +219,15 @@ export default function BuscaGlobal() {
           }}
           onFocus={() => setAberto(true)}
           onKeyDown={teclado}
-          placeholder={L(
-            'Projeto, cliente, modelo, critério…',
-            'Project, client, model, criterion…',
-          )}
+          /* SÓ "Buscar…". Era "Projeto, cliente, modelo, critério…" — a lista
+             do que a busca alcança, escrita dentro do campo. Enumerar ali tem
+             dois problemas: a frase é a mais longa da topbar e é a primeira a
+             ser cortada quando a barra encolhe (e cortada sem reticências, que
+             é o que o navegador faz com placeholder), e ela some no instante
+             em que se digita a primeira letra — some justamente para quem
+             ainda não sabia o que podia procurar. Quem enumera agora é o
+             painel, no estado vazio, que fica À VISTA enquanto se digita. */
+          placeholder={`${rotulo}…`}
         />
         {/* SEM o `Ctrl K` / `esc` escrito no campo. Fazia sentido quando a busca
             era uma pílula que só abria por atalho — era assim que se descobria
@@ -233,13 +240,23 @@ export default function BuscaGlobal() {
         <div className="buscapainel">
           <div className="buscalista">
             {carregando && <div className="empty">{L('Carregando…', 'Loading…')}</div>}
+            {/* O ALCANCE DA BUSCA MORA AQUI, não no placeholder: escrito no
+                campo ele sumia à primeira letra digitada, e some para quem
+                mais precisa dele. Aqui fica à vista enquanto se digita.
+                As duas frases são diferentes porque o alcance é diferente:
+                sem projeto escolhido, modelo e critério nem chegam a ser
+                pedidos (são rotas por projeto). Prometer os quatro seria
+                mentir para quem está na home. */}
             {!carregando && !termo.trim() && (
               <div className="empty">
                 {projeto
-                  ? L('Digite para buscar.', 'Type to search.')
+                  ? L(
+                      'Busque por projeto, cliente, modelo ou critério.',
+                      'Search for a project, client, model or criterion.',
+                    )
                   : L(
-                      'Digite para buscar. Escolha um projeto para incluir modelos e critérios.',
-                      'Type to search. Pick a project to include models and criteria.',
+                      'Busque por projeto ou cliente. Entre num projeto para incluir modelos e critérios.',
+                      'Search for a project or client. Open a project to include models and criteria.',
                     )}
               </div>
             )}

@@ -1,7 +1,7 @@
 /** SP-201 · Integrações — estado da conexão com o Autodesk Construction Cloud. */
 import { useEffect, useState } from 'react'
 
-import { Cabecalho, Erro } from '@/components/ui'
+import { Erro } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { StatusIntegracao } from '@/lib/types'
@@ -20,14 +20,6 @@ export default function Integracoes() {
 
   return (
     <>
-      <Cabecalho
-        titulo={L('Integrações', 'Integrations')}
-        sub={L(
-          'Os modelos vivem no ACC. A plataforma escuta o webhook de nova versão e registra o round automaticamente.',
-          'Models live in ACC. The platform listens to the new-version webhook and records the round automatically.',
-        )}
-      />
-
       <Erro mensagem={erro} />
 
       <div className="card">

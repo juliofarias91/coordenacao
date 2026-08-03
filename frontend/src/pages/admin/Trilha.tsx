@@ -27,8 +27,25 @@ import type { LinhaTrilha, UsuarioCadastro } from '@/lib/types'
  *
  *  `restaurou` entrou com a lixeira. Ela e `removeu` são o MESMO UPDATE de
  *  `deleted_at` em direções opostas — e são ações distintas aqui porque tirar
- *  da lixeira é um ato de alguém, que o log precisa poder mostrar sozinho. */
-const ACOES = ['criou', 'alterou', 'removeu', 'restaurou'] as const
+ *  da lixeira é um ato de alguém, que o log precisa poder mostrar sozinho.
+ *
+ *  `trocou_senha` e `encerrou_sessoes` pela mesma razão, e por uma outra: antes
+ *  delas, redefinir a senha de alguém NÃO APARECIA NO LOG. O valor de
+ *  `senha_hash` era (e segue sendo) mascarado, mas era o único campo do UPDATE —
+ *  então o diff saía vazio e o registro era descartado. Um admin trocando a
+ *  senha de outra pessoa não deixava rastro nenhum.
+ *
+ *  As duas vêm SEM DIFF: a ação é a mensagem inteira, e `entidade_id` diz de
+ *  quem era a conta. A linha não abre, e é isso que se quer — não há um terceiro
+ *  dado que se possa mostrar sem revelar credencial. */
+const ACOES = [
+  'criou',
+  'alterou',
+  'removeu',
+  'restaurou',
+  'trocou_senha',
+  'encerrou_sessoes',
+] as const
 
 const CLASSE_ACAO: Record<string, string> = {
   criou: 'pill ok',
@@ -37,6 +54,13 @@ const CLASSE_ACAO: Record<string, string> = {
   // Verde como `criou`: restaurar devolve o registro à vida, e o que a cor
   // responde nesta coluna é "isto tirou ou pôs dado no sistema".
   restaurou: 'pill ok',
+  // Alerta, como `alterou`: mexer em credencial não tira nem põe dado, mas é a
+  // linha que se procura quando alguém pergunta "quem entrou na minha conta?".
+  trocou_senha: 'pill alerta',
+  // Neutro: encerrar sessão é rotina (é o botão Sair), e pintá-la de alerta
+  // faria o log parecer cheio de incidente. Ela importa lida ao lado das
+  // outras, não sozinha.
+  encerrou_sessoes: 'pill',
 }
 
 const ROTULO_ACAO: Record<string, [string, string]> = {
@@ -44,6 +68,8 @@ const ROTULO_ACAO: Record<string, [string, string]> = {
   alterou: ['alterou', 'changed'],
   removeu: ['removeu', 'removed'],
   restaurou: ['restaurou', 'restored'],
+  trocou_senha: ['trocou senha', 'changed password'],
+  encerrou_sessoes: ['saiu', 'signed out'],
 }
 
 /** Nome de tabela → nome de gente. O que não estiver aqui aparece como veio:

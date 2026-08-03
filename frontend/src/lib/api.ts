@@ -50,6 +50,27 @@ export class ApiError extends Error {
   }
 }
 
+/** Um item do `detail` de um 422 do FastAPI. */
+type ErroDeValidacao = { msg?: unknown; loc?: unknown[] }
+
+/** Uma linha de erro de validação em português de gente.
+ *
+ *  O `detail` de um 422 do Pydantic é uma lista de OBJETOS
+ *  (`{type, loc, msg, input}`), e `String(objeto)` devolve `[object Object]` —
+ *  era literalmente o que a tela mostrava a quem digitasse uma senha curta
+ *  demais. O `loc` vem como `['body', 'senha']`; o `'body'` é ruído de
+ *  protocolo e sai.
+ */
+function linhaDeValidacao(item: unknown): string {
+  if (!item || typeof item !== 'object') return String(item)
+  const { msg, loc } = item as ErroDeValidacao
+  if (msg === undefined) return JSON.stringify(item)
+  const campo = Array.isArray(loc)
+    ? loc.filter((p) => p !== 'body' && p !== 'query' && p !== 'path').join('.')
+    : ''
+  return campo ? `${campo}: ${String(msg)}` : String(msg)
+}
+
 // -------------------------------------------------------------- tokens
 export function lerTokens(): TokenPair | null {
   try {
@@ -74,7 +95,7 @@ async function extrairErro(resp: Response): Promise<string> {
   try {
     const corpo = await resp.json()
     if (typeof corpo?.detail === 'string') return corpo.detail
-    if (Array.isArray(corpo?.detail)) return corpo.detail.map((d: never) => String(d)).join('; ')
+    if (Array.isArray(corpo?.detail)) return corpo.detail.map(linhaDeValidacao).join('; ')
   } catch {
     /* corpo não era JSON */
   }
@@ -143,6 +164,24 @@ export const api = {
 
   me: () => requisitar<Usuario>('/auth/me'),
 
+  /** Encerra as sessões desta conta no SERVIDOR. Sem esta chamada, "Sair" era
+   *  só apagar o `localStorage` e o refresh token seguia valendo 14 dias. */
+  sair: () => requisitar<void>('/auth/sair', { method: 'POST' }),
+
+  /** Definição de senha por link. As três rotas são PÚBLICAS: quem chega aqui
+   *  não tem sessão, e é justamente por isso que precisa delas. */
+  senha: {
+    /** Sempre 202, exista a conta ou não — confirmar a existência de um e-mail
+     *  transformaria esta rota pública em lista de usuários da plataforma. */
+    esqueci: (login: string, org?: string) =>
+      escrever<{ detalhe: string }>('/auth/senha/esqueci', 'POST', { login, org: org ?? null }),
+    /** Confere o link sem consumi-lo: descobrir que expirou depois de digitar a
+     *  senha duas vezes é o pior momento para descobrir. */
+    conferir: (token: string) => requisitar<T.ConviteSenha>(`/auth/senha/${token}`),
+    redefinir: (token: string, senha: string) =>
+      escrever<void>('/auth/senha/redefinir', 'POST', { token, senha }),
+  },
+
   health: () => requisitar<{ status: string; versao: string }>('/health'),
 
   // --------------------------------------------------------- administração
@@ -173,6 +212,9 @@ export const api = {
       escrever<T.Projeto>('/projetos', 'POST', corpo),
     atualizar: (id: string, corpo: Partial<T.Projeto>) =>
       escrever<T.Projeto>(`/projetos/${id}`, 'PATCH', corpo),
+    /** Manda para a LIXEIRA — não apaga. O projeto é o pai de disciplina,
+     *  modelo e auditoria; volta inteiro em `/lixeira`. */
+    remover: (id: string) => requisitar<void>(`/projetos/${id}`, { method: 'DELETE' }),
   },
 
   // ------------------------------------------------------------- empresas
@@ -207,6 +249,11 @@ export const api = {
       escrever<T.UsuarioCadastro>(`/usuarios/${id}`, 'PATCH', corpo),
     definirSenha: (id: string, senha: string) =>
       escrever<void>(`/usuarios/${id}/senha`, 'PUT', { senha }),
+    /** Gera o link de definição de senha — o caminho recomendado para dar
+     *  acesso a alguém. Digitar a senha de outra pessoa faz quem administra
+     *  saber a senha dela; isto não. O token volta UMA vez. */
+    gerarConvite: (id: string) =>
+      escrever<T.ConviteCriado>(`/usuarios/${id}/convite`, 'POST', {}),
     permissoes: () => requisitar<T.Permissao[]>('/usuarios/permissoes'),
   },
 
@@ -260,6 +307,17 @@ export const api = {
     remover: (id: string) => requisitar<void>(`/criterios/${id}`, { method: 'DELETE' }),
   },
 
+  /** O gabarito DE FÁBRICA, sem projeto e sem tocar no banco.
+   *
+   *  É a ESTRUTURA da auditoria — padrão da empresa, igual em todo projeto — e é
+   *  o que a grade do recorte desenha. Não confundir com
+   *  `checklists.aplicarGabarito`, que SEMEIA esta estrutura como critérios do
+   *  projeto para que ele possa editá-la. */
+  gabaritos: {
+    obter: (tipo: T.ChecklistTipo, disciplina?: string) =>
+      requisitar<T.LinhaGabarito[]>(`/gabaritos/${tipo}${qs({ disciplina })}`),
+  },
+
   checklists: {
     obter: (tipo: T.ChecklistTipo, projetoId: string) =>
       requisitar<T.Checklist>(`/checklists/${tipo}${qs({ projeto_id: projetoId })}`),
@@ -310,6 +368,23 @@ export const api = {
   // -------------------------------------------------- fase 2 · auditoria
   auditorias: {
     obter: (id: string) => requisitar<T.AuditoriaDetalhe>(`/auditorias/${id}`),
+    /** Todas as auditorias do projeto, com o modelo resolvido. É o que o painel
+     *  da tela de auditoria agrupa por tipo. Sem filtro nem paginação: são
+     *  dezenas de linhas e filtrar no navegador é instantâneo — a mesma razão
+     *  pela qual a busca global não tem endpoint próprio. */
+    doProjeto: (projetoId: string) =>
+      requisitar<T.AuditoriaDaLista[]>(`/projetos/${projetoId}/auditorias`),
+    /** ABRE PELO MODELO, não pela versão: o servidor resolve a última. A gaveta
+     *  escolhe um modelo, que é como a coordenação pensa, e a auditoria pertence
+     *  a uma versão, que é o que muda entre rounds.
+     *  É IDEMPOTENTE no round e NÃO no plano: se a auditoria já existia, ela
+     *  volta replanejada com o que veio aqui — ver `_aplicar_plano` no backend. */
+    abrirNoModelo: (modeloId: string, corpo: T.PlanoAuditoria & { checklist: string }) =>
+      escrever<T.Auditoria[]>(`/modelos/${modeloId}/auditar`, 'POST', corpo),
+    /** Replaneja. Campo ausente é "não mexa"; `null` explícito apaga. Recusa 409
+     *  em round publicado — o PDF emitido nomeia responsável e data. */
+    replanejar: (id: string, corpo: T.PlanoAuditoria) =>
+      escrever<T.Auditoria>(`/auditorias/${id}`, 'PATCH', corpo),
     publicar: (id: string) => escrever<T.Auditoria>(`/auditorias/${id}/publicar`, 'POST', {}),
     ncs: (id: string) => requisitar<T.NaoConformidade[]>(`/auditorias/${id}/ncs`),
     criarNc: (id: string, corpo: Record<string, unknown>) =>
@@ -418,6 +493,9 @@ export const api = {
    *  combinado — NÃO autoriza: quem decide continua sendo a permissão de
    *  organização do token. */
   membros: {
+    /** TODOS os vínculos da organização, de todos os projetos. Uma pessoa em dois
+     *  projetos são duas linhas — papel e equipe são por projeto. */
+    todos: () => requisitar<T.Membro[]>('/membros'),
     listar: (projetoId: string) => requisitar<T.Membro[]>(`/projetos/${projetoId}/membros`),
     adicionar: (projetoId: string, corpo: Record<string, unknown>) =>
       escrever<T.Membro>(`/projetos/${projetoId}/membros`, 'POST', corpo),
@@ -493,6 +571,35 @@ export const api = {
         'POST',
         {},
       ),
+  },
+
+  /** IMPORTAÇÃO DE PLANILHA — ponte provisória, ver a migration 0012.
+   *  Não passa pelo caminho de auditoria: lê os .xlsx que a coordenação já
+   *  preenche à mão e alimenta um dashboard próprio. */
+  importacao: {
+    // TODOS OS ARQUIVOS NUM POST SÓ, sob o mesmo campo `arquivos`. Um POST por
+    // arquivo daria N respostas parciais para a tela costurar, e a substituição
+    // do "reimportar troca o anterior" passaria a depender da ordem de chegada.
+    // A QUERY VAI POR `qs()`, sempre — não montada à mão no template. Fora a
+    // codificação, é o que o `test_contrato` consegue ler: ele extrai os
+    // caminhos deste arquivo e confere um a um contra o OpenAPI, e sabe
+    // descartar `${qs(...)}`. Um `?projeto_id=${id}` escrito à mão vira um
+    // caminho inexistente aos olhos dele e quebra a trava. Foi o que aconteceu.
+    enviar: (arquivos: File[], projetoId?: string) => {
+      const form = new FormData()
+      for (const a of arquivos) form.append('arquivos', a)
+      // Sem Content-Type: o browser precisa gerar o boundary do multipart.
+      return requisitar<T.ResultadoImportacao>(
+        `/importacao/planilhas${qs({ projeto_id: projetoId })}`,
+        { method: 'POST', body: form },
+      )
+    },
+    dashboard: (projetoId?: string) =>
+      requisitar<T.DashboardImportacao>(
+        `/importacao/dashboard${qs({ projeto_id: projetoId })}`,
+      ),
+    remover: (id: string) =>
+      requisitar<void>(`/importacao/planilhas/${id}`, { method: 'DELETE' }),
   },
 
   /** Baixa um arquivo autenticado: o Bearer não vai numa tag <a>. */

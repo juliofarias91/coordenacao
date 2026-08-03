@@ -73,6 +73,14 @@ export type Projeto = Base & {
   coordenacao: string | null
   bep_ref: string | null
   status: string
+  /** --- ficha cadastral (migration 0011) --- */
+  descricao: string | null
+  endereco: string | null
+  data_inicio: string | null
+  /** Previsão de conclusão — muda ao longo do contrato. SEPARADA da conclusão
+   *  de fato: no mesmo campo, o atraso seria apagado pela própria atualização. */
+  data_prevista: string | null
+  data_conclusao: string | null
 }
 
 export type Contato = Base & {
@@ -111,6 +119,31 @@ export type UsuarioCadastro = Base & {
   status: string
 }
 
+/** O que a tela pública de definir senha sabe sobre o link que recebeu.
+ *
+ *  Devolver o login de um token válido não vaza nada — o token É a credencial.
+ *  O que a tela ganha é dizer para qual conta a senha está sendo definida, em
+ *  vez de pedir uma senha nova sem contexto. */
+export type ConviteSenha = {
+  login: string
+  nome: string | null
+  tipo: 'convite' | 'redefinicao'
+  organizacao: string
+  expira_em: string
+  /** Vem do servidor: esta tela é pública e não tem outra forma de saber a
+   *  regra antes de o usuário errá-la. */
+  senha_minima: number
+}
+
+/** A resposta de quem GERA o link. O token só existe aqui, uma vez. */
+export type ConviteCriado = {
+  token: string
+  caminho: string
+  tipo: 'convite' | 'redefinicao'
+  expira_em: string
+  usuario_id: string
+}
+
 export type Standard = Base & {
   projeto_id: string
   nome: string
@@ -131,6 +164,9 @@ export type Nomenclatura = Base & {
 export type Disciplina = Base & {
   projeto_id: string
   codigo: string
+  /** O nome por extenso, 'Estrutura metálica' (migration 0015). OPCIONAL: a
+   *  identidade é o `codigo`, que é o que entra na nomenclatura do arquivo. */
+  nome: string | null
   macro: MacroDisc
   disc: string
   sub: string
@@ -176,6 +212,19 @@ export type Checklist = {
   checklist: ChecklistTipo
   projeto_id: string
   itens: ItemChecklist[]
+}
+
+/** Uma linha do gabarito DE FÁBRICA — a estrutura padrão, que mora em código
+ *  (`services/gabarito.py`) e não no banco. Sem `id` e sem `projeto_id` de
+ *  propósito: não é uma linha que se edite, é o padrão que a grade desenha. */
+export type LinhaGabarito = {
+  codigo: string
+  nome_pt: string
+  nome_en: string
+  categoria: string
+  instrucao: string | null
+  criterio_aceitacao: string | null
+  parametro_esperado: string | null
 }
 
 /** O que a aplicação do gabarito fez, em códigos de critério. As duas listas de
@@ -256,6 +305,18 @@ export type Resultado = Base & {
   evidencias: Evidencia[]
 }
 
+/** O ANDAMENTO NÃO É O `estado` (migration 0013).
+ *
+ *  `estado` é publicação — quem o move é publicar um round, e ninguém o escolhe.
+ *  `andamento` é o trabalho de quem audita, e é o que a gaveta de nova auditoria
+ *  grava. Os dois convivem porque respondem perguntas diferentes: "o fornecedor
+ *  já pode ver?" e "alguém está mexendo nisto?". */
+export const ANDAMENTOS = ['a_fazer', 'em_andamento', 'concluida', 'bloqueada'] as const
+export type Andamento = (typeof ANDAMENTOS)[number]
+
+export const PRIORIDADES = ['alta', 'media', 'baixa'] as const
+export type Prioridade = (typeof PRIORIDADES)[number]
+
 export type Auditoria = Base & {
   versao_id: string
   checklist: ChecklistTipo
@@ -267,10 +328,43 @@ export type Auditoria = Base & {
   revisado_por: string | null
   data_inicio: string | null
   data_fim: string | null
+  /** A data PLANEJADA. Estava na tabela desde a migration 0001 e nunca havia
+   *  chegado a tela nenhuma. */
+  entrega_estimada: string | null
   publicado_em: string | null
+  andamento: Andamento
+  prioridade: Prioridade | null
 }
 
 export type AuditoriaDetalhe = Auditoria & { resultados: Resultado[]; pendentes: number }
+
+/** Uma auditoria com o MODELO já resolvido — o que o painel da tela de auditoria
+ *  lista dentro de cada tipo. Sem isto a barra faria uma requisição por linha só
+ *  para escrever um nome. */
+export type AuditoriaDaLista = Auditoria & {
+  modelo_id: string | null
+  modelo_codigo: string | null
+  versao_rotulo: string | null
+  auditor_nome: string | null
+  /** A disciplina do modelo — é por ela que o painel agrupa dentro do recorte.
+   *  Nula quando o modelo ainda não tem disciplina. */
+  disciplina_codigo: string | null
+  disciplina_nome: string | null
+  /** De onde sai a COR do grupo: a paleta é por macrodisciplina, não por
+   *  disciplina. */
+  disciplina_macro: MacroDisc | null
+}
+
+/** O que a gaveta grava. `estado` NÃO está aqui de propósito: publicar é outro
+ *  ato, com outra rota. */
+export type PlanoAuditoria = {
+  auditor_id?: string | null
+  data_inicio?: string | null
+  data_fim?: string | null
+  entrega_estimada?: string | null
+  andamento?: Andamento | null
+  prioridade?: Prioridade | null
+}
 
 export type Comentario = Base & { nc_id: string; usuario_id: string | null; texto: string | null }
 
@@ -381,11 +475,21 @@ export type Penalidade = Base & {
 export type Notificacao = Base & {
   usuario_id: string | null
   papel_alvo: string | null
-  tipo: 'auditoria' | 'erro' | 'penalidade'
+  tipo: NotifTipo
   mensagem: string
   origem: string | null
   lida: boolean
 }
+
+/** Espelha `NotifTipo` de `backend/app/models/enums.py`.
+ *
+ *  TEM NOME PRÓPRIO, e não é uma união inline no campo, porque
+ *  `test_contrato.py` precisa de um identificador para citar — um tipo anônimo
+ *  não pode ser travado contra o enum do backend.
+ *
+ *  `acesso` entrou com a redefinição de senha (migration 0010) e é a única que
+ *  pede AÇÃO de quem administra; as outras três informam. */
+export type NotifTipo = 'auditoria' | 'erro' | 'penalidade' | 'acesso'
 
 export type Fatia = { rotulo: string; valor: number; cor: string | null; chave: string | null }
 
@@ -483,6 +587,17 @@ export type Membro = Base & {
   usuario_id: string
   papel: string
   funcao: string | null
+  /** COORDENAÇÃO, INOVAÇÃO, COMERCIAL (migration 0014). É por PROJETO: a mesma
+   *  pessoa está em equipes diferentes em projetos diferentes. */
+  equipe: string | null
+  /** Resolvidos no servidor — a tela lista pessoas, não ids. */
+  empresa_nome: string | null
+  /** O status da CONTA (ativo / pendente), não do vínculo: quem foi convidado e
+   *  ainda não definiu senha aparece pendente, que é o que explica a ausência. */
+  usuario_status: string | null
+  /** Só interessa na lista global, onde a linha precisa dizer de que projeto é. */
+  projeto_codigo: string | null
+  projeto_nome: string | null
   usuario_nome: string | null
   usuario_login: string | null
   usuario_papel_org: string | null
@@ -515,4 +630,67 @@ export type ItemLixeira = {
   id: string
   rotulo: string
   removido_em: string
+}
+
+/* ---------------------------------------------------------------------------
+   IMPORTAÇÃO DE PLANILHA — ponte provisória (migration 0012).
+
+   Não se liga a `Auditoria` nem a `ResultadoCheck` de propósito: o importador
+   lê os .xlsx que a coordenação preenche à mão e alimenta um dashboard próprio.
+   Quando os dados forem para o caminho de auditoria de verdade, isto sai.
+   --------------------------------------------------------------------------- */
+
+export type PlanilhaImportada = {
+  id: string
+  /** 'geral' | 'lod300' */
+  tipo: string
+  arquivo: string
+  disciplina: string
+  modelo: string | null
+  versao: string | null
+  /** RECONTADA a partir das linhas — é esta que o dashboard soma. */
+  aprovacao: number | null
+  /** A que o Excel declara. Quando as duas divergem, a planilha errou a conta:
+   *  numa das reais a fórmula soma o numerador até a linha 33 e o denominador
+   *  até a 65. A tela mostra as duas lado a lado. */
+  aprovacao_declarada: number | null
+  itens: number
+  aprovados: number
+  created_at: string
+}
+
+export type RecusaImportacao = { arquivo: string; motivo: string }
+
+export type ResultadoImportacao = {
+  importadas: PlanilhaImportada[]
+  /** O upload é tolerante a falha parcial: o que deu certo já está gravado. */
+  recusadas: RecusaImportacao[]
+}
+
+/** Um recorte da média. `aprovacao` é PONDERADA pelos itens — uma planilha de
+ *  191 linhas não pode pesar o mesmo que uma de 54. */
+export type FatiaImportacao = {
+  rotulo: string
+  planilhas: number
+  itens: number
+  aprovados: number
+  aprovacao: number | null
+}
+
+/** Um item que reprova em MAIS DE UMA planilha — a pergunta que a planilha
+ *  isolada não responde: "o que está errado em todo mundo?". */
+export type ItemCriticoImportacao = {
+  tipo: string
+  item: string
+  ocorrencias: number
+  reprovacoes: number
+  taxa: number
+}
+
+export type DashboardImportacao = {
+  total: FatiaImportacao
+  por_tipo: FatiaImportacao[]
+  por_disciplina: FatiaImportacao[]
+  criticos: ItemCriticoImportacao[]
+  planilhas: PlanilhaImportada[]
 }

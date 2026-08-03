@@ -14,6 +14,9 @@ const CLASSE_TIPO: Record<string, string> = {
   erro: 'pill ruim',
   penalidade: 'pill alerta',
   auditoria: 'pill ok',
+  // Pedido de redefinição de senha. Alerta porque pede ação: enquanto quem
+  // administra não gerar o link, a pessoa continua sem conseguir entrar.
+  acesso: 'pill alerta',
 }
 
 export default function Sino() {

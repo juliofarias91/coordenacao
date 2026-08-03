@@ -127,7 +127,7 @@ export function ProjetoProvider({ children }: { children: ReactNode }) {
       // tela" vale para as telas do menu — um caminho com id dentro
       // (`modelos/<id>`) pertence ao projeto de origem e não se traduz. A
       // query cai junto, pela mesma razão: pode carregar id.
-      const tela = TELAS.has(resto) ? resto : 'modelos'
+      const tela = TELAS.has(resto) ? resto : TELA_INICIAL
       navigate(rotaProjeto(id, tela))
     },
     [resto, navigate],
@@ -154,8 +154,20 @@ export function useProjeto(): Ctx {
   return ctx
 }
 
+/** A TELA EM QUE UM PROJETO ABRE (31/07/2026, a pedido). Era `modelos`, a lista
+ *  de arquivos entregues. Passou a ser `kpis`: quem abre um projeto vem
+ *  perguntar COMO ELE ESTÁ, e a lista de modelos responde outra coisa — quais
+ *  arquivos existem —, que é a pergunta de quem já sabe o estado e vai trabalhar.
+ *  É também a primeira entrada da barra do projeto, então abrir aqui faz o
+ *  destino coincidir com o topo do menu em vez de contrariá-lo.
+ *
+ *  UM LUGAR SÓ, e é o ponto: este valor é o default de `rotaProjeto`, o destino
+ *  do card da home, o do resultado de busca e o fallback da troca de projeto.
+ *  Estava escrito `'modelos'` à mão em cada um dos quatro. */
+export const TELA_INICIAL = 'kpis'
+
 /** Caminho de uma tela dentro de um projeto. Use SEMPRE isto em vez de montar
  *  a string à mão: o dia em que o prefixo mudar, muda num lugar. */
-export function rotaProjeto(projetoId: string, tela = 'modelos'): string {
+export function rotaProjeto(projetoId: string, tela: string = TELA_INICIAL): string {
   return `${PREFIXO_PROJETO}/${projetoId}/${tela}`
 }

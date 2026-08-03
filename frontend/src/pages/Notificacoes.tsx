@@ -14,12 +14,12 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { Cabecalho, Erro, Segmented, Vazio } from '@/components/ui'
+import { Erro, Segmented, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { Notificacao } from '@/lib/types'
 
-type Tipo = 'todos' | 'auditoria' | 'erro' | 'penalidade'
+type Tipo = 'todos' | 'auditoria' | 'erro' | 'penalidade' | 'acesso'
 
 /** Estado semântico é sempre TRANSLÚCIDO no sistema visual — as classes
  *  `ok/alerta/ruim` já resolvem isso; aqui só se escolhe qual. */
@@ -27,12 +27,16 @@ const CLASSE_TIPO: Record<string, string> = {
   erro: 'pill ruim',
   penalidade: 'pill alerta',
   auditoria: 'pill ok',
+  // Alerta e não `ok`: das quatro, é a única que PEDE UMA AÇÃO de quem
+  // administra — enquanto ninguém gerar o link, a pessoa continua sem entrar.
+  acesso: 'pill alerta',
 }
 
 const ROTULO_TIPO: Record<string, [string, string]> = {
   auditoria: ['Auditoria', 'Audit'],
   erro: ['Erro', 'Error'],
   penalidade: ['Penalidade', 'Penalty'],
+  acesso: ['Acesso', 'Access'],
 }
 
 function dia(iso: string): string {
@@ -126,18 +130,11 @@ export default function Notificacoes() {
     ['auditoria', L('Auditoria', 'Audit')],
     ['erro', L('Erros', 'Errors')],
     ['penalidade', L('Penalidades', 'Penalties')],
+    ['acesso', L('Acesso', 'Access')],
   ]
 
   return (
     <>
-      <Cabecalho
-        titulo={L('Notificações', 'Notifications')}
-        sub={L(
-          'Auditorias publicadas, falhas de automação e penalidades — endereçadas a você ou ao seu papel. O sino da barra avisa; aqui se procura o que passou.',
-          'Published audits, automation failures and penalties — addressed to you or to your role. The bell announces; here you look for what went by.',
-        )}
-      />
-
       <div className="filters">
         <Segmented itens={abas} valor={tipo} onChange={setTipo} />
 
@@ -172,8 +169,8 @@ export default function Notificacoes() {
                   'No notifications with these filters. Go back to "All" to see the rest.',
                 )
               : L(
-                  'As notificações nascem sozinhas: quando um round é publicado, quando a automação falha e quando uma penalidade é aplicada.',
-                  'Notifications appear on their own: when a round is published, when automation fails, and when a penalty is applied.',
+                  'As notificações nascem sozinhas: quando um round é publicado, quando a automação falha, quando uma penalidade é aplicada e quando alguém pede redefinição de senha.',
+                  'Notifications appear on their own: when a round is published, when automation fails, when a penalty is applied, and when someone requests a password reset.',
                 )
           }
         />

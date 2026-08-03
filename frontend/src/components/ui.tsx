@@ -85,16 +85,21 @@ export function Vazio({ titulo, texto }: { titulo: string; texto: string }) {
   )
 }
 
-export function Cabecalho({ titulo, sub }: { titulo: string; sub?: string }) {
-  return (
-    <div className="top">
-      <div>
-        <h1>{titulo}</h1>
-        {sub && <p className="sub">{sub}</p>}
-      </div>
-    </div>
-  )
-}
+/** O `Cabecalho` (`.top` + `h1` + `.sub`) SAIU EM 30/07/2026, a pedido.
+ *
+ *  O título repetia o breadcrumb da topbar, que fica poucos pixels acima e
+ *  alinhado na mesma margem (`--pad-x` existe justamente para isso): a tela
+ *  dizia o próprio nome duas vezes, e o par título+subtítulo consumia ~90px do
+ *  alto de toda página antes do primeiro dado.
+ *
+ *  O que se perdeu, e é bom saber: alguns `sub` eram o ÚNICO lugar onde uma
+ *  regra do produto estava escrita — "tudo gerado a partir das auditorias, não
+ *  há onde digitar estes números", em Modelos, era um deles. Se algum precisar
+ *  voltar, ele volta como `.hint` junto do dado que explica, não como parágrafo
+ *  no topo: instrução longe do que ela explica não é lida.
+ *
+ *  Recuperável em `git log -- frontend/src/components/ui.tsx`.
+ */
 
 /** Etiquetas multi-seleção — papéis, checklists, áreas, permissões. */
 export function Chips<V extends string>({

@@ -1,6 +1,6 @@
 /* ============================================================================
-   FUNDAÇÃO DE TEMA — a linguagem visual do ui-kit aplicada à SPBIM.
-   Ver `ui-kit-export/README.md` §3 (as cinco regras) e §4 (as escalas).
+   FUNDAÇÃO DE TEMA — a linguagem visual da plataforma.
+   Ver a seção "Sistema visual" do `CLAUDE.md` — as seis regras e as escalas.
 
    O que veio do kit: a estrutura de superfícies, o escuro preto neutro, as
    escalas de raio/sombra/esqueleto/z-index, os tons semânticos translúcidos e
@@ -56,6 +56,26 @@
   --accent-soft: rgb(37 71 176 / 0.10);
   --accent-soft-2: rgb(37 71 176 / 0.16);
 
+  /* --- ação de CRIAR ------------------------------------------------------
+     A cor do "+" que abre um cadastro — hoje o "+ Novo projeto" da home.
+
+     É TOKEN PRÓPRIO e não `var(--accent)` escrito na regra: criar é a única
+     ação que a cor da marca tem permissão de marcar numa tela de trabalho
+     (regra 2 — cor é significado), e nomear isso é o que impede o accent de ir
+     escorrendo para o próximo botão que alguém achar importante. Quem for pôr
+     `--criar` em algo que não abre um cadastro vai ler este parágrafo antes.
+
+     ALIAS DO ACCENT, e por isso segue o tema E A COR ESCOLHIDA sozinho:
+     `--accent` é redefinido no bloco escuro e reescrito no `<html>` pelo
+     seletor de cor de destaque, e `var()` resolve no elemento — não há valor
+     repetido para divergir. Se um dia o "+" precisar de um tom próprio, é UMA
+     linha aqui.
+
+     Houve um `--criar-soft` para o fundo translúcido do botão; ele saiu quando
+     o "+" passou a ser branco com contorno cinza, no padrão da barra de busca.
+     A cor ficou só no ícone, que é onde ela informa. */
+  --criar: var(--accent);
+
   /* --- tons semânticos ---------------------------------------------------
      Cor cheia no texto, fundo a /10-/12. O domínio é auditoria: ok, ruim,
      aguardando, não-aplicável. Estas quatro substituem os TONES do kit
@@ -73,7 +93,7 @@
 
   /* Realce de linha de tabela: translúcido sobre a tinta, NUNCA zebra
      (kit §6). Zebra fixa uma cor que erra em um dos dois temas. */
-  /* REMOVIDO em 29/07/2026 — ver a regra 6 em `ui-kit-export/README.md`.
+  /* REMOVIDO em 29/07/2026 — ver a regra 6 no `CLAUDE.md`.
      O realce de cursor deixou de ser fundo e passou a ser tinta. O token fica
      comentado, e não apagado, para que quem procurar por ele encontre a razão
      em vez do vazio e o reintroduza achando que sumiu por engano.
@@ -188,6 +208,12 @@ html[data-theme='dark'] {
   --h-bar: 2.5rem;           /* 40px                                    */
   --h-dock: 52px;            /* dock mobile                             */
   --w-popover: 20rem;        /* 320px — popovers da topbar              */
+  /* 400px — a GAVETA da direita, e o valor é FIXO por decisão, não por falta
+     de tempo: o que mora nela é formulário, um campo por linha. Percentual da
+     janela só esticaria os inputs, e um campo de 900px não fica mais fácil de
+     preencher. 400 é o suficiente para "CPQ11 — Data Center" caber inteiro num
+     input com os 20px de respiro de cada lado. */
+  --w-gaveta: 25rem;
 
   /* MARGEM LATERAL DO CONTEÚDO — o mesmo valor na topbar e no `main`, para o
      breadcrumb cair exatamente sobre o título da página. Trocar aqui move as

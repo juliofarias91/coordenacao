@@ -1,6 +1,6 @@
 /* ============================================================================
    O SISTEMA VISUAL — as classes da plataforma escritas na linguagem do
-   `ui-kit-export`. Os nomes de classe são os mesmos de antes (as 25 telas não
+   do VDCity. Os nomes de classe são os mesmos de antes (as 25 telas não
    foram tocadas); o que mudou é o que cada uma significa.
 
    As cinco regras do kit (README §3) e onde elas caem aqui:
@@ -184,7 +184,15 @@ aside {
   gap: 12px;
 }
 
-nav {
+/* ESCOPADO EM `aside`, e não `nav` solto. Estas regras são da BARRA LATERAL, mas
+   estavam num seletor de ELEMENTO — e pegavam em toda `<nav>` da aplicação. A
+   vítima era a fileira de abas da configuração do projeto (`<nav class="abas">`):
+   ela declara `display: flex` e ganha, mas NÃO declara `flex-direction`, então
+   herdava o `column` daqui e as cinco abas empilhavam uma sobre a outra,
+   cada uma com a largura inteira da página.
+   Bug de seletor de elemento em CSS global: a regra certa no lugar errado. O
+   dock não é afetado — ele é `<nav class="dock">` e tem `.dock a` completo. */
+aside nav {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -234,8 +242,8 @@ nav {
    Numa coluna de itens agrupados, o retângulo colorido do ativo vira o
    elemento mais pesado da tela — sendo que ele só precisa responder "onde eu
    estou". O negrito responde igual e não compete com o conteúdo. */
-nav a,
-nav .nav-off {
+aside nav a,
+aside nav .nav-off {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -250,20 +258,20 @@ nav .nav-off {
   overflow: hidden;
   transition: color var(--dur-fast), background var(--dur-fast);
 }
-nav a:hover {
+aside nav a:hover {
   color: var(--ink);
 }
-nav a.on {
+aside nav a.on {
   color: var(--ink);
   font-weight: 650;
 }
 /* Tela de projeto sem projeto para abrir. Não é estado semântico — não leva
    cor: só tinta mais fraca e o cursor dizendo que não há o que clicar. */
-nav .nav-off {
+aside nav .nav-off {
   color: var(--ink-3);
   cursor: default;
 }
-nav .ic {
+aside nav .ic {
   width: 18px;
   height: 18px;
   flex: none;
@@ -278,14 +286,43 @@ nav .ic {
   opacity: 1;
   transition: opacity var(--dur) var(--ease);
 }
+/* RECOLHIDA, O RÓTULO SAI DO FLUXO — não basta ficar invisível.
+   Com só `opacity: 0` ele continuava ocupando largura, e o `justify-content:
+   center` do item não tinha o que centralizar: `min-width: 0` deixa o rótulo
+   ENCOLHER, mas o flex para de encolher no instante em que a linha CABE. Num
+   item de 36px, 18px de ícone mais 18px de rótulo invisível fechavam a conta
+   exatamente — zero de folga para distribuir. O ícone assentava colado na
+   esquerda do item e a coluna inteira saía uns 8px fora do eixo da barra.
+   `width: 0` + `flex: none` tiram a largura da conta; o fade continua no
+   `opacity`, e o rótulo desaparecer de imediato não se vê porque a barra está
+   animando a própria largura ao mesmo tempo.
+   Vale para os quatro lugares que usam `.nav-rot`: item de menu, item sem
+   destino, Sair e Convidar. */
 .app[data-nav='off'] .nav-rot {
   opacity: 0;
+  width: 0;
+  flex: none;
 }
-.app[data-nav='off'] nav a,
-.app[data-nav='off'] nav .nav-off {
+/* `aside` aqui pela mesma razão de cima: sem ele, recolher a barra zerava o
+   padding das ABAS da configuração — que não têm nada a ver com a barra. */
+.app[data-nav='off'] aside nav a,
+.app[data-nav='off'] aside nav .nav-off {
   gap: 0;
   padding: 0;
   justify-content: center;
+}
+/* A BARRA DE ROLAGEM TAMBÉM DESLOCA O EIXO. Ela consome largura de layout, e
+   consome só do lado direito: com ela na tela, o centro do conteúdo anda uns
+   5px para a esquerda e os ícones deixam de bater com o círculo de recolher e
+   com os divisores. Recolhida, a barra é uma calha de 52px onde uma barra de
+   rolagem visível é mais ruído do que informação — a roda do mouse continua
+   rolando normalmente. Expandida ela segue à vista, que é onde há coluna
+   suficiente para ela não torcer nada. */
+.app[data-nav='off'] .nav-scroll {
+  scrollbar-width: none;
+}
+.app[data-nav='off'] .nav-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 /* Rodapé da sidebar: quem está logado. */
@@ -436,16 +473,27 @@ select.tb-crumb {
    CRESCE da direita para a esquerda no hover. É o que permite seis ferramentas
    na topbar sem virar seis ícones mudos nem uma barra de texto.
    Se você levar uma coisa só deste sistema, leve esta. */
-/* ACHATADOS. Tinham borda e fundo próprios, o que os transformava em quatro
-   cápsulas competindo com a barra de busca ao lado — quatro molduras numa faixa
-   de 56px viram ruído, e nenhuma delas precisa de moldura para ser encontrada.
-   Agora repousam sem contorno e o fundo só aparece no hover, que é onde a
-   informação "isto clica" é útil. O rótulo que cresce continua igual: é ele,
-   não a borda, que diz o que o botão faz. */
+/* CÁPSULA PERMANENTE, NA SUPERFÍCIE DA BARRA DE BUSCA (31/07/2026, a pedido).
+   Chegaram a ser achatados — sem contorno, fundo só no hover — para não virarem
+   quatro molduras competindo com a busca ao lado. A fileira ficou de outro
+   jeito: seis ferramentas, e a busca era o ÚNICO controle da topbar com corpo,
+   o que a fazia parecer de outra natureza que os vizinhos. Vestir todos com a
+   mesma cápsula resolve pelo outro lado — a barra deixa de ser exceção e a
+   linha lê como um conjunto.
+
+   OS TRÊS ESTADOS ESPELHAM OS DA BUSCA, com os mesmos tokens: repouso
+   `--panel-2` + `--line`; hover escurece o contorno para `--line-2`; aberto
+   sobe a superfície para `--panel`. Se mexer num, confira `.buscabarra` —
+   divergir em um passo é o que faz uma linha de controles parecer montada de
+   peças de sistemas diferentes.
+
+   O rótulo que cresce continua igual: é ele, não a borda, que diz o que o botão
+   faz. */
 .pillact {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   /* NUNCA ENCOLHE. Sem isto o botão herda `flex-shrink: 1`, e quando o rótulo
      cresce no hover a fileira passa a faltar espaço: o flex espreme os botões
      e o `overflow: hidden` corta o texto no meio — era o "Portugu" e o "Lig"
@@ -453,26 +501,33 @@ select.tb-crumb {
      `min-width: 0` justamente para isso. */
   flex: none;
   height: 34px;
+  /* REDONDO DE VERDADE em repouso: 34 de altura por 34 de largura mínima. Com
+     só o padding, o ícone de 19px dava 33px e a cápsula ficava um pixel oval —
+     invisível sem contorno, evidente com ele. */
+  min-width: 34px;
   padding: 0 7px;
   gap: 0;
   overflow: hidden;
-  border: 1px solid transparent;
+  border: 1px solid var(--line);
   border-radius: var(--r-full);
-  background: none;
+  background: var(--panel-2);
   color: var(--ink-3);
   transition: color var(--dur-fast), background var(--dur-fast),
     border-color var(--dur-fast);
 }
+/* Regra 6: o hover não mexe em fundo. Escurece a tinta e o contorno — que é o
+   substituto previsto para quando tinta sozinha não basta. */
 .pillact:hover {
   color: var(--ink);
+  border-color: var(--line-2);
 }
-/* Aberto: aí sim ganha corpo, porque há um painel preso a ele e o botão
-   precisa parecer a âncora desse painel. */
+/* Aberto: tinta cheia e peso (regra 1), com a superfície subindo um degrau —
+   é o mesmo salto que a busca dá ao receber foco. */
 .pillact.on {
   color: var(--ink);
   font-weight: 650;
-  background: var(--panel-2);
-  border-color: var(--line);
+  background: var(--panel);
+  border-color: var(--line-2);
 }
 .pillact .rot {
   max-width: 0;
@@ -533,39 +588,22 @@ select.tb-crumb {
    As telas desta plataforma são tabela, matriz modelo × área e grade de
    projetos — em todas elas largura é INFORMAÇÃO: mais colunas visíveis sem
    rolar na horizontal, mais pastas por linha. Um limite de leitura faz sentido
-   para prosa (ver `.doc` e `.top .sub`, que continuam limitados), não para
-   uma planilha.
+   para prosa (ver `.doc`, que continua limitado a 760px), não para uma
+   planilha.
 
-   O padding lateral é o MESMO da topbar (`--pad-x`), para o breadcrumb cair
-   exatamente sobre o título da página. */
+   O padding lateral é o MESMO da topbar (`--pad-x`). Isso nasceu para o
+   breadcrumb cair exatamente sobre o título da página; o título saiu em
+   30/07/2026 e o alinhamento vale mais ainda — agora o breadcrumb é a única
+   coisa que nomeia a tela, e ele cai sobre a primeira coluna do conteúdo.
+
+   O TOPO DA PÁGINA COMEÇA NO DADO. O bloco `.top` (h1 + subtítulo) saiu junto
+   com o `Cabecalho` de `components/ui.tsx`, onde está o porquê. Os 26px de
+   padding aqui em cima são o respiro que sobrou entre a topbar e a primeira
+   coisa que a tela tem para mostrar. */
 main {
   padding: 26px var(--pad-x) 70px;
   width: 100%;
   min-width: 0;
-}
-.top {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 22px;
-  flex-wrap: wrap;
-}
-.top h1 {
-  font-size: 21px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-}
-/* O subtítulo NÃO é decorativo: é onde a tela diz o que faz. Sem ele o
-   usuário descobre a função da tela clicando.
-   O limite de 660px FICA mesmo com o conteúdo em largura cheia: é medida de
-   leitura, não de layout — um parágrafo esticado a 1800px atravessa a tela e
-   o olho perde o começo da linha seguinte. */
-.top .sub {
-  color: var(--ink-2);
-  font-size: 13px;
-  margin-top: 3px;
-  max-width: 660px;
 }
 
 /* ============================================================================
@@ -673,8 +711,324 @@ main {
   background: none;
 }
 
-/* ---------------------------------------------------------------- login */
-.loginwrap {
+/* ============================================================================
+   AUTENTICAÇÃO — a superfície de antes de entrar (login, definir senha)
+
+   É A ÚNICA TELA QUE NÃO SEGUE O TEMA, e é exceção deliberada: escura sempre,
+   no claro e no escuro. Duas razões. Primeira, ela não tem para quem seguir —
+   quem está aqui não tem sessão, e o tema é preferência de conta lida depois de
+   entrar. Segunda, é a única tela SEM DADO: não há tabela, matriz nem KPI com
+   que a cor possa competir.
+
+   É por isso que aqui a REGRA 2 ("cor é significado, não decoração") cede. Os
+   três glows de accent no fundo são decoração pura, e é o que se quer: eles
+   fazem o trabalho que numa tela de dado seria feito pelo próprio dado. Não
+   leve esta permissão para nenhuma outra tela — dentro do app, um gradiente de
+   accent no fundo compete com o número que se foi ali ler.
+
+   O modelo é a tela de login do VDCity: fundo escuro contínuo com glows,
+   marca à esquerda, formulário à direita, campos translúcidos. O que NÃO veio
+   foi a marca gráfica (o tetraedro é identidade deles) nem o cadastro aberto e
+   o login social — aqui o acesso é só por convite do admin.
+   ============================================================================ */
+.auth {
+  /* PALETA LOCAL. Redeclarar os tokens aqui é o que permite `.f`, `.btn`,
+     `.hint`, `.erro` e `.pill` continuarem valendo dentro desta tela sem uma
+     linha de estilo própria — e é o contrário de espalhar cor pelas páginas.
+     Os valores são os do tema escuro, com o canvas um passo mais fundo: o
+     #0f0f0f do app é fundo de trabalho, e este é fundo de vitrine. */
+  --canvas: #08080b;
+  --panel: #16161a;
+  --panel-2: #212127;
+  --ink: #fafafa;
+  --ink-2: #b8b8b8;
+  --ink-3: #858585;
+  --line: rgb(255 255 255 / 0.08);
+  --line-2: rgb(255 255 255 / 0.12);
+  /* O accent do ESCURO (#6e8cf2), não o do claro: o azul #2547b0 da SPBIM é
+     escuro demais para preencher um botão sobre #08080b — some no fundo. */
+  --accent: #6e8cf2;
+  --accent-ink: #ffffff;
+  --accent-hover: #8aa2f5;
+  --accent-soft: rgb(110 140 242 / 0.16);
+  --accent-soft-2: rgb(110 140 242 / 0.24);
+  --ok: #3fbe86;
+  --ok-bg: rgb(63 190 134 / 0.13);
+  --bad: #e8736e;
+  --bad-bg: rgb(232 115 110 / 0.13);
+
+  color-scheme: dark;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  overflow: auto;
+  color: var(--ink);
+  background-color: var(--canvas);
+  /* TRÊS GLOWS EM GRADIENTE, e não três divs com `filter: blur(160px)` como no
+     original. O resultado é o mesmo e não custa três camadas de composição
+     desfocadas — `blur` de 160px força o navegador a rasterizar e filtrar uma
+     área enorme, e isto é a primeira tela que qualquer pessoa vê.
+
+     Os três precisam de um PLATÔ (a parada do meio), e não de uma queda direta
+     do centro ao transparente: um disco sólido a 15% desfocado tem intensidade
+     quase constante no miolo, e sem a parada intermediária o gradiente vira um
+     ponto claro que se apaga rápido demais — no primeiro teste o fundo saiu
+     quase preto.
+
+     O principal fica em 58%, e não no 50% do original, PARA PASSAR POR TRÁS DO
+     FORMULÁRIO. É o que faz os campos translúcidos valerem a pena: sobre preto
+     puro, `rgb(255 255 255 / 0.04)` é indistinguível de um campo opaco, e o
+     translúcido só se justifica se houver algo atravessando. Centrado, o glow
+     caía no vão entre as duas colunas e a metade direita ficava morta. */
+  background-image:
+    radial-gradient(
+      760px 700px at 58% 30%,
+      rgb(110 140 242 / 0.26),
+      rgb(110 140 242 / 0.11) 42%,
+      transparent 74%
+    ),
+    radial-gradient(
+      520px 520px at 106% 104%,
+      rgb(110 140 242 / 0.2),
+      rgb(110 140 242 / 0.08) 45%,
+      transparent 75%
+    ),
+    radial-gradient(
+      460px 460px at -6% 12%,
+      rgb(129 116 230 / 0.2),
+      rgb(129 116 230 / 0.08) 45%,
+      transparent 75%
+    );
+  background-repeat: no-repeat;
+}
+
+/* Âncora dentro da autenticação. Sem isto ela cai no azul-padrão sublinhado do
+   navegador — não existe regra global de `a` neste CSS —, e um link
+   `#0000EE` sobre #08080b é a única coisa fora do sistema na tela inteira. */
+.auth a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--dur) var(--ease);
+}
+/* Regra 6: o hover é tinta. O sublinhado entra junto porque aqui o alvo é
+   pequeno e vale confirmar que ele é clicável. */
+.auth a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+/* MARCA — metade esquerda, alinhada à direita para encostar na dobra. Some
+   abaixo de 1024px, onde o formulário passa a ocupar a tela inteira e uma
+   coluna de marca só empurraria os campos para fora da primeira dobra. */
+.auth-marca {
+  display: none;
+  width: 50%;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  padding-right: 96px;
+}
+.auth-marca-txt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 340px;
+}
+/* O wordmark, e SÓ o wordmark: o Shell decidiu não ter marca gráfica enquanto
+   não houver logotipo de verdade (ver `layout/Shell.tsx`), e inventar um
+   símbolo só para esta tela criaria uma marca que o resto do produto não usa. */
+.auth-logo {
+  font-weight: 800;
+  letter-spacing: 6px;
+  font-size: 44px;
+  line-height: 1;
+  color: var(--ink);
+}
+.auth-logo-sub {
+  margin-top: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+.auth-pitch {
+  margin-top: 16px;
+  font-size: 13px;
+  line-height: 1.65;
+  text-align: center;
+  color: var(--ink-3);
+}
+
+/* FORMULÁRIO — metade direita no desktop, tela inteira no mobile. */
+.auth-form {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+.auth-caixa {
+  width: 100%;
+  max-width: 380px;
+}
+/* A marca compacta no topo, só no mobile — onde a coluna da esquerda não
+   existe e a tela ficaria sem dizer de que sistema é. */
+.auth-marca-mobile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
+}
+.auth-marca-mobile .auth-logo {
+  font-size: 26px;
+  letter-spacing: 4px;
+}
+.auth-marca-mobile .auth-logo-sub {
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+
+.auth-titulo {
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+.auth-sub {
+  margin: 6px 0 26px;
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: center;
+  color: var(--ink-3);
+}
+.auth-campos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* CAMPOS TRANSLÚCIDOS. A única sobreposição de estilo desta tela, e ela existe
+   porque `.f` usa `--panel` (superfície OPACA): sobre um fundo com glow, um
+   campo opaco recorta um retângulo e mata o gradiente por baixo. Translúcido, o
+   glow atravessa e os campos pertencem ao fundo. */
+.auth input.f,
+.auth select.f {
+  background: rgb(255 255 255 / 0.04);
+  border-color: var(--line-2);
+  padding: 12px 14px;
+  font-size: 13.5px;
+  border-radius: var(--r-lg);
+}
+.auth input.f::placeholder {
+  color: rgb(255 255 255 / 0.35);
+}
+.auth input.f:focus,
+.auth select.f:focus {
+  background: rgb(255 255 255 / 0.07);
+  border-color: var(--accent);
+}
+/* O label sai da tela mas FICA NO DOM. Com placeholder dentro do campo os dois
+   dizem a mesma coisa duas vezes, e a caixa alta do `.fl` briga com a leitura
+   corrida desta tela — mas apagar o label deixaria o campo sem nome para o
+   leitor de tela, e um `placeholder` não é nome acessível. */
+.auth label.oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Mostrar/ocultar senha. Digitar dez caracteres às cegas é o que faz a pessoa
+   errar duas vezes e pedir redefinição — o custo de expor o campo por dois
+   segundos é menor. */
+.auth-senha {
+  position: relative;
+}
+.auth-senha input.f {
+  padding-right: 44px;
+}
+.auth-olho {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: color var(--dur) var(--ease);
+}
+/* Regra 6: hover é TINTA. */
+.auth-olho:hover {
+  color: var(--ink);
+}
+
+/* A fileira de ações secundárias sob o botão. No original são duas ("esqueceu a
+   senha" e "criar conta"); aqui é uma só, porque conta nova não se cria — o
+   acesso é por convite do admin. */
+.auth-acoes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+/* AQUI O `.btn-link` PERDE O ACCENT E O SUBLINHADO. Ele está logo abaixo do
+   botão primário, e accent + sublinhado fazem uma ação secundária competir com
+   a principal — a tela passa a ter dois "clique aqui" à mesma distância do
+   olho. Tinta apagada que acende no hover é a regra 6 aplicada: o estado de
+   repouso informa, o cursor confirma. É também o que o original faz. */
+.auth-acoes .btn-link {
+  color: var(--ink-3);
+  text-decoration: none;
+}
+.auth-acoes .btn-link:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.auth-rodape {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 1024px) {
+  .auth-marca {
+    display: flex;
+  }
+  .auth-form {
+    width: 50%;
+    align-items: flex-start;
+    padding-left: 96px;
+  }
+  .auth-marca-mobile {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------- avisos
+   Tela cheia e centrada, para o que acontece FORA do app e fora da
+   autenticação: o "Carregando…" da reidratação de sessão (`App.tsx`) e os
+   estados de erro e carga do PORTAL DO CLIENTE (`pages/Portal.tsx`).
+
+   Chamavam-se `.loginwrap` / `.logincard` / `.loginlogo` / `.logintitle` /
+   `.loginsub` — nomes que mentiam desde que o login passou a ter superfície
+   própria (`.auth`). Nenhuma delas é de login: o único consumidor é o portal,
+   que não tem login nenhum.
+
+   SEGUEM O TEMA, ao contrário de `.auth`. O "Carregando…" aparece para quem JÁ
+   está autenticado — a superfície escura piscaria preto antes de o app abrir no
+   claro — e o portal é tela de cliente, que escolhe o tema dele. */
+.telacheia {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -682,7 +1036,7 @@ main {
   background: var(--canvas);
   padding: 20px;
 }
-.logincard {
+.avisocard {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r-2xl);
@@ -691,26 +1045,28 @@ main {
   max-width: 380px;
   box-shadow: var(--sh-sm);
 }
-.loginlogo {
+/* O wordmark SPBIM em texto. Serve o card de aviso e o cabeçalho do portal —
+   é o mesmo tratamento, e o portal só ajusta o corpo por estilo inline. */
+.marcatxt {
   font-weight: 800;
   letter-spacing: 2px;
   font-size: 22px;
   color: var(--accent);
 }
-.logintitle {
+.avisotitulo {
   font-size: 16px;
   font-weight: 650;
   margin-top: 10px;
 }
-.loginsub {
+.avisosub {
   font-size: 13px;
   color: var(--ink-2);
-  margin: 2px 0 20px;
+  margin: 2px 0 0;
+  line-height: 1.55;
 }
 
 /* Label de campo e header de tabela: a MESMA micro-tipografia em todo o
    sistema — 11px, bold, caixa alta, tracking largo, tinta apagada. */
-.logincard label,
 .fl {
   font-size: 11px;
   font-weight: 700;
@@ -817,6 +1173,32 @@ select:focus {
   color: var(--ink-3);
   margin: 10px 4px 0;
   line-height: 1.6;
+}
+
+/* Botão que se apresenta como link — para ação que PRECISA ser `<button>`
+   porque dispara um POST, mas que pertence a um parágrafo de texto: o
+   "Esqueci minha senha" do login é o caso. Um `<a href>` que faz POST mente
+   sobre o que vai acontecer, e um `<div>` clicável não chega pelo teclado.
+
+   Regra 6: o hover é TINTA. O sublinhado é o que anuncia que é clicável — não
+   um retângulo de fundo. */
+.btn-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--dur) var(--ease);
+}
+.btn-link:hover {
+  color: var(--ink);
+}
+.btn-link:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 /* ============================================================================
@@ -983,7 +1365,7 @@ tbody tr.clk {
   cursor: pointer;
   transition: color var(--dur-fast);
 }
-/* TINTA, não fundo (ver a regra 6 em `ui-kit-export/README.md`). A linha
+/* TINTA, não fundo (ver a regra 6 no `CLAUDE.md`). A linha
    inteira escurece para `--ink`; quem estava em `--ink-2` sobe junto. */
 tbody tr.clk:hover {
   color: var(--ink);
@@ -1374,26 +1756,37 @@ td.num {
   position: relative;
   flex: none;
 }
+/* SEM FUNDO PRÓPRIO (31/07/2026, a pedido). Era um disco de `--accent-soft` de
+   26px, e fazia sentido enquanto as `.pillact` eram achatadas: o disco era o
+   único corpo da fileira. Agora que toda pílula tem cápsula, o disco virava um
+   círculo DENTRO de uma cápsula — duas superfícies concêntricas a 34px, que é o
+   sulco que a própria busca evita não desenhando borda no input.
+   Saiu com ele a margem negativa, que existia para o disco não engordar a
+   barra: sem disco, a sigla ocupa a caixa de um ícone e a pílula da conta fica
+   da MESMA largura que as outras cinco. */
 .usermenu .av-mini {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--r-full);
-  background: var(--accent-soft);
+  /* A caixa do ícone dos vizinhos (19px), como piso. Duas maiúsculas passam
+     disso e a caixa cresce — o `min-width` é o que garante que UMA letra, de
+     quem não tem sobrenome, não deixe a pílula mais estreita que as outras. */
+  min-width: 19px;
+  height: 19px;
   color: var(--accent);
   font-size: 11px;
   font-weight: 700;
-  /* O avatar já é um círculo cheio; o padding da pílula em volta dele
-     engordaria a barra sem necessidade. */
-  margin: 0 -3px 0 0;
+  letter-spacing: 0.02em;
 }
+/* LARGURA DE POPOVER DA CASA, como o sino. Eram 248px — mais estreito que
+   todo o resto da barra sem motivo, e o e-mail de quem entrou não cabia numa
+   linha. O cabeçalho desta seção promete "posição e largura FIXAS para todos
+   os painéis"; era este que descumpria. */
 .userpainel {
   position: absolute;
   top: calc(100% + 14px);
   right: 0;
-  width: 248px;
+  width: var(--w-popover);
   max-width: 92vw;
   overflow: hidden;
   background: var(--popover);
@@ -1403,53 +1796,96 @@ td.num {
   z-index: var(--z-popover);
   animation: uiSurge 0.18s var(--ease);
 }
+/* CABEÇALHO — o bloco de identidade, em três linhas. É o mesmo `.userbox` que
+   vinha do rodapé da sidebar; aqui ele cresce, porque é o assunto do painel e
+   não uma assinatura de canto: 40px de avatar contra os 30px de lá. */
 .usercab {
-  padding: 10px 10px 6px;
+  padding: 13px 14px 12px;
 }
-.userlinha {
+.usercab .userbox {
+  gap: 11px;
+  padding: 0;
+}
+.usercab .av {
+  width: 40px;
+  height: 40px;
+  font-size: 15px;
+}
+.usercab .nm {
+  font-size: 13.5px;
+}
+.userbox .em {
+  color: var(--ink-3);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* O papel em versalete apagado, não em pílula: pílula é estado que se compara
+   numa lista, e aqui não há segunda linha com que comparar. */
+.usercab .rl {
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* GRUPOS, não uma pilha de linhas. Cada `.useritem` tinha `border-bottom` e o
+   painel virava sete réguas de largura cheia — mais linha do que texto, e o
+   divisor entre "Configurações" e "Lixeira" dizia exatamente o mesmo que o
+   divisor entre duas coisas sem relação nenhuma. O traço agora separa BLOCOS,
+   que é a única separação que significa algo. */
+.usergrupo {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 14px 12px;
-  border-bottom: 1px solid var(--line);
+  flex-direction: column;
+  padding: 5px 0;
+  border-top: 1px solid var(--line);
 }
 .useritem {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--line);
+  gap: 12px;
+  width: 100%;
+  padding: 9px 14px;
+  border: none;
+  background: none;
   color: var(--ink-2);
-  font-size: 12.5px;
-  font-weight: 600;
-  transition: background var(--dur-fast), color var(--dur-fast);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  /* Três dos quatro itens são `<Link>`, e não há regra global de `a` neste
+     projeto (a dívida está anotada na seção AUTENTICAÇÃO): sem isto eles vêm
+     sublinhados do navegador. Sublinhado é marca de link EM MEIO A TEXTO —
+     numa lista onde a linha inteira é clicável ele não distingue nada e só
+     acrescenta um traço sob cada rótulo. */
+  text-decoration: none;
+  transition: color var(--dur-fast);
 }
+/* Regra 6: hover é TINTA. O VDCity, de onde veio a forma deste painel, pinta
+   o fundo do item — aqui não, e é a divergência de propósito: se estar ATIVO
+   não ganha retângulo, estar sob o cursor ganha menos. */
 .useritem:hover {
   color: var(--ink);
 }
 .useritem svg {
   flex: none;
   color: var(--ink-3);
+  transition: color var(--dur-fast);
 }
 .useritem:hover svg {
   color: var(--ink-2);
 }
-.usersair {
-  display: block;
-  width: 100%;
-  padding: 11px 14px;
-  border: none;
-  background: none;
+/* Sair é a exceção que a regra 6 já prevê: destrutivo fica vermelho, com ou
+   sem cursor. `--bad-bg` é o par translúcido que o sistema já define (/10), e
+   não um color-mix novo — fundo chapado de vermelho grita mais do que a ação
+   merece, e inventar um sexto tom furaria a escala. */
+.usersair,
+.usersair svg,
+.usersair:hover,
+.usersair:hover svg {
   color: var(--bad);
-  font-size: 12.5px;
-  font-weight: 600;
-  text-align: left;
-  transition: background var(--dur-fast);
 }
-/* `--bad-bg` é o par translúcido que o sistema já define (/10), e não um
-   color-mix novo: fundo chapado de vermelho grita mais do que a ação merece,
-   e inventar um sexto tom furaria a escala. */
 .usersair:hover {
   background: var(--bad-bg);
 }
@@ -1759,6 +2195,135 @@ td.num {
 }
 
 /* --------------------------------------------------------------- editor */
+/* ============================================================================
+   FICHA DO PROJETO — a identidade da obra (`pages/Ficha.tsx`)
+
+   DUAS COLUNAS EM CARD, e não full-bleed como no modelo do VDCity. A régua da
+   seção "Sistema visual" do CLAUDE.md decide isso: full-bleed é para tela de
+   TRABALHO CONTÍNUO — lista, matriz, planilha —, e card é para tela PONTUAL,
+   que é o que uma ficha cadastral é. Preenche-se uma vez e volta-se a ela de
+   vez em quando.
+
+   O cabeçalho fica FORA dos cards, porque o nome e a situação valem para as
+   duas colunas — enfiá-lo numa delas o transformaria em campo de uma metade.
+   ============================================================================ */
+.fichacab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+/* O código é imutável e vem antes do nome: é por ele que o projeto se chama
+   em toda nomenclatura de arquivo. Monoespaçado pelo mesmo motivo do `.code`. */
+.fichacod {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent);
+  padding: 5px 9px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  flex: none;
+}
+/* O nome é um input SEM MOLDURA: ele se lê como título e se edita como campo.
+   A borda só aparece no foco — uma caixa permanente em volta do título faria a
+   ficha parecer um formulário antes de alguém querer editá-la. */
+.fichanome {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-lg);
+  background: none;
+  padding: 6px 8px;
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--ink);
+  transition: border-color var(--dur-fast);
+}
+.fichanome:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.fichanome[readonly] {
+  cursor: default;
+}
+.fichaestado {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.ficha {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.fichacol {
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-2xl);
+  padding: 20px;
+  box-shadow: var(--sh-sm);
+}
+/* Mesma micro-tipografia do `.editor h3` — é o mesmo papel de rótulo de
+   seção, e duas escalas para a mesma função é como o sistema se desfaz. */
+.fichacol h3 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  margin-bottom: 16px;
+}
+.fichagrade {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.fichacampo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.fichacampo.largo {
+  grid-column: 1 / -1;
+}
+.fichacampo + .fichagrade,
+.fichacampo.largo + .fichagrade {
+  margin-top: 12px;
+}
+
+/* O REMOVER FICA SOZINHO, longe dos campos e depois deles. Ele é a única ação
+   da tela que não se desfaz sem passar pela Lixeira, e um botão destrutivo ao
+   lado de um campo de texto é clicado por engano. Regra 2: destrutivo é
+   vermelho, e o fundo só entra no hover (ver `.btn.danger`). */
+.fichaperigo {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.fichaconfirma {
+  border: 1px solid var(--bad);
+  border-radius: var(--r-xl);
+  padding: 14px 16px;
+  background: var(--bad-bg);
+}
+.fichaconfirma p {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0 0 12px;
+}
+
+@media (max-width: 900px) {
+  .ficha,
+  .fichagrade {
+    grid-template-columns: 1fr;
+  }
+}
+
 .editor {
   background: var(--panel);
   border: 1px solid var(--line-2);
@@ -2193,6 +2758,96 @@ td.num {
 .home-buscabox:focus-within {
   border-color: var(--accent);
 }
+/* O "+ NOVO PROJETO" — uma `.pillact` (regra 3), não um botão de texto.
+   Herda de `.pillact` a cápsula e o rótulo que cresce; o que ela acrescenta é
+   a SUPERFÍCIE, a COR DO ÍCONE e o SENTIDO DO CRESCIMENTO.
+
+   SUPERFÍCIE NO PADRÃO DA BUSCA: branco (`--panel`) com contorno `--line`, 36px
+   e cápsula — os mesmos três valores de `.home-buscabox`. Os dois controles
+   ficam colados na mesma linha, e um deles com fundo translúcido colorido e o
+   outro com contorno faria a linha parecer montada de peças de sistemas
+   diferentes. A cor fica onde ela informa: no "+".
+
+   Nasce REDONDO: 36×36, para o "+" ficar centrado num círculo e não numa
+   cápsula achatada. O `.pillact` da topbar tem largura livre porque o rótulo
+   dele cresce no mesmo eixo; aqui o piso é a própria altura. */
+.home-nova {
+  /* `min-width` = a altura, com `box-sizing: border-box`: fechado, o padding de
+     8px de cada lado deixa exatamente os 18px do ícone no meio, e o resultado é
+     um círculo. Aberto, o mesmo padding vira o respiro da cápsula — não há
+     medida que mude entre os dois estados além da largura do rótulo. */
+  height: 36px;
+  min-width: 36px;
+  padding: 0 8px;
+  justify-content: center;
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--criar);
+}
+/* O hover NÃO mexe em cor de fundo nem apaga o accent do ícone. `.pillact`
+   clareia a tinta para `--ink`, e aqui isso apagaria justamente o que o botão
+   quer dizer. Onde tinta não basta, o substituto é BORDA (regra 6) — é o mesmo
+   que `.home-voltar` faz, e o que a busca faz no foco. */
+.home-nova:hover,
+.home-nova:focus-visible {
+  color: var(--criar);
+  border-color: var(--line-2);
+}
+/* O RÓTULO ABRE PARA A DIREITA. Na topbar o `.rot` vem ANTES do ícone, e as
+   margens do sistema (`0 6px 0 2px`) separam texto→ícone; aqui a ordem é
+   ícone→texto e a margem troca de lado, senão o rótulo nasce colado no "+". */
+.home-nova .rot {
+  font-weight: 600;
+}
+.home-nova:hover .rot,
+.home-nova:focus-visible .rot {
+  margin: 0 0 0 6px;
+}
+
+/* MODO DE EXIBIÇÃO — DOIS BOTÕES REDONDOS SOLTOS (31/07/2026, a pedido).
+   Era o `.seg` do sistema, que envolve as opções numa cápsula única com fundo
+   `--panel-2`. Nesta linha isso dava três formas de cápsula lado a lado: a
+   busca (contorno, 36px), o "+" (contorno, 36px) e um segmento preenchido de
+   altura própria. Dois círculos com o MESMO contorno e a MESMA altura dos
+   vizinhos fazem a linha ler como um conjunto só.
+
+   O QUE SE PERDE, e é preço aceito: a moldura compartilhada do `.seg` dizia
+   sozinha "um destes dois". Sem ela, quem diz é o estado ativo — e por isso ele
+   ganhou `aria-pressed` no markup, para o leitor de tela ter o que a moldura
+   deixou de mostrar.
+
+   O `.seg` continua intacto e em uso no resto da plataforma; o que saiu foi o
+   uso dele AQUI. */
+.home-modos {
+  display: inline-flex;
+  gap: 6px;
+  flex: none;
+}
+.home-modos button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--ink-3);
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+/* Regra 6: hover é tinta, e borda onde tinta não basta. Nunca fundo. */
+.home-modos button:hover {
+  color: var(--ink);
+  border-color: var(--line-2);
+}
+/* Ativo: tinta cheia e contorno escuro (regra 1). Sem fundo e sem accent —
+   "qual visão estou vendo" não é ação nem estado semântico. É o mesmo par do
+   `.pgtoggle` com o painel da auditoria recolhido. */
+.home-modos button.on {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
 .home-buscabox svg { flex: none; }
 .home-buscabox .f {
   flex: 1;
@@ -2207,22 +2862,36 @@ td.num {
   outline: none;
   box-shadow: none;
 }
-/* Só aparece com uma pasta aberta: é o caminho de volta para a grade. */
+/* Só aparece com uma pasta aberta: é o caminho de volta para a grade.
+   SÓ FONTE, SEM CÁPSULA, E FORA DA BARRA (31/07/2026, a pedido). Era um botão
+   com contorno e fundo branco ao lado da busca e do "+", e ali fazia o papel de
+   terceira AÇÃO da linha — quando é a única coisa da tela que não age sobre
+   nada: só desfaz a navegação. Sem moldura ele para de disputar com os dois
+   controles que agem, e numa linha própria acima da grade lê como rastro de
+   caminho, que é o que ele é.
+   `--ink-2` e não `--ink-3`: o rótulo é o NOME da pasta aberta, e sem projeto
+   escolhido o breadcrumb da topbar para em "Projetos" — esta é a única linha da
+   tela que diz onde se está. */
 .home-voltar {
   display: flex;
+  /* `fit-content` porque agora ele é filho direto de um `div` de bloco: sem
+     isto o flex ocupa a largura inteira e a faixa vazia à direita do rótulo
+     vira alvo de clique — uma linha invisível que leva de volta. */
+  width: fit-content;
   align-items: center;
   gap: 6px;
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-full);
-  background: var(--panel);
-  color: var(--ink);
+  margin-bottom: 14px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink-2);
   font-size: 13px;
   font-weight: 600;
+  transition: color var(--dur-fast);
 }
+/* Regra 6: tinta, e nada mais. */
 .home-voltar:hover {
-  border-color: var(--line-2);
+  color: var(--ink);
 }
 
 .home-grade {
@@ -2232,6 +2901,12 @@ td.num {
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
 }
+/* SEM FUNDO (31/07/2026, a pedido) — a pasta de cliente E o card de projeto.
+   Só o contorno delimita. Numa grade, vinte retângulos preenchidos dão peso de
+   SUPERFÍCIE a cards cujo conteúdo é uma linha de código e um nome: o olho lê
+   primeiro a fileira de blocos e só depois o texto dentro deles. Sobre o fundo
+   da página, o texto volta a ser a primeira coisa lida, que é o que se veio
+   procurar. */
 .home-pasta,
 .home-card {
   position: relative;
@@ -2239,38 +2914,43 @@ td.num {
   flex-direction: column;
   padding: 18px;
   text-align: left;
-  background: var(--panel-2);
+  background: none;
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   overflow: hidden;
-  transition: border-color var(--dur-fast), background var(--dur-fast),
-    transform var(--dur-fast);
+  transition: border-color var(--dur-fast), transform var(--dur-fast);
 }
-/* Sobe 1px no hover. É o único movimento da tela e diz "isto abre" sem
-   precisar de sombra nova nem de cor — a pasta já é o elemento clicável, e o
-   card não tem outro estado para confundir com este. */
+/* Sobe 1px e escurece o contorno. É o único movimento da tela e diz "isto abre"
+   sem precisar de sombra nova nem de cor.
+   Regra 6: o hover NÃO traz o fundo de volta. Ele chegou a pôr `--panel` aqui —
+   reintroduzir sob o cursor a superfície que se tirou do repouso é exatamente o
+   retângulo que segue o mouse que a regra existe para impedir. */
 .home-pasta:hover,
 .home-card:hover {
   border-color: var(--line-2);
-  background: var(--panel);
   transform: translateY(-1px);
 }
 
 /* --- pasta de cliente --- */
-/* Ícone de contorno em accent, grande e SEM caixa atrás. A caixa chegou a
-   existir e saiu: numa grade de pastas todas iguais ela virava o elemento mais
-   pesado do card, sendo que o que se procura ali é o nome do cliente. */
+/* Ícone de contorno em accent e SEM caixa atrás. A caixa chegou a existir e
+   saiu: numa grade de pastas todas iguais ela virava o elemento mais pesado do
+   card, sendo que o que se procura ali é o nome do cliente.
+
+   O fundo saiu daqui e do card de projeto — ver o bloco compartilhado acima.
+
+   O ÍCONE ENCOSTOU NO NOME. Ele tinha `margin-bottom: auto` e o card tinha
+   148px de altura mínima: a pasta ia para o topo, o nome para o rodapé, e no
+   meio ficava um vão vazio que era o maior elemento do card. Encostados, os dois
+   leem como uma coisa só — a pasta é o marcador do nome, não um desenho à parte.
+   Com o vão fora, a altura sai do conteúdo e a mínima deixou de ser necessária. */
 .home-pasta {
   gap: 0;
-  min-height: 148px;
-  padding: 20px;
 }
 .home-pasta svg {
   color: var(--accent);
-  margin-bottom: auto;
 }
 .home-pasta-nome {
-  margin-top: 16px;
+  margin-top: 10px;
   color: var(--ink);
   font-size: 14px;
   font-weight: 700;
@@ -2284,40 +2964,78 @@ td.num {
   margin-top: 3px;
 }
 
-/* --- card de projeto --- */
+/* --- card de projeto -------------------------------------------------------
+   TRÊS LINHAS: código, nome, estado. E o que ele NÃO tem é o que o deixou
+   limpo:
+
+   SEM FAIXA COLORIDA à esquerda. Existiu, sempre em `--accent`, idêntica em
+   todos os cards — e cor igual em vinte cards não distingue nenhum deles. Era
+   decoração com aparência de dado, que é exatamente o que a regra 2 proíbe. A
+   identificação do projeto é o CÓDIGO, e ele já está na primeira linha.
+
+   SEM PÍLULA DE ESTADO. Virou ponto (`.home-status`): a pílula translúcida é
+   legítima, mas vinte retângulos coloridos numa grade competem com o nome do
+   projeto, que é o que se veio ler.
+
+   ALTURA MÍNIMA IGUAL e o estado no rodapé (`margin-top: auto`): sem isso, um
+   projeto de nome curto e outro de nome longo produzem cards de alturas
+   diferentes na mesma fila e a grade fica denteada. */
 .home-card {
-  gap: 8px;
-  /* Espaço para a faixa da macrodisciplina, à esquerda. */
-  padding-left: 20px;
-}
-/* A faixa de cor do projeto — mesma linguagem da célula da matriz. Fica na
-   borda e não no meio do card: é identificação, não estado. */
-.home-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--accent);
-}
-.home-card-topo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
+  min-height: 132px;
+  padding: 18px;
 }
 .home-cod {
   color: var(--accent);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
 }
 .home-nome {
   color: var(--ink);
   font-size: 13.5px;
   font-weight: 600;
   line-height: 1.35;
+}
+/* No card, o nome é a linha que se lê — sobe de peso e ganha ar. Na linha do
+   acordeão ele continua sendo uma célula entre outras, e fica como está. */
+.home-card .home-nome {
+  font-size: 14.5px;
+  font-weight: 650;
+}
+.home-card .home-status {
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+/* ESTADO COMO PONTO, não como pílula — vale nos dois modos da home, para que
+   alternar entre pastas e lista não troque a língua da tela. O tom vai no
+   marcador e o rótulo fica em tinta neutra: é a mesma regra que já governa os
+   KPIs, onde o número fica em `--ink` e a cor mora no traço da esquerda.
+
+   `piloto` e `encerrado` ficam no ponto neutro de propósito: cor é significado,
+   e só os estados que se varre a tela procurando merecem um. */
+.home-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.home-status::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--na);
+}
+.home-status.s-ativo::before {
+  background: var(--ok);
+}
+.home-status.s-config::before {
+  background: var(--wait);
 }
 
 .home-acordeao {
@@ -2341,7 +3059,12 @@ td.num {
 .home-linha-pasta:hover,
 .home-linha-projeto:hover { color: var(--ink); }
 .home-linha-pasta svg { color: var(--accent); }
-.home-linha-pasta .home-pasta-n { margin-left: auto; }
+/* As margens de topo de `.home-pasta-nome` e `.home-pasta-n` existem para
+   empilhá-los no CARD. Numa linha com `align-items: center` elas entram no box
+   do item e o texto assenta abaixo do centro — o desalinhamento que se vê sem
+   conseguir nomear. Aqui os dois voltam a zero. */
+.home-linha-pasta .home-pasta-nome { margin-top: 0; }
+.home-linha-pasta .home-pasta-n { margin-top: 0; margin-left: auto; }
 .home-linha-projeto {
   padding-left: 40px;
   border-top: 1px solid var(--line);
@@ -2352,6 +3075,354 @@ td.num {
   /* A busca toma a linha inteira e o seletor de modo cai para a de baixo: em
      360px os dois lado a lado deixam o campo com espaço para três letras. */
   .home-buscabox { flex-basis: 100%; max-width: none; }
+}
+
+/* ==========================================================================
+   GAVETA LATERAL — o painel da direita, de largura fixa.
+
+   REGRA 4 DO SISTEMA: só a esquerda empurra. A sidebar empurra o conteúdo; a
+   gaveta SOBREPÕE. Se ela empurrasse, abri-la reflowaria a grade atrás e o
+   usuário perderia de vista a pasta em que estava quando clicou.
+
+   `position: fixed` e não `absolute`: ela mede a JANELA, não o `main`. Como o
+   `main` rola, uma gaveta absoluta rolaria junto e sairia da tela.
+   ========================================================================== */
+.gaveta-fundo {
+  position: fixed;
+  inset: 0;
+  /* Preto a 45%, não `--canvas` translúcido: o véu tem de escurecer nos DOIS
+     temas, e no claro uma superfície do tema por cima do tema não escurece
+     nada. É a mesma receita do véu de modal. */
+  background: rgb(0 0 0 / 0.45);
+  z-index: var(--z-drawer);
+  animation: gavetaVeu var(--dur) var(--ease);
+}
+@keyframes gavetaVeu {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.gaveta {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  /* LARGURA FIXA — o pedido, e a decisão. O `max-width` não a torna fluida: é
+     só o piso para telas mais estreitas que a própria gaveta, onde ela passa a
+     ocupar quase tudo em vez de transbordar. */
+  width: var(--w-gaveta);
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  /* SEM RAIO. A escala de raio existe para separar "onde o conteúdo mora" do
+     "que se clica" — e ela pressupõe uma superfície com quatro cantos dentro da
+     tela. A gaveta encosta em três bordas: arredondar só a esquerda produzia
+     dois cantos meio-arredondados que não pertencem a degrau nenhum da escala.
+     Quem separa a gaveta do que está atrás é a borda e a sombra. */
+  border-radius: 0;
+  box-shadow: var(--sh-2xl);
+  z-index: calc(var(--z-drawer) + 1);
+  animation: gavetaEntra var(--dur) var(--ease);
+}
+@keyframes gavetaEntra {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+
+/* 56px, a MESMA altura da topbar (`--h-topbar`), e pelo mesmo motivo que a
+   marca da sidebar a usa: a gaveta nasce colada ao topo, e um cabeçalho de
+   outra altura deixaria dois títulos desalinhados por poucos pixels — a
+   diferença que se vê sem conseguir nomear. */
+.gaveta-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  min-height: var(--h-topbar);
+  padding: 0 12px 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+.gaveta-tit {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.gaveta-tit b {
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.gaveta-tit span {
+  color: var(--ink-3);
+  font-size: 11.5px;
+}
+/* Fechar é TINTA no hover (regra 6), sem fundo: o botão já é o único ícone do
+   cabeçalho e o cursor em cima dele já se anuncia sozinho. */
+.gaveta-x {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  border-radius: var(--r-md);
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: color var(--dur-fast);
+}
+.gaveta-x:hover {
+  color: var(--ink);
+}
+
+.gaveta-corpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+}
+/* Um campo por linha. A `.frow` do sistema é grade de dois, e dois campos numa
+   gaveta de 400px ficariam com ~190px cada — estreito demais para o nome de um
+   projeto, que é justamente o campo mais longo do formulário. */
+.gaveta-campos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* O rodapé FICA FORA do corpo rolável. As ações de um formulário não podem
+   depender de a pessoa ter rolado até o fim para existirem — e num formulário
+   que cresce (o campo de cliente novo aparece ao escolher "+ novo cliente")
+   isso deixaria de valer no meio do preenchimento.
+
+   UMA AÇÃO SÓ, DE LARGURA CHEIA, E SEM DIVISOR. As três decisões são a mesma:
+
+   - SEM CANCELAR. Uma gaveta já tem três saídas — o X, o clique fora e o Esc —
+     e nenhuma delas grava nada. Um quarto caminho para "não fazer" ao lado do
+     único caminho para "fazer" dá a duas coisas de peso muito diferente o mesmo
+     peso visual, e obriga a ler dois rótulos para achar o que se veio fazer.
+   - LARGURA CHEIA, que é o que sobra quando não há um segundo botão para
+     dividir a linha — e o que torna o alvo impossível de errar.
+   - SEM `border-top`. O divisor existia para separar o rodapé do corpo quando
+     havia dois botões alinhados à direita e o resto da linha ficava vazio; com
+     o botão ocupando a linha inteira, ele já se separa sozinho. Uma linha a
+     mais ali seria contorno sobre contorno. */
+.gaveta-pe {
+  display: flex;
+  flex: none;
+  padding: 4px 20px 20px;
+  background: var(--panel);
+}
+.gaveta-pe .btn {
+  width: 100%;
+  height: 40px;
+  font-size: 13.5px;
+}
+
+/* ==========================================================================
+   IMPORTAÇÃO DE PLANILHA — a ponte provisória (migration 0012).
+
+   Prefixo `imp-` para o dia da remoção ser um `grep`: quando os dados entrarem
+   pelo caminho de auditoria de verdade, some tudo o que começa com isto.
+   ========================================================================== */
+/* A área de soltar. TRACEJADA, como o `.empty vazio` do sistema: o tracejado é
+   o sinal de "aqui caberia algo" — mesma linguagem, outro conteúdo. */
+.imp-solta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 20px;
+  margin-bottom: 18px;
+  text-align: center;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-2xl);
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.imp-solta b {
+  color: var(--ink);
+  font-size: 13.5px;
+}
+.imp-solta svg {
+  color: var(--accent);
+}
+/* Arrastar por cima é o ÚNICO caso da tela em que o realce não é tinta: aqui o
+   alvo precisa dizer "solte AQUI DENTRO", e uma borda que só troca de tom não
+   delimita área. O accent é semântico neste instante — a regra 2 permite. */
+.imp-solta:hover {
+  border-color: var(--accent);
+  color: var(--ink-2);
+}
+.imp-solta.sobre {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.imp-recusas {
+  margin-bottom: 18px;
+  padding: 12px 16px;
+}
+.imp-recusa-cab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--wait);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.imp-recusa {
+  display: flex;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  border-top: 1px solid var(--line);
+}
+.imp-recusa b {
+  color: var(--ink-2);
+  flex: none;
+}
+
+/* Duas colunas em tela larga, uma em estreita. `auto-fit` com `minmax` e não
+   media query: o ponto de quebra passa a ser o conteúdo, não um número. */
+.imp-colunas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.imp-bloco {
+  padding: 16px;
+}
+.imp-bloco .sectitle {
+  margin-bottom: 14px;
+}
+
+.imp-barra + .imp-barra {
+  margin-top: 12px;
+}
+.imp-barra-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 5px;
+  font-size: 12.5px;
+}
+.imp-barra-top b {
+  color: var(--ink);
+}
+/* O número no fim da linha, tabular: numa pilha de disciplinas as
+   porcentagens têm de alinhar na vírgula, senão não se comparam de relance. */
+.imp-barra-num {
+  margin-left: auto;
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.imp-trilho {
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.imp-preenche {
+  height: 100%;
+  border-radius: var(--r-full);
+  transition: width var(--dur) var(--ease);
+}
+
+/* ==========================================================================
+   SELETOR DE TEMA — aparência e cor de destaque (o sistema do VDCity).
+
+   AMOSTRAS, NÃO `<select>`. Cor é a única preferência que não se escolhe pelo
+   nome: "Petróleo" e "Menta" não dizem nada até se ver os dois lado a lado. A
+   aparência veio junto porque `auto` só se entende vendo o disco meio claro
+   meio escuro — o rótulo sozinho não diz que ele SEGUE O SISTEMA.
+   ========================================================================== */
+.tema-aparencias {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 360px;
+}
+/* A escolhida se marca por BORDA em accent, não por fundo (regra 1: ativo é
+   cor + peso, nunca retângulo colorido). Aqui a borda é o que sobra, porque o
+   miolo do card já é uma amostra de cor e um fundo por cima a falsearia. */
+.tema-aparencia {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: none;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast);
+}
+.tema-aparencia:hover {
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+.tema-aparencia.on {
+  border-color: var(--accent);
+}
+.tema-disco {
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.tema-rot {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.tema-aparencia.on .tema-rot {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.tema-cores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+/* O anel da escolhida é `box-shadow` e não `border`: borda mudaria o tamanho
+   do disco e as dez amostras dançariam ao trocar de cor. Os dois anéis (um da
+   cor do fundo, outro da própria cor) são o que destaca a amostra escura sobre
+   o fundo escuro sem precisar de um contorno cinza no meio. */
+.tema-cor {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: none;
+  border-radius: var(--r-full);
+  background: var(--amostra);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform var(--dur-fast);
+}
+.tema-cor:hover {
+  transform: scale(1.12);
+}
+.tema-cor.on {
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--amostra);
 }
 
 /* ==========================================================================
@@ -2367,9 +3438,12 @@ td.num {
   min-width: 0;
   max-width: 480px;
 }
-/* REDONDA de ponta a ponta (`--r-full`), e não de raio de input. É o único
-   controle da topbar com corpo permanente agora que as pílulas de ação ficaram
-   achatadas — e a cápsula é o que a distingue delas sem precisar de peso. */
+/* REDONDA de ponta a ponta (`--r-full`), e não de raio de input. Desde
+   31/07/2026 ela deixou de ser o único controle da topbar com corpo: as
+   `.pillact` vestiram esta MESMA superfície, e é de propósito — ver o comentário
+   delas. Os tokens dos três estados (repouso, hover, foco) são os de lá; mudar
+   um daqui sem mudar o de lá desfaz o conjunto. O que distingue a busca das
+   pílulas agora é só a largura, que é o que ela tem de próprio. */
 .buscabarra {
   display: flex;
   align-items: center;
@@ -2397,11 +3471,24 @@ td.num {
 .buscabarra .f {
   flex: 1;
   min-width: 0;
-  height: auto;
+  /* A ALTURA É A DA CÁPSULA, não a da linha de texto. Era `height: auto`, e aí
+     o input passava a ter a altura do seu line-height (~16px a 13px) dentro de
+     uma barra de 34px. Input RECORTA o que passa da caixa de conteúdo, então
+     bastava a fonte render um pixel a mais — um "j", um "ç", a cedilha de
+     "critério" — para a perna da letra ser comida pela borda de baixo. Com
+     100% sobram 18px de folga e não há o que cortar. */
+  height: 100%;
   padding: 0;
   border: none;
   background: none;
   font-size: 13px;
+}
+/* E se um dia o texto passar da largura, que ele termine em reticências em vez
+   de ser cortado no meio de uma palavra — que é o que o navegador faz sozinho
+   com placeholder. */
+.buscabarra .f::placeholder {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .buscabarra .f:focus {
   outline: none;
@@ -2645,8 +3732,12 @@ td.num {
   animation: uiSurge 0.18s var(--ease);
 }
 /* Recolhida, a barra tem 52px e o painel de 320px transbordaria para fora da
-   tela pela esquerda; ancorar no proprio botao resolve sem media query. */
-.app[data-nav='off'] .side-painel {
+   tela pela esquerda; ancorar no proprio botao resolve sem media query.
+   ESCOPADO EM `.side-acao`, e nao em `.side-painel` solto: `.erro-painel`
+   reusa a superficie desta classe mas ancora pela DIREITA, e esta regra --
+   com tres classes de especificidade contra uma -- vencia o `left: auto` dele
+   e o esmagava na largura da pilula sempre que a barra estivesse recolhida. */
+.app[data-nav='off'] .side-acao .side-painel {
   left: 0;
 }
 .side-convites {
@@ -2741,11 +3832,18 @@ td.num {
 }
 
 /* --- Apontar erro / erros reportados ------------------------------------- */
-/* O painel de reporte nasce da topbar, nao da sidebar: ancora no `.usermenu`,
-   que e `position: relative`. Mesma cara do painel do sino. */
+/* O painel de reporte nasce da PROPRIA pilula de bug, nao mais do `.usermenu`:
+   desde 31/07/2026 a ferramenta tem lugar na barra. O invólucro existe só para
+   dar o `position: relative` em que o painel se ancora -- o mesmo arranjo do
+   `.sino`. Ancora pela DIREITA da pilula e cresce para a esquerda: nascendo
+   pela esquerda, 380px a partir do meio da fileira sairiam da tela. */
+.erroact {
+  position: relative;
+  flex: none;
+}
 .erro-painel {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 14px);
   right: 0;
   bottom: auto;
   left: auto;
@@ -2946,34 +4044,56 @@ td.num {
    seção 48): chrome externo acima de cabeçalho de ferramenta. Não é o 56 da
    topbar de propósito.
    ============================================================================ */
+/* A TELA NÃO ROLA — quem rola é o CONTEÚDO (31/07/2026, a pedido).
+   Era `min-height` mais o `padding-bottom` de 70px do `main`: o documento ficava
+   mais alto que a janela, a página inteira rolava e levava embora a topbar, o
+   breadcrumb e a marca da sidebar. Numa tela de planilha isso é o pior dos
+   mundos — perde-se a régua de referência justamente ao descer na tabela.
+
+   `height` EXATA e `overflow: hidden`: a página deixa de poder crescer, e por
+   consequência a topbar e a sidebar do app param de precisar de truque para
+   ficar paradas. Quem rola é `.pgbody`, e só ele.
+
+   O `margin` anula o padding do `main` nos QUATRO lados. `-26px` no topo é o que
+   faz a régua dos cabeçalhos encostar na topbar; `-70px` embaixo é o que impede
+   o padding inferior de reintroduzir a rolagem da página. Os dois são valores do
+   `main` — se ele mudar, mudam aqui. */
 .pgsplit {
   display: flex;
-  /* `stretch` é o que faz a borda do painel acompanhar a altura do CONTEÚDO.
-     Sem ele o painel termina na sua última linha e a divisória para no meio da
-     tabela, lendo como layout quebrado em vez de intencional. */
+  /* `stretch` para a divisória do painel ir de ponta a ponta. */
   align-items: stretch;
-  /* Anula o padding do `main` nos três lados: a régua dos cabeçalhos vai de
-     ponta a ponta e SOBE até encostar na topbar, como no VDCity. Sem o
-     `-26px` a régua flutuaria 26px abaixo dela e as duas linhas horizontais
-     leriam como duas barras empilhadas em vez de uma continuação.
-     O `-26px` é o `padding-top` do `main`; se ele mudar, muda aqui. */
-  margin: -26px calc(var(--pad-x) * -1) 0;
-  min-height: calc(100vh - var(--h-topbar, 56px));
+  margin: -26px calc(var(--pad-x) * -1) -70px;
+  height: calc(100vh - var(--h-topbar, 56px));
+  overflow: hidden;
 }
+/* O painel FICA PARADO por construção, e não por `sticky`: ele tem a altura do
+   `.pgsplit`, que tem a altura da janela — não há para onde ele rolar. Chegou a
+   ser `position: sticky` num tempo em que a página rolava; com a página travada,
+   sticky era andaime para um problema que deixou de existir.
+   `min-height: 0` é o que permite ao `.pglist` de dentro rolar: sem ele o filho
+   flex cresce até o conteúdo e empurra o painel para fora da janela. */
 .pgside {
   width: 300px;
   flex: none;
   min-width: 0;
+  min-height: 0;
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
+  background: var(--canvas);
 }
 .pgmain {
   flex: 1;
   min-width: 0;
+  /* Pelo mesmo motivo do `.pgside`: é o que deixa o `.pgbody` rolar em vez de
+     esticar a coluna. */
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
+/* OS DOIS CABEÇALHOS SÃO `flex: none` — é isso que os mantém no lugar enquanto o
+   corpo rola. Não precisam de `sticky` nem de `z-index`: eles não estão dentro do
+   que rola. */
 .pghead {
   height: 48px;
   flex: none;
@@ -3028,6 +4148,125 @@ td.num {
   height: 15px;
 }
 
+/* CABEÇALHO-FERRAMENTA do painel (31/07/2026). Ele era um rótulo ("RECORTES") e
+   virou busca + "+". Em 300px não cabem título, campo e botão; e o placeholder
+   da busca já diz do que a lista é feita, que era todo o trabalho do rótulo.
+   O `padding` cai para 8px: o `--pad-x` de 24px do rótulo sobrava porque texto
+   não tem contorno — dois controles com borda dentro dele deixariam a busca com
+   espaço para quatro letras. */
+.pgside .pghead.pgferramentas {
+  gap: 6px;
+  padding: 0 8px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+/* O título do painel quando não há busca ali. Versalete apagado, como todo
+   cabeçalho de grupo do sistema. */
+.pgtitulo {
+  flex: 1;
+  min-width: 0;
+  padding-left: 6px;
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A MESMA superfície da busca da topbar e da home: cápsula, `--panel-2`,
+   contorno `--line`. Três buscas no sistema, um só desenho. */
+.pgbusca {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: var(--panel-2);
+  color: var(--ink-3);
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.pgbusca:hover {
+  border-color: var(--line-2);
+}
+.pgbusca:focus-within {
+  border-color: var(--accent);
+  background: var(--panel);
+}
+.pgbusca svg {
+  flex: none;
+}
+.pgbusca .f {
+  flex: 1;
+  min-width: 0;
+  /* Altura da cápsula e não do line-height: input recorta o que passa da caixa
+     de conteúdo, e a 12.5px a perna de um "j" ia embora. É a mesma armadilha da
+     busca da topbar. */
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.pgbusca .f:focus {
+  outline: none;
+  box-shadow: none;
+}
+/* O "+" no desenho dos botões redondos da home: contorno, sem fundo, 30px para
+   fechar a linha com a busca ao lado. O ícone em `--criar`, que é o token da
+   ação de criar (alias de `--accent`) — é a mesma cor do "+" da home, e é o que
+   o distingue do chevron e do recolher sem virar botão colorido. */
+.pgmais {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--criar);
+  transition: border-color var(--dur-fast);
+}
+.pgmais:hover {
+  border-color: var(--line-2);
+}
+/* A AÇÃO DO CABEÇALHO com rótulo que cresce (regra 3). Mesma superfície do
+   `.pgmais`, mas ela é `.pillact`: nasce redonda de 30px com o ícone e o rótulo
+   abre no hover PARA A DIREITA — o ícone está ancorado à esquerda, logo depois da
+   busca, e é ele que precisa não sair do lugar. Foi o que substituiu um botão de
+   largura cheia que transbordava o painel de 300px. */
+.pillact.pgacao {
+  height: 30px;
+  min-width: 30px;
+  padding: 0 7px;
+  border-color: var(--line);
+  background: none;
+  color: var(--criar);
+}
+.pillact.pgacao:hover {
+  border-color: var(--line-2);
+  color: var(--criar);
+}
+/* O rótulo cresce à DIREITA: `.pillact` o põe antes do ícone por padrão, e aqui
+   a ordem é a inversa. */
+.pillact.pgacao .rot {
+  order: 2;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.pillact.pgacao:hover .rot,
+.pillact.pgacao:focus-visible .rot {
+  margin: 0 2px 0 6px;
+}
+
 .pglist {
   flex: 1;
   overflow-y: auto;
@@ -3064,9 +4303,250 @@ td.num {
   color: var(--ink);
   font-weight: 700;
 }
+
+/* ---- o recorte como DROPDOWN dos modelos auditados (31/07/2026) ----------
+   A linha do tipo tem DUAS ÁREAS DE CLIQUE: o chevron abre, o rótulo navega. Um
+   clique só que fizesse as duas obrigaria quem quer apenas espiar a lista a sair
+   da tela em que está. Por isso `.pgpai` é um contêiner e não um botão — dois
+   botões dentro de um terceiro seria HTML inválido. */
+.pggrupo {
+  display: flex;
+  flex-direction: column;
+}
+.pgpai {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 6px 7px 0;
+}
+.pgchevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border: none;
+  background: none;
+  color: var(--ink-3);
+  /* A rotação é a única animação daqui: o triângulo virando para baixo é o que
+     diz "abriu" sem precisar trocar o ícone. */
+  transition: transform var(--dur-fast) var(--ease), color var(--dur-fast);
+}
+.pgchevron.on {
+  transform: rotate(90deg);
+}
+.pgpai:hover .pgchevron {
+  color: var(--ink-2);
+}
+/* O rótulo herda tinta e peso do `.pgitem` em volta (regras 1 e 6): ele é o
+   texto do item, não um botão com vida própria. `flex: 1` para a área clicável
+   cobrir a linha inteira até a contagem — um alvo do tamanho do texto obrigaria
+   a acertar a palavra. */
+.pgrotulo {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A contagem é DADO, e por isso fica em tinta apagada e tabular — não é pílula
+   nem tem fundo (regra 2: cor é significado, e "quantos" não é estado). */
+.pgconta {
+  flex: none;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A LISTA DE MODELOS, recuada sob o tipo. O recuo é o que diz "isto pertence
+   àquilo"; sem ele os dois níveis leem como uma lista só de nomes misturados. */
+.pgsub {
+  display: flex;
+  flex-direction: column;
+  /* 22px = a largura do chevron mais o gap: os códigos alinham com o rótulo do
+     pai, não com a borda do painel. */
+  padding: 0 0 6px 22px;
+}
+.pgsubitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px var(--pad-x) 5px 8px;
+  border: none;
+  background: none;
+  border-radius: var(--r-md);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  transition: color var(--dur-fast);
+}
+.pgsubitem:hover {
+  color: var(--ink-2);
+}
+.pgsubitem.on {
+  color: var(--ink);
+  font-weight: 650;
+}
+/* O código é longo (`CPQ11-C-STRC-CONCR-ADMIN-R22`) e o painel tem 300px: quem
+   trunca é ele, e as duas marcas à direita ficam sempre visíveis. */
+.pgsubnome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pgsubarea {
+  flex: none;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+/* PRIORIDADE É PONTO, NÃO PÍLULA COM TEXTO. É a regra 2 no caso limite: a cor
+   aqui é estado semântico, então ela pode entrar — mas numa lista de vinte
+   linhas dentro de 300px, vinte pílulas coloridas com "alta"/"média" viram o
+   elemento mais pesado do painel e o código do modelo, que é o que se lê, fica
+   em segundo plano. O ponto marca sem competir; o rótulo inteiro está na
+   planilha e na gaveta. */
+.pgprio {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: var(--r-full);
+}
+.pgprio.p-alta {
+  background: var(--bad);
+}
+.pgprio.p-media {
+  background: var(--wait);
+}
+/* Baixa fica NEUTRA e não verde: verde no sistema é "aprovado", e uma prioridade
+   baixa não é uma aprovação. */
+.pgprio.p-baixa {
+  background: var(--na);
+}
+/* O GRUPO DE DISCIPLINA dentro do recorte. Cabeçalho em versalete apagado, como
+   todo cabeçalho de grupo do sistema — ele é etiqueta, não item clicável, e
+   nesta barra a única coisa que clica são o tipo e o modelo. */
+.pgdisc {
+  display: flex;
+  flex-direction: column;
+}
+.pgdisc-cab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 3px;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.pgdisc-cab > span:nth-of-type(1) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A contagem encostada à direita, para as de todos os grupos alinharem numa
+   coluna só em vez de flutuarem atrás de nomes de comprimentos diferentes. */
+.pgdisc-cab .pgconta {
+  margin-left: auto;
+}
+/* A amostra de cor da macrodisciplina — a MESMA `.macro` da tabela de
+   disciplinas, e é isso que faz as duas telas falarem a mesma língua. */
+.pgdisc-cab .macro {
+  flex: none;
+}
+/* Os modelos recuam sob o cabeçalho do grupo: é o recuo que diz "isto pertence
+   àquilo", o mesmo mecanismo do nível de cima. */
+.pgdisc .pgsubitem {
+  padding-left: 16px;
+}
+.pgsubvazio {
+  display: block;
+  padding: 6px 8px 8px;
+  color: var(--ink-3);
+  font-size: 11.5px;
+}
+
+/* ---- busca de modelo dentro da gaveta de nova auditoria ------------------
+   O escolhido fica À VISTA depois de escolhido, e não como linha marcada na
+   lista: a lista filtra, e o item pode sair dela na próxima letra digitada —
+   deixando a gaveta sem dizer o que vai ser auditado. */
+.aud-escolhido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--panel-2);
+  font-size: 13px;
+}
+.aud-escolhido b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aud-achados {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.aud-achado {
+  padding: 7px 4px;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  text-align: left;
+  transition: color var(--dur-fast);
+}
+.aud-achado:last-child {
+  border-bottom: none;
+}
+.aud-achado:hover {
+  color: var(--ink);
+}
+/* O ÚNICO QUE ROLA. `flex: 1` mais `min-height: 0` nos pais é o que faz a
+   rolagem acontecer AQUI em vez de na página — e é o que mantém os dois
+   cabeçalhos e o painel parados sem nenhum `position: sticky`. */
 .pgbody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   padding: 20px var(--pad-x) 40px;
   min-width: 0;
+}
+/* A GRADE É FULL-BLEED: uma planilha encosta nas bordas, e 24px de respiro em
+   volta dela a faria parecer um objeto solto numa página em vez de a superfície
+   de trabalho. `:has()` em vez de plumbing: quem monta o `.pgbody` é
+   `pages/auditoria/index.tsx` e quem decide desenhar grade é o `Recorte`, duas
+   camadas abaixo — passar um booleano por elas só para zerar um padding seria
+   acoplar as duas por causa de CSS. Navegador sem `:has()` mostra a grade com
+   respiro, que é degradação e não quebra. */
+.pgbody:has(> .grade-rolagem) {
+  padding: 0;
+  overflow: hidden;
 }
 
 /* Abaixo de 900px o painel de 300px come metade da tela. Ele sai, e o botão de
@@ -3075,6 +4555,11 @@ td.num {
 @media (max-width: 900px) {
   .pgside {
     position: absolute;
+    /* `top: 0` desfaz o `--h-topbar` do sticky: ali ele era a distância até a
+       topbar; aqui seria distância até o topo do `.pgsplit`, e o painel
+       nasceria 56px abaixo de onde deveria. Continua abaixo da topbar na ordem
+       de pintura — 20 contra os 30 dela. */
+    top: 0;
     z-index: 20;
     height: 100%;
     background: var(--panel);
@@ -3083,6 +4568,209 @@ td.num {
   .pgsplit {
     position: relative;
   }
+}
+
+/* ============================================================================
+   A GRADE — a planilha desenhada como planilha (31/07/2026, a pedido)
+
+   É A ÚNICA SUPERFÍCIE DO SISTEMA COM LINHA EM TODA CÉLULA. As tabelas daqui
+   usam só `border-bottom`, porque numa lista de leitura a vertical é ruído.
+   Aqui ela é o contrário: é o que permite seguir uma coluna com o olho trinta
+   linhas abaixo, que é o gesto que uma planilha existe para permitir. Não
+   generalize esta regra para as outras tabelas.
+
+   O que esta tela substitui são arquivos .xlsx que a coordenação preenche à
+   mão, e quem vai usá-la passou anos naquelas abas. Uma tabela espaçada e sem
+   calha não é "mais limpa" para esse leitor: é um lugar onde ele não sabe
+   contar linha nem nomear coluna.
+   ============================================================================ */
+/* O estado vazio do recorte precisa do respiro que o `.pgbody` perde quando
+   contém a grade — ele é prosa e um botão, não superfície de trabalho. */
+.pgvazio {
+  padding: 20px var(--pad-x) 40px;
+}
+.grade-rolagem {
+  height: 100%;
+  overflow: auto;
+  /* Sem contorno de foco: o elemento recebe foco só para as setas funcionarem,
+     e um anel em volta da planilha inteira não diz nada. Quem informa onde se
+     está é a célula marcada. */
+  outline: none;
+}
+.grade {
+  border-collapse: separate;
+  /* `separate` com espaçamento zero, e não `collapse`: com `collapse` o
+     navegador funde as bordas e as descarta nas células grudadas (`sticky`) —
+     a calha e o cabeçalho ficavam sem linha justamente ao rolar. */
+  border-spacing: 0;
+  /* `fixed` para a largura sair da coluna e não do conteúdo: numa planilha a
+     coluna tem largura própria, e texto longo trunca em vez de alargar a
+     coluna e reflowar a grade inteira. */
+  table-layout: fixed;
+  /* OCUPA A LARGURA TODA. As larguras do `colgroup` viram PESOS: com
+     `table-layout: fixed`, o espaço que sobra depois de atendê-las é repartido
+     em proporção a elas, então as colunas de prosa recebem mais folga que as de
+     dado curto — que é a proporção que se quer. O `min-width` (inline, somado no
+     componente) é o piso: abaixo dele a grade rola na horizontal em vez de
+     espremer coluna até o texto sumir. */
+  width: 100%;
+  /* A ALTURA TAMBÉM SE DISTRIBUI. Com 17 itens numa janela alta, a grade parava
+     no meio da tela e o resto era fundo vazio — parecia tabela interrompida, não
+     planilha. `height: 100%` faz a tabela ocupar a área toda e o excedente se
+     repartir entre as LINHAS, exatamente como as larguras se repartem entre as
+     colunas. Com linhas demais para caber, a tabela passa de 100% e o
+     `.grade-rolagem` rola; a altura declarada em `td` volta a ser a real. */
+  height: 100%;
+  font-size: 12.5px;
+}
+/* A LARGURA NÃO MORA AQUI: vem do `<colgroup>`, que é o que `table-layout:
+   fixed` lê. Declará-la também na célula criaria duas fontes para divergir, e a
+   do CSS venceria a da coluna de prosa que pediu 320px. */
+/* 26px é o PISO da linha, não a altura dela: com a tabela a 100% de altura o
+   excedente se reparte entre as linhas, e este valor é o que a linha tem quando
+   há linha demais para caber e a grade passa a rolar. */
+.grade td,
+.grade th {
+  height: 26px;
+  padding: 0 7px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 400;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* CABEÇALHO E CALHA: a mesma superfície, porque são a mesma coisa — a régua da
+   grade. `--panel-2` é o degrau que os separa da célula sem virar cor. */
+.grade thead th,
+.grade-num {
+  position: sticky;
+  background: var(--panel-2);
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  /* `z-index` acima das células, para elas passarem POR BAIXO ao rolar. */
+  z-index: 2;
+}
+/* O CABEÇALHO NÃO CRESCE com a distribuição de altura: ele é régua, e uma régua
+   de 50px sobre linhas de 50px deixa de se distinguir delas. `height` fixa numa
+   tabela é piso, então o que trava é o `max-height` — que em `th` o navegador
+   respeita porque a linha do `thead` não recebe a sobra quando o `tr` dela tem
+   altura resolvida. */
+.grade thead th {
+  top: 0;
+  height: 28px;
+  max-height: 28px;
+}
+.grade thead tr {
+  height: 28px;
+}
+/* A calha é estreita (largura em `LARGURA_CALHA`, no componente): guarda um
+   número de até três dígitos, e uma calha larga roubaria uma coluna de dado. */
+.grade-num {
+  left: 0;
+  font-variant-numeric: tabular-nums;
+}
+/* O CANTO gruda nos DOIS eixos e por isso fica acima de ambos: é o único
+   elemento que não se move ao rolar na diagonal, e sem o `z-index` maior a
+   calha passaria por cima dele. */
+.grade-canto {
+  position: sticky;
+  top: 0;
+  left: 0;
+  background: var(--panel-2);
+  z-index: 3;
+}
+/* Regra 1 aplicada à régua: a letra e o número da célula marcada ficam em TINTA
+   CHEIA e negrito, sem fundo. É o que responde "em que célula eu estou" na
+   borda da grade, que é onde o Excel também responde. */
+.grade-col.on,
+.grade-num.on {
+  color: var(--ink);
+  font-weight: 700;
+}
+.grade-col,
+.grade-num {
+  cursor: pointer;
+}
+/* A CÉLULA MARCADA — contorno em accent, que aqui é o significado certo: accent
+   é ação e SELEÇÃO no resto do sistema (regra 2).
+   `outline` e não `border`: borda mudaria a largura da célula e empurraria a
+   linha inteira meio pixel para o lado a cada clique. `outline-offset: -2px`
+   traz o anel para DENTRO, para ele não cobrir a borda da célula vizinha. */
+.grade td.on {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+/* SEM HOVER NA CÉLULA, e é a regra 6 no caso mais tentador do sistema: numa
+   grade de trezentas células, o retângulo que segue o cursor é o que mais se
+   move na tela. Planilha nenhuma faz isso — quem indica a célula é o clique. */
+
+/* ---- controles DENTRO da célula ------------------------------------------
+   Nenhum deles desenha moldura própria: a borda da célula já é a moldura, e um
+   input com contorno dentro de uma célula com contorno produz o sulco duplo que
+   a barra de busca também evita não desenhando borda no `input`.
+   A célula que recebe controle perde o padding — quem o dá é o controle, e
+   somar os dois deixaria a caixa de digitação menor que a célula, com uma
+   faixa morta em volta onde o clique não põe o cursor no texto. */
+.grade td.cel-texto,
+.grade td.cel-selecao {
+  padding: 0;
+}
+.cf {
+  width: 100%;
+  height: 100%;
+  padding: 0 7px;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+.cf:focus {
+  outline: none;
+}
+/* O `select` nativo desenha a seta do sistema, que a 26px de altura come metade
+   da célula. `appearance: none` a tira; quem diz que a célula é uma lista é o
+   cursor e o menu que abre no clique. */
+.cf:is(select) {
+  appearance: none;
+  cursor: pointer;
+}
+/* Número à direita e tabular, como em toda planilha: é o que faz a coluna de
+   percentual alinhar a unidade embaixo da unidade. */
+.cel-num {
+  display: block;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.grade td.cel-imagem {
+  padding: 0;
+  text-align: center;
+}
+/* O anexo é um alvo do tamanho da célula, e não um ícone pequeno no meio dela:
+   numa linha de 26px, um botão de 16px é difícil de acertar e não diz que a
+   célula inteira responde. */
+.cel-anexo {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: none;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1;
+  transition: color var(--dur-fast);
+}
+.cel-anexo:hover {
+  color: var(--ink);
+}
+/* Com anexo, o clipe fica em tinta cheia — é estado, e é a única coisa que
+   distingue uma célula de imagem preenchida de uma vazia. */
+.cel-anexo.on {
+  color: var(--ink);
 }
 
 /* --- ABAS de página (configuração do projeto) ---------------------------- */
@@ -3113,6 +4801,175 @@ td.num {
   color: var(--ink);
   font-weight: 700;
   border-bottom-color: var(--accent);
+}
+
+/* ============================================================================
+   MEMBROS — a tabela das duas telas de membros (global e por projeto)
+
+   Ela vive DENTRO de um `.pgbody`, que já rola: não leva card em volta. Um card
+   aqui produziria duas molduras concêntricas — a do painel dividido e a dele —
+   com o mesmo problema que tirou o card da grade de pastas da home.
+   ============================================================================ */
+.memb-tabela {
+  /* A tabela é larga (oito colunas) e o `.pgbody` pode ser estreito com o painel
+     aberto: ela rola na horizontal DENTRO do próprio contêiner, para o `.pgbody`
+     não rolar nos dois eixos e levar o cabeçalho da tabela para fora. */
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+}
+.memb-tabela table {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+}
+/* O CABEÇALHO É RÉGUA, e por isso ganha superfície e versalete curto: sem ele a
+   linha de títulos tinha o mesmo peso das linhas de dado e a tabela abria sem
+   nada dizendo onde uma coluna começa. `--panel-2`, e não cor (regra 2). */
+.memb-tabela thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 9px 14px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  white-space: nowrap;
+}
+.memb-tabela tbody td {
+  padding: 9px 14px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  vertical-align: middle;
+}
+/* A primeira linha não leva borda de topo: a do cabeçalho já está ali, e as duas
+   juntas fazem um traço de 2px que lê como falha de alinhamento. */
+.memb-tabela tbody tr:first-child td {
+  border-top: none;
+}
+/* Regra 6: o realce da linha é TINTA, nunca fundo e nunca zebra. Numa lista de
+   quinze pessoas o retângulo que segue o cursor é o que mais se move na tela. */
+.memb-tabela tbody tr {
+  transition: color var(--dur-fast);
+}
+.memb-tabela tbody tr:hover {
+  color: var(--ink);
+}
+.memb-tabela tbody tr:hover .co {
+  color: var(--ink-2);
+}
+/* O AVATAR de iniciais, como na topbar — mas COM fundo aqui, e a diferença é de
+   função: na barra ele é o ícone de um botão, entre outros ícones; numa lista de
+   quinze pessoas ele é o que separa uma linha da outra antes de o olho ler
+   qualquer nome. */
+.memb-av {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.memb-nome {
+  color: var(--ink);
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A equipe em versalete: é rótulo de GRUPO, e é assim que ela aparece na barra
+   que agrupa por ela — as duas leituras da mesma coisa com a mesma forma. */
+.memb-equipe {
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.memb-acoes-col {
+  width: 60px;
+  text-align: right;
+}
+/* O link de senha dentro do editor de usuário: botão e, depois de gerado, a URL
+   ao lado. `break-all` na URL porque ela é longa e sem espaços — sem isso ela
+   estica o editor em vez de quebrar. */
+.usr-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.usr-link-url {
+  min-width: 0;
+  word-break: break-all;
+}
+/* A engrenagem: alvo redondo, sem fundo, hover em tinta (regra 6). Ela abre a
+   gaveta em UM clique — o menu de "Editar / Remover" do original custava dois
+   para chegar ao mesmo formulário. */
+.memb-eng {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--ink-3);
+  transition: color var(--dur-fast);
+}
+.memb-eng:hover {
+  color: var(--ink);
+}
+/* O DESTRUTIVO SEPARADO DO RESTO por um traço e um respiro grande: ele está no
+   corpo da gaveta, não no rodapé, e é o traço que impede o clique de descuido de
+   quem vinha descendo o formulário. */
+.memb-remover {
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+/* --- disciplinas: nome, cor e a legenda que era a aba "Cores" -------------- */
+.disc-nome {
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.disc-cor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* A altura do input ao lado, para a amostra não flutuar acima do campo
+     vizinho na mesma linha do formulário. */
+  height: 36px;
+}
+/* A LEGENDA, quatro amostras numa linha. Era uma aba inteira com uma tabela de
+   quatro linhas; numa linha só elas se comparam de relance, que era o único
+   trabalho que a aba fazia. */
+.disc-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 14px;
+}
+.disc-legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
 }
 
 /* --- planilha de LOD: agrupamento por elemento -------------------------- */

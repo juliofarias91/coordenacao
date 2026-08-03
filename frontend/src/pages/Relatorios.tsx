@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { Cabecalho, Erro, Segmented, Vazio } from '@/components/ui'
+import { Erro, Segmented, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { LinhaPainel, NaoConformidade } from '@/lib/types'
@@ -51,7 +51,6 @@ export default function Relatorios() {
   if (!projeto) {
     return (
       <>
-        <Cabecalho titulo={L('Relatórios · RNC', 'Reports · NCR')} />
         <Vazio
           titulo={L('Nenhum projeto', 'No project')}
           texto={L('Cadastre um projeto primeiro.', 'Register a project first.')}
@@ -81,14 +80,6 @@ export default function Relatorios() {
 
   return (
     <>
-      <Cabecalho
-        titulo={L('Relatórios · RNC', 'Reports · NCR')}
-        sub={L(
-          'O relatório é gerado sob demanda a partir das auditorias, e sai bilíngue a partir dos rótulos dos critérios.',
-          'The report is generated on demand from the audits, bilingual from the criteria labels.',
-        )}
-      />
-
       <div className="acoes">
         <Segmented
           itens={[

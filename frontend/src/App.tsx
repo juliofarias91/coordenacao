@@ -6,33 +6,30 @@ import { useI18n } from '@/i18n'
 import Shell from '@/layout/Shell'
 import Admin from '@/pages/admin'
 import Apontamentos from '@/pages/Apontamentos'
+import Importacao from '@/pages/Importacao'
 import Auditoria from '@/pages/auditoria'
 import Recorte from '@/pages/auditoria/Recorte'
 import BimMandate from '@/pages/BimMandate'
 import Configuracao from '@/pages/configuracao'
-import {
-  CfgCliente,
-  CfgCores,
-  CfgDisciplinas,
-  CfgNomenclaturas,
-  CfgProjetistas,
-  CfgProjeto,
-} from '@/pages/configuracao/paginas'
+import CfgCliente from '@/pages/configuracao/Cliente'
+import CfgDisciplinas from '@/pages/configuracao/Disciplinas'
+import CfgNomenclaturas from '@/pages/configuracao/Nomenclaturas'
+import CfgProjetistas from '@/pages/configuracao/Projetistas'
 import Configuracoes from '@/pages/Configuracoes'
+import Ficha from '@/pages/Ficha'
 import Criterios from '@/pages/Criterios'
+import DefinirSenha from '@/pages/DefinirSenha'
 import Home from '@/pages/Home'
 import Integracoes from '@/pages/Integracoes'
 import Kpis from '@/pages/Kpis'
 import Login from '@/pages/Login'
-import {
-  PaginaClientes,
-  PaginaGerenciarMembros,
-  PaginaLogs,
-  PaginaOrganizacao,
-  PaginaProjetos,
-  PaginaReportes,
-  PaginaUsuarios,
-} from '@/pages/admin/paginas'
+import AdminClientes from '@/pages/admin/Clientes'
+import AdminOrganizacao from '@/pages/admin/Organizacao'
+import { PaginaGerenciarMembros } from '@/pages/admin/paginas'
+import AdminProjetos from '@/pages/admin/Projetos'
+import AdminReportes from '@/pages/admin/Reportes'
+import AdminTrilha from '@/pages/admin/Trilha'
+import AdminUsuarios from '@/pages/admin/Usuarios'
 import KpisGerais from '@/pages/KpisGerais'
 import Lixeira from '@/pages/Lixeira'
 import MembrosProjeto from '@/pages/MembrosProjeto'
@@ -40,7 +37,6 @@ import ModeloView from '@/pages/Modelo'
 import Notificacoes from '@/pages/Notificacoes'
 import Painel from '@/pages/Painel'
 import Peb from '@/pages/Peb'
-import Placeholder from '@/pages/Placeholder'
 import PlanilhaGeral from '@/pages/PlanilhaGeral'
 import PlanilhaLod from '@/pages/PlanilhaLod'
 import Portal from '@/pages/Portal'
@@ -54,18 +50,6 @@ import { ProjetoProvider } from '@/projeto/ProjetoContext'
  *  em dois idiomas — e é visitada uma vez, ou nenhuma. Estaticamente, esse
  *  texto viajaria no chunk principal em toda abertura do painel. */
 const Privacidade = lazy(() => import('@/pages/Privacidade'))
-
-/** Telas que ainda não têm conteúdo. Ganham corpo nas fases indicadas.
- *
- *  VAZIO desde que o PEB ganhou tela — não havia mais nenhuma. O mecanismo
- *  fica: uma tela nova entra aqui primeiro, dizendo o que vai ser, em vez de
- *  virar um item de menu que leva a lugar nenhum. */
-const PENDENTES: Array<{
-  rota: string
-  titulo: [string, string]
-  descricao: [string, string]
-  fase: number
-}> = []
 
 /** As URLs de antes de 29/07/2026, quando toda tela era global e o projeto
  *  vivia no `localStorage`. Continuam funcionando, redirecionando para o
@@ -94,7 +78,7 @@ export default function App() {
 
   if (carregando) {
     return (
-      <div className="loginwrap">
+      <div className="telacheia">
         <div className="hint">{L('Carregando…', 'Loading…')}</div>
       </div>
     )
@@ -110,6 +94,10 @@ export default function App() {
               token da URL é a credencial. Precisa vir antes do catch-all de
               login, senão o convite cai na tela de entrar. */}
           <Route path="/portal/:token" element={<Portal />} />
+          {/* Definir senha é público pelo mesmo motivo, e mais um: quem chega
+              aqui é justamente quem AINDA não consegue entrar. Cair no login
+              seria mandá-lo para a tela que ele não tem como usar. */}
+          <Route path="/definir-senha/:token" element={<DefinirSenha />} />
           {/* A política também: ela informa sobre o tratamento de dados, e uma
               política que só se lê depois de entrar chega tarde demais. */}
           <Route path="/privacidade" element={<Privacidade />} />
@@ -138,6 +126,11 @@ export default function App() {
             {/* KPIs de TODOS os projetos. O `/projetos/:id/kpis` continua
                 existindo e é o do projeto — este responde outra pergunta. */}
             <Route path="kpis" element={<KpisGerais />} />
+            {/* PONTE PROVISÓRIA — importação das planilhas de auditoria que a
+                coordenação preenche à mão. Global e não por projeto: hoje ela
+                não exige vínculo com projeto, porque os arquivos reais trazem o
+                código do projeto ANTERIOR no cabeçalho. Ver a migration 0012. */}
+            <Route path="importacao" element={<Importacao />} />
             <Route path="integracoes" element={<Integracoes />} />
 
             {/* PAINEL ADMINISTRATIVO — a terceira área com sidebar própria.
@@ -145,12 +138,16 @@ export default function App() {
                 permissão e o `Outlet`. */}
             <Route path="admin" element={<Admin />}>
               <Route index element={<Navigate to="usuarios" replace />} />
-              <Route path="usuarios" element={<PaginaUsuarios />} />
-              <Route path="logs" element={<PaginaLogs />} />
-              <Route path="reportes" element={<PaginaReportes />} />
-              <Route path="organizacao" element={<PaginaOrganizacao />} />
-              <Route path="clientes" element={<PaginaClientes />} />
-              <Route path="projetos" element={<PaginaProjetos />} />
+              {/* DIRETO NAS ABAS. Cada uma destas rotas passava por um
+                  invólucro em `admin/paginas.tsx` cuja única função era pôr o
+                  título da página acima da aba; os títulos saíram em
+                  30/07/2026 e os invólucros com eles. */}
+              <Route path="usuarios" element={<AdminUsuarios />} />
+              <Route path="logs" element={<AdminTrilha />} />
+              <Route path="reportes" element={<AdminReportes />} />
+              <Route path="organizacao" element={<AdminOrganizacao />} />
+              <Route path="clientes" element={<AdminClientes />} />
+              <Route path="projetos" element={<AdminProjetos />} />
             </Route>
             {/* A MESMA TELA de `/admin/usuarios`, por duas portas: aqui, no
                 grupo Gestão da Home, para quem coordena; e lá, junto de
@@ -161,7 +158,12 @@ export default function App() {
                 `configuracao` (singular), dentro de um projeto, é o projeto.
                 Nomes próximos, escopos distintos — o plural marca a diferença
                 e a URL diz qual é qual. */}
+            {/* Duas linhas, e não um `:secao?` opcional: a forma sem seção
+                existe porque `/configuracoes` é o que o menu da conta aponta e
+                o que já está no histórico de quem usa. Ela redireciona para a
+                primeira seção dentro do componente, que é quem sabe qual é. */}
             <Route path="configuracoes" element={<Configuracoes />} />
+            <Route path="configuracoes/:secao" element={<Configuracoes />} />
             {/* A lixeira é global: o que foi removido pode ter vindo de
                 qualquer projeto, e uma lixeira por projeto obrigaria a
                 procurar em cada um. */}
@@ -188,6 +190,10 @@ export default function App() {
               <Route path="modelos/:modeloId" element={<ModeloView />} />
               <Route path="painel" element={<Navigate to="../modelos" replace />} />
               <Route path="kpis" element={<Kpis />} />
+              {/* A ficha cadastral — a casa dos dados do projeto. Substituiu a
+                  aba `configuracao/projeto`, que editava os mesmos campos; o
+                  endereço antigo redireciona logo abaixo. */}
+              <Route path="ficha" element={<Ficha />} />
               {/* AUDITORIA — uma entrada na barra, seis recortes num painel
                   DENTRO da página. `Auditoria` é o esqueleto (painel + os dois
                   cabeçalhos alinhados) e tudo abaixo é filho dele, para que o
@@ -211,12 +217,19 @@ export default function App() {
                   projeto se estava. As rotas ficaram — a aba é um `NavLink`, e é
                   por isso que o endereço continua dizendo em que seção se está. */}
               <Route path="configuracao" element={<Configuracao />}>
-                <Route index element={<Navigate to="projeto" replace />} />
-                <Route path="projeto" element={<CfgProjeto />} />
+                <Route index element={<Navigate to="projetistas" replace />} />
+                {/* A aba `projeto` virou a Ficha, na barra do projeto. O
+                    endereço antigo continua chegando lá — ele está em link
+                    salvo e no histórico de quem já usava a plataforma. */}
+                <Route path="projeto" element={<Navigate to="../../ficha" replace />} />
                 <Route path="disciplinas" element={<CfgDisciplinas />} />
                 <Route path="projetistas" element={<CfgProjetistas />} />
                 <Route path="nomenclaturas" element={<CfgNomenclaturas />} />
-                <Route path="cores" element={<CfgCores />} />
+                {/* `Cores` foi absorvida por `Disciplinas` em 31/07/2026 — a
+                    legenda de cor mora junto da tabela que usa as cores. A rota
+                    redireciona em vez de sumir: ela está no histórico de quem já
+                    usava e possivelmente em algum link colado. */}
+                <Route path="cores" element={<Navigate to="../disciplinas" replace />} />
                 <Route path="cliente" element={<CfgCliente />} />
               </Route>
               <Route path="criterios" element={<Criterios />} />
@@ -225,13 +238,6 @@ export default function App() {
               <Route path="membros" element={<MembrosProjeto />} />
               <Route path="peb" element={<Peb />} />
               <Route path="mandate" element={<BimMandate />} />
-              {PENDENTES.map((t) => (
-                <Route
-                  key={t.rota}
-                  path={t.rota}
-                  element={<Placeholder titulo={t.titulo} descricao={t.descricao} fase={t.fase} />}
-                />
-              ))}
             </Route>
 
             {/* Os links salvos antes da mudança. Precisam vir DEPOIS das rotas

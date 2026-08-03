@@ -22,7 +22,6 @@
 export type GrupoNav =
   | 'topo'
   | 'acompanhamento'
-  | 'organizacao'
   | 'gestao'
   | 'visao'
   | 'projeto'
@@ -36,9 +35,12 @@ export const GRUPOS: Array<{ chave: GrupoNav; pt: string; en: string }> = [
    *  tela inicial é o destino padrão de quem entra — um cabeçalho acima dele só
    *  acrescenta uma linha entre a pessoa e o lugar aonde ela ia. */
   { chave: 'topo', pt: '', en: '' },
-  // Home
+  // Home. `Gestão` é o que se administra uma vez e passa a valer para a
+  // organização inteira — as pessoas e as conexões com sistemas de fora.
+  // Houve um grupo `Organização` só para Integrações; um cabeçalho para uma
+  // linha só é uma linha de texto a mais entre quem procura e o que ele
+  // procura, e "gerir a organização" já era o que os dois queriam dizer.
   { chave: 'acompanhamento', pt: 'Acompanhamento', en: 'Tracking' },
-  { chave: 'organizacao', pt: 'Organização', en: 'Organization' },
   { chave: 'gestao', pt: 'Gestão', en: 'Management' },
   // Projeto, na sequência do trabalho: primeiro o que se lê (Visão geral),
   // depois o que se define uma vez (Projeto), e por fim o que se executa a cada
@@ -63,8 +65,10 @@ export type ItemNav = {
   grupo: GrupoNav
   /** Onde a tela vive. `projeto` significa `/projetos/:projetoId/<rota>`: a
    *  tela não existe sem um projeto escolhido, e o escolhido está na URL.
-   *  `global` é o que vale para a organização inteira. */
-  escopo: 'global' | 'projeto' | 'admin'
+   *  `global` é o que vale para a organização inteira; `admin`, o painel do
+   *  tenant; `conta`, as configurações da própria pessoa. Os três últimos
+   *  trazem o caminho ABSOLUTO em `rota` — só `projeto` precisa do id. */
+  escopo: 'global' | 'projeto' | 'admin' | 'conta'
   /** Fase do roadmap em que a tela é implementada de verdade. */
   fase: number
   /** Some do menu para quem não tem a permissão. É conveniência de navegação,
@@ -90,6 +94,11 @@ const IC = {
     'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   selo: 'M9 12l2 2 4-4M12 3l7 4v5c0 4.4-3 8.3-7 9.5C8 20.3 5 16.4 5 12V7z',
   cubo: 'M21 16V8l-9-5-9 5v8l9 5zM3.3 7.3 12 12l8.7-4.7M12 12v9.5',
+  // Uma pessoa, e não o par de `pessoas`: em Configurações da conta o assunto é
+  // quem está logado, não o time.
+  pessoa: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
+  cadeado: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4',
+  sino: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
 } as const
 
 /** Os seis recortes de auditoria.
@@ -163,6 +172,21 @@ export const ITENS_GLOBAIS: ItemNav[] = [
     fase: 4,
   },
   {
+    // PONTE PROVISÓRIA (migration 0012). Sobe as planilhas .xlsx que a
+    // coordenação preenche à mão e tira as médias delas. Fica em
+    // Acompanhamento, ao lado dos KPIs, porque responde a mesma pergunta —
+    // "como estamos?" — só que a partir do arquivo em vez do banco. Sai daqui
+    // quando os dados entrarem pelo caminho de auditoria de verdade.
+    rota: '/importacao',
+    pt: 'Importar planilhas',
+    en: 'Import spreadsheets',
+    path: IC.folha,
+    grupo: 'acompanhamento',
+    escopo: 'global',
+    fase: 4,
+    exigePermissao: 'ver_painel',
+  },
+  {
     // Central: lista os apontamentos de TODOS os projetos. O backend já
     // aceitava — `projeto_id` sempre foi filtro opcional.
     rota: '/apontamentos',
@@ -174,20 +198,8 @@ export const ITENS_GLOBAIS: ItemNav[] = [
     fase: 4,
   },
 
-  // Organização: o que se liga uma vez e vale para todos os projetos.
-  {
-    // Nunca foi por projeto: a tela sequer usava o contexto de projeto. Estava
-    // no menu errado desde o começo.
-    rota: '/integracoes',
-    pt: 'Integrações',
-    en: 'Integrations',
-    path: IC.elo,
-    grupo: 'organizacao',
-    escopo: 'global',
-    fase: 2,
-  },
-
-  // Gestão: as pessoas.
+  // Gestão: as pessoas e as conexões — o que se administra uma vez e vale para
+  // todos os projetos.
   {
     // A MESMA TELA que `/admin/usuarios`, por duas portas de propósito: quem
     // coordena entra por aqui várias vezes por semana, e quem administra o
@@ -202,6 +214,19 @@ export const ITENS_GLOBAIS: ItemNav[] = [
     escopo: 'global',
     fase: 1,
     exigePermissao: 'admin_cadastro',
+  },
+  {
+    // Nunca foi por projeto: a tela sequer usava o contexto de projeto. Estava
+    // no menu errado desde o começo — e depois, por um tempo, num grupo só
+    // seu. Fica DEPOIS dos membros: gerir gente é semanal, ligar o ACC é uma
+    // vez na vida do tenant.
+    rota: '/integracoes',
+    pt: 'Integrações',
+    en: 'Integrations',
+    path: IC.elo,
+    grupo: 'gestao',
+    escopo: 'global',
+    fase: 2,
   },
 ]
 
@@ -238,6 +263,19 @@ export const ITENS_PROJETO: ItemNav[] = [
   // A ordem é a de quem monta um projeto do zero — as diretrizes primeiro, a
   // configuração em seguida, e os modelos só depois de haver disciplina para
   // classificá-los.
+  {
+    // A FICHA ENCABEÇA O GRUPO, logo abaixo de KPIs: é a identidade da obra, e
+    // vem antes de qualquer coisa que se defina sobre ela. Ela é a casa dos
+    // dados do projeto — a aba `Configuração › Projeto` foi removida quando
+    // esta entrou, porque as duas editavam os mesmos cinco campos.
+    rota: 'ficha',
+    pt: 'Ficha do projeto',
+    en: 'Project record',
+    path: IC.prancheta,
+    grupo: 'projeto',
+    escopo: 'projeto',
+    fase: 1,
+  },
   {
     rota: 'peb',
     pt: 'PEB · diretrizes',
@@ -422,20 +460,83 @@ export const ITENS_ADMIN: ItemNav[] = [
   },
 ]
 
-/** O menu da CONFIGURAÇÃO DO PROJETO — a quarta área com barra própria.
+/** As seções de CONFIGURAÇÕES DA CONTA, e a fonte de verdade de quais existem.
  *
- *  A CONFIGURAÇÃO DO PROJETO NÃO É UMA ÁREA. Ela chegou a ter barra própria e
- *  voltou a ser uma página com abas em 29/07/2026, a pedido: as seis seções são
- *  o cadastro de UM projeto, preenchido de uma vez e em sequência, e trocar a
- *  barra inteira a cada seção fazia perder de vista em que projeto se estava —
- *  além de deixar a área indistinguível do painel administrativo, que é de
- *  outro escopo. As abas vivem em `pages/configuracao/index.tsx`, as rotas
- *  ficaram como estavam, e não há `ITENS_CONFIG` nem `escopo: 'config'`.
+ *  Uma lista à parte, no formato de `CHECKLISTS`: quem valida a rota
+ *  (`pages/Configuracoes.tsx`) precisa saber se `:secao` existe, e derivar isso
+ *  de `ITENS_CONTA` obrigaria a fatiar caminho com `split('/')`. A ORDEM é a de
+ *  `ITENS_CONTA`, e a primeira é o destino de `/configuracoes` sem seção. */
+export const SECOES_CONTA = ['perfil', 'preferencias', 'seguranca', 'notificacoes'] as const
+export type SecaoConta = (typeof SECOES_CONTA)[number]
+
+export function ehSecaoConta(v: string | undefined): v is SecaoConta {
+  return !!v && (SECOES_CONTA as readonly string[]).includes(v)
+}
+
+/** O menu das CONFIGURAÇÕES DA CONTA — a quarta área com barra própria
+ *  (31/07/2026, a pedido).
  *
- *  São TRÊS áreas contextuais, não quatro: global, projeto e administração. */
+ *  ELA CHEGOU A SER UM PAINEL DE PÁGINA (`.pgsplit`, como os recortes da
+ *  auditoria) e virou área contextual no mesmo dia. A diferença que decide não é
+ *  estética, é se HÁ CONTEXTO A PERDER: trocar a barra dentro de um projeto
+ *  apaga da tela em que projeto se está, e foi isso que tirou a barra própria da
+ *  configuração de projeto. Aqui não há projeto nenhum — quem entra em
+ *  `/configuracoes` saiu do trabalho para cuidar da própria conta, exatamente
+ *  como quem entra em `/admin`. Não sobra contexto para a barra apagar, e ela
+ *  passa a poder ser a lista das seções.
+ *
+ *  Por isso são QUATRO áreas: global, projeto, administração e conta. O que
+ *  continua não existindo é `escopo: 'config'` — a configuração DO PROJETO é
+ *  página com abas, e a razão dela está intacta.
+ *
+ *  A ORDEM É A DE QUEM CHEGA, não a alfabética: primeiro quem você é, depois
+ *  como quer ver, depois como entra, e por último o que recebe. Grupo `topo`,
+ *  sem rótulo: quatro itens não precisam de cabeçalho, e a área já é nomeada
+ *  pelo breadcrumb. */
+export const ITENS_CONTA: ItemNav[] = [
+  {
+    rota: '/configuracoes/perfil',
+    pt: 'Dados pessoais',
+    en: 'Personal data',
+    path: IC.pessoa,
+    grupo: 'topo',
+    escopo: 'conta',
+    fase: 1,
+  },
+  {
+    rota: '/configuracoes/preferencias',
+    pt: 'Preferências',
+    en: 'Preferences',
+    // Os controles deslizantes, o mesmo de `Configurações do projeto` — as duas
+    // nunca aparecem na mesma barra, e é o ícone que a indústria usa para
+    // "preferências".
+    path: IC.ajustes,
+    grupo: 'topo',
+    escopo: 'conta',
+    fase: 1,
+  },
+  {
+    rota: '/configuracoes/seguranca',
+    pt: 'Segurança',
+    en: 'Security',
+    path: IC.cadeado,
+    grupo: 'topo',
+    escopo: 'conta',
+    fase: 1,
+  },
+  {
+    rota: '/configuracoes/notificacoes',
+    pt: 'Notificações',
+    en: 'Notifications',
+    path: IC.sino,
+    grupo: 'topo',
+    escopo: 'conta',
+    fase: 4,
+  },
+]
 
 /** Tudo, para quem precisa resolver uma rota em rótulo (o breadcrumb).
  *  `Set` porque `PROJETOS` aparece nas duas listas e é o mesmo objeto. */
 export const ITENS_NAV: ItemNav[] = [
-  ...new Set([...ITENS_GLOBAIS, ...ITENS_PROJETO, ...ITENS_ADMIN]),
+  ...new Set([...ITENS_GLOBAIS, ...ITENS_PROJETO, ...ITENS_ADMIN, ...ITENS_CONTA]),
 ]

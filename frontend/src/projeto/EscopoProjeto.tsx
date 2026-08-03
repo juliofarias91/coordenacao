@@ -6,7 +6,7 @@
  */
 import { Link, Navigate, Outlet, useLocation, useParams } from 'react-router-dom'
 
-import { Cabecalho, Vazio } from '@/components/ui'
+import { Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 
@@ -19,7 +19,6 @@ export default function EscopoProjeto() {
   if (naoEncontrado) {
     return (
       <>
-        <Cabecalho titulo={L('Projeto', 'Project')} />
         <Vazio
           titulo={L('Projeto não encontrado', 'Project not found')}
           texto={L(

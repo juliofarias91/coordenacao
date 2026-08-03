@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { useAuth } from '@/auth/AuthContext'
-import { Cabecalho, Campo, Editor, Erro, Vazio } from '@/components/ui'
+import { Campo, Editor, Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { Standard } from '@/lib/types'
@@ -89,14 +89,6 @@ export default function BimMandate() {
 
   return (
     <>
-      <Cabecalho
-        titulo="BIM Mandate"
-        sub={L(
-          'O que o contratante exige deste projeto — entregáveis, marcos, usos do modelo, responsabilidades. É o documento do CLIENTE; o PEB é como a equipe se propõe a atendê-lo. Quando os dois discordam, prevalece o que está aqui.',
-          'What the client requires on this project — deliverables, milestones, model uses, responsibilities. This is the CLIENT’s document; the BEP is how the team proposes to meet it. When the two disagree, this one prevails.',
-        )}
-      />
-
       {podeEditar && !rascunho && (
         <div className="acoes">
           <button className="btn pri" onClick={() => setRascunho({ nome: '', texto: '' })}>

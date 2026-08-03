@@ -4,24 +4,31 @@
  *  novo só nascia por `scripts/seed.py` ou pelo importador de YAML. Aqui ele
  *  nasce pela plataforma.
  *
- *  A aba `Configuração › Projeto & Cliente` continua existindo e edita o
- *  projeto **corrente**; esta lista é o andar de cima, onde se cria e se vê
- *  todos.
+ *  Esta lista é o ANDAR DE CIMA: cria, edita e remove qualquer projeto da
+ *  organização. Para editar o projeto CORRENTE, com ele aberto na frente, a
+ *  casa é a `Ficha do projeto` (`pages/Ficha.tsx`) — a aba
+ *  `Configuração › Projeto & Cliente` que fazia isso saiu em 30/07/2026.
+ *
+ *  O seletor de cliente é o mesmo componente da Home
+ *  (`components/SeletorCliente.tsx`), inclusive o cadastro de cliente na hora.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import SeletorCliente, { resolverClienteId } from '@/components/SeletorCliente'
 import { Campo, Editor, Erro } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { Cliente, Projeto } from '@/lib/types'
 import { rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 
-const STATUS = ['config', 'ativo', 'pausado', 'encerrado'] as const
-
-/** Valor do seletor que abre o campo de cliente novo. Não é um id, então nunca
- *  colide com um cliente de verdade. */
-const NOVO_CLIENTE = '__novo__'
+/** Espelha `STATUS_PROJETO` de `backend/app/schemas/projeto.py`.
+ *
+ *  Era `pausado` no lugar de `piloto` — valor que o backend NUNCA aceitou:
+ *  o `pattern` do schema é `config|ativo|piloto|encerrado`, então escolher
+ *  "pausado" devolvia 422 e o projeto não salvava. A tela oferecia uma opção
+ *  que não existe. */
+const STATUS = ['config', 'ativo', 'piloto', 'encerrado'] as const
 
 type Rascunho = {
   id?: string
@@ -55,6 +62,9 @@ export default function AbaProjetos() {
   const [rascunho, setRascunho] = useState<Rascunho | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
+  /** Qual linha está com a remoção armada. Um id, e não um booleano: com
+   *  booleano, armar numa linha deixaria todas as outras armadas junto. */
+  const [confirmar, setConfirmar] = useState<string | null>(null)
 
   const carregar = useCallback(async () => {
     const [ps, cs] = await Promise.all([api.projetos.listar(), api.clientes.listar()])
@@ -74,15 +84,8 @@ export default function AbaProjetos() {
     // null e a tela mostra "—".
     const opcional = (v: string) => v.trim() || null
     try {
-      // Cliente novo digitado no formulário: cadastra antes, para o projeto já
-      // nascer apontando para ele. Se falhar (nome repetido, por exemplo), o
-      // projeto não é criado e a mensagem explica o porquê — melhor do que
-      // gravar o projeto sem cliente e deixar a correção para depois.
-      let clienteId: string | null = rascunho.cliente_id || null
-      if (rascunho.cliente_id === NOVO_CLIENTE) {
-        const nome = rascunho.cliente_novo.trim()
-        clienteId = nome ? (await api.clientes.criar({ nome })).id : null
-      }
+      // O cliente novo nasce ANTES do projeto — ver `resolverClienteId`.
+      const clienteId = await resolverClienteId(rascunho.cliente_id, rascunho.cliente_novo)
 
       const base = {
         nome: rascunho.nome.trim(),
@@ -104,6 +107,25 @@ export default function AbaProjetos() {
       setErro(e instanceof ApiError ? e.message : String(e))
     } finally {
       setSalvando(false)
+    }
+  }
+
+  /** Manda para a Lixeira. O primeiro clique arma, o segundo executa. */
+  async function remover(p: Projeto) {
+    setErro(null)
+    if (confirmar !== p.id) {
+      setConfirmar(p.id)
+      // Desarma sozinho: um botão que fica "Confirmar?" para sempre é o mesmo
+      // que um botão de um clique, só que com um passo a mais.
+      setTimeout(() => setConfirmar((atual) => (atual === p.id ? null : atual)), 4000)
+      return
+    }
+    setConfirmar(null)
+    try {
+      await api.projetos.remover(p.id)
+      await carregar()
+    } catch (e) {
+      setErro(e instanceof ApiError ? e.message : String(e))
     }
   }
 
@@ -148,34 +170,13 @@ export default function AbaProjetos() {
               onChange={(e) => setRascunho({ ...rascunho, nome: e.target.value })}
             />
           </Campo>
-          {/* Seletor, e não campo livre: é o que impede 'Microsoft' e
-              'microsoft' de virarem dois clientes — e duas pastas na home. */}
-          <Campo rotulo={L('Cliente', 'Client')}>
-            <select
-              className="f"
-              value={rascunho.cliente_id}
-              onChange={(e) => setRascunho({ ...rascunho, cliente_id: e.target.value })}
-            >
-              <option value="">{L('— sem cliente —', '— no client —')}</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-              <option value={NOVO_CLIENTE}>{L('+ novo cliente…', '+ new client…')}</option>
-            </select>
-          </Campo>
-          {rascunho.cliente_id === NOVO_CLIENTE && (
-            <Campo rotulo={L('Nome do novo cliente', 'New client name')}>
-              <input
-                className="f"
-                autoFocus
-                placeholder="Microsoft"
-                value={rascunho.cliente_novo}
-                onChange={(e) => setRascunho({ ...rascunho, cliente_novo: e.target.value })}
-              />
-            </Campo>
-          )}
+          <SeletorCliente
+            clientes={clientes}
+            valor={rascunho.cliente_id}
+            nomeNovo={rascunho.cliente_novo}
+            onChange={(cliente_id) => setRascunho({ ...rascunho, cliente_id })}
+            onChangeNome={(cliente_novo) => setRascunho({ ...rascunho, cliente_novo })}
+          />
           <Campo rotulo={L('Coordenação', 'Coordination')}>
             <input
               className="f"
@@ -254,6 +255,17 @@ export default function AbaProjetos() {
                     }
                   >
                     {L('Editar', 'Edit')}
+                  </button>
+                  {/* Duas etapas, e a segunda troca de rótulo. Remover projeto
+                      leva junto disciplinas, modelos e auditorias da tela — vai
+                      tudo para a Lixeira e volta de lá, mas um clique só ao lado
+                      de "Editar" seria acidente esperando acontecer. */}
+                  <button
+                    className="btn sm danger"
+                    style={{ marginLeft: 6 }}
+                    onClick={() => remover(p)}
+                  >
+                    {confirmar === p.id ? L('Confirmar?', 'Confirm?') : L('Remover', 'Remove')}
                   </button>
                 </td>
               </tr>

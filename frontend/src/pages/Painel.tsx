@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthContext'
 import TabelaMatriz, { corDoPercentual } from '@/components/Matriz'
-import { Cabecalho, Erro, Segmented, Vazio } from '@/components/ui'
+import { Erro, Segmented, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { AuditoriaEstado, LinhaPainel, Matriz, Painel as PainelDados } from '@/lib/types'
@@ -80,7 +80,6 @@ export default function Painel() {
   if (!projeto) {
     return (
       <>
-        <Cabecalho titulo={L('Modelos', 'Models')} />
         <Vazio
           titulo={L('Nenhum projeto', 'No project')}
           texto={L('Cadastre um projeto primeiro.', 'Register a project first.')}
@@ -100,14 +99,6 @@ export default function Painel() {
 
   return (
     <>
-      <Cabecalho
-        titulo={L('Modelos', 'Models')}
-        sub={L(
-          'Os modelos entregues neste projeto e como cada um está: versão, round, aprovação e estado. Tudo gerado a partir das auditorias — não há onde digitar estes números.',
-          'The models delivered on this project and where each one stands: version, round, approval and state. All generated from the audits — there is nowhere to type these numbers.',
-        )}
-      />
-
       {dados && modo === 'lista' && (
         <div className="metrics">
           <div className="metric">

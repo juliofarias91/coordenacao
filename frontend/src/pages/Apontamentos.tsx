@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { Cabecalho, Campo, Editor, Erro, Segmented, Vazio } from '@/components/ui'
+import { Campo, Editor, Erro, Segmented, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { Apontamento, Empresa, Modelo } from '@/lib/types'
@@ -146,7 +146,6 @@ export default function Apontamentos() {
   if (projetos.length === 0) {
     return (
       <>
-        <Cabecalho titulo={L('Apontamentos', 'Issues')} />
         <Vazio
           titulo={L('Nenhum projeto', 'No project')}
           texto={L(
@@ -160,14 +159,6 @@ export default function Apontamentos() {
 
   return (
     <>
-      <Cabecalho
-        titulo={L('Apontamentos', 'Issues')}
-        sub={L(
-          'Pendências que não nascem de um item de auditoria — interferências, dúvidas, decisões. De todos os projetos, porque é assim que se enxerga a carga do time.',
-          'Issues that do not come from an audit item — clashes, questions, decisions. Across all projects, because that is how you see the team’s load.',
-        )}
-      />
-
       <div className="acoes">
         <Segmented
           itens={[
