@@ -94,7 +94,21 @@ function ordenarGrupos(
   return [...ordenados, ...faltando]
 }
 
-function Icone({ path, tam = 18 }: { path: string; tam?: number }) {
+/** O ícone de um item — um desenho, ou um NÚMERO.
+ *
+ *  O `texto` existe para os três LOD, cuja diferença entre si é exatamente o
+ *  número (ver `ICONE_CHECKLIST`, em `nav.ts`). Duas coisas o fazem funcionar no
+ *  tamanho de um ícone:
+ *
+ *  `textLength` com `lengthAdjust`, que ESTICA os dígitos até a largura da
+ *  caixa. Sem ele, "300" numa fonte de 13/24 fica miúdo no meio de um quadrado
+ *  vazio e some ao lado dos desenhos vizinhos, que ocupam a caixa inteira.
+ *
+ *  E `stroke: none` com `fill: currentColor`, o inverso do desenho. O `svg`
+ *  declara `stroke` para as linhas dos ícones; herdado pelo texto, ele
+ *  contornaria cada dígito com 1.8px — a 19px isso fecha os vãos do 0 e do 3, e
+ *  o número vira uma mancha. */
+function Icone({ path, texto, tam = 18 }: { path?: string; texto?: string; tam?: number }) {
   return (
     <svg
       className="ic"
@@ -108,7 +122,24 @@ function Icone({ path, tam = 18 }: { path: string; tam?: number }) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d={path} />
+      {texto ? (
+        <text
+          x="12"
+          y="12"
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize="13"
+          fontWeight="700"
+          textLength="21"
+          lengthAdjust="spacingAndGlyphs"
+          fill="currentColor"
+          stroke="none"
+        >
+          {texto}
+        </text>
+      ) : (
+        <path d={path} />
+      )}
     </svg>
   )
 }
@@ -507,7 +538,7 @@ export default function Shell() {
               className={({ isActive }) => (isActive ? 'on' : '')}
               title={L(item.pt, item.en)}
             >
-              <Icone path={item.path} tam={19} />
+              <Icone path={item.path} texto={item.texto} tam={19} />
               <span>{L(item.pt, item.en)}</span>
             </NavLink>
           )
@@ -526,7 +557,7 @@ function ItemLink({ item, para, rotulo }: { item: ItemNav; para: string | null; 
   if (!para) {
     return (
       <span className="nav-off" title={rotulo} aria-disabled="true">
-        <Icone path={item.path} />
+        <Icone path={item.path} texto={item.texto} />
         <span className="nav-rot">{rotulo}</span>
       </span>
     )
@@ -541,7 +572,7 @@ function ItemLink({ item, para, rotulo }: { item: ItemNav; para: string | null; 
       className={({ isActive }) => (isActive ? 'on' : '')}
       title={rotulo}
     >
-      <Icone path={item.path} />
+      <Icone path={item.path} texto={item.texto} />
       <span className="nav-rot">{rotulo}</span>
     </NavLink>
   )

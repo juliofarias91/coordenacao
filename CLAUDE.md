@@ -520,10 +520,18 @@ Ao continuar:
   círculo, porque as duas queixas que motivaram juntá-los foram resolvidas de
   outro jeito: as nove linhas eram nove porque cada rótulo repetia a palavra
   *Auditoria* que já nomeia o grupo (agora são `ROTULO_CURTO`, em `nav.ts`), e
-  "ler até o fim para escolher" acabou com o **ícone por recorte**. A metáfora de
-  cada um é o que ele PERGUNTA — lista, relógio (4D é tempo), cubo, camadas,
-  prédio (as-built) —, e não o número em algarismos: "300", "400" e "500"
-  desenhados a 15px viram três borrões iguais.
+  "ler até o fim para escolher" acabou com o **ícone por recorte**.
+  **OS TRÊS LOD USAM O PRÓPRIO NÚMERO** como ícone (`ICONE_CHECKLIST`, em
+  `nav.ts`), e não uma metáfora. Eles chegaram a ter cubo, camadas e prédio; a
+  objeção a números era que "300", "400" e "500" a 19px viram três borrões
+  parecidos — mas a metáfora só resolve isso para quem já decorou qual desenho é
+  qual, e a diferença entre os três recortes é EXATAMENTE o número. Ele se lê; o
+  desenho se interpreta. O que o faz caber é ocupar a caixa inteira: o `<text>`
+  do `Icone` usa `textLength`, e leva `stroke: none` — o `svg` declara `stroke`
+  para as linhas dos ícones, e herdado pelo texto ele contornaria cada dígito
+  com 1.8px, fechando os vãos do 0 e do 3. **Geral e 4D seguem com desenho:** os
+  rótulos delas não são números, e escrever "GE" ali trocaria um símbolo por
+  outro.
   Recorte novo entra primeiro em `CHECKLISTS_SEM_BANCO` (hoje vazio), que faz a
   tela dizer o que falta em vez de tomar um 422.
 - **O painel de dentro da página CONTINUA, e perdeu o nível de cima.** Ele lista

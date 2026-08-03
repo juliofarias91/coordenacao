@@ -61,7 +61,12 @@ export type ItemNav = {
   rota: string
   pt: string
   en: string
-  path: string
+  /** O desenho do ícone. Ausente quando o item usa `texto`. */
+  path?: string
+  /** O ÍCONE É TEXTO, não desenho. Hoje só os três LOD: a diferença entre eles é
+   *  o número, e número se lê — desenho se interpreta, e interpretar exige já
+   *  ter decorado qual figura é qual. Ver `ICONE_CHECKLIST`. */
+  texto?: string
   grupo: GrupoNav
   /** Onde a tela vive. `projeto` significa `/projetos/:projetoId/<rota>`: a
    *  tela não existe sem um projeto escolhido, e o escolhido está na URL.
@@ -100,21 +105,16 @@ const IC = {
   cadeado: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4',
   sino: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
 
-  // OS CINCO RECORTES DE AUDITORIA (01/08/2026, a pedido). Eles voltaram a ser
-  // entradas da barra, e o ícone é o que torna isso possível: os rótulos são
-  // curtos e parecidos, e é pelo desenho que se acha o recorte sem ler.
+  // OS RECORTES DE AUDITORIA (01/08/2026). Eles voltaram a ser entradas da
+  // barra, e o ícone é o que torna isso possível: os rótulos são curtos e
+  // parecidos, e é pelo desenho que se acha o recorte sem ler.
   //
-  // A metáfora de cada um é o que ele PERGUNTA, e não um número em algarismos —
-  // "300", "400" e "500" desenhados a 15px viram três borrões iguais:
   //   geral   lista com marcas  — item a item, é a conferência de base
   //   4d      relógio           — 4D é tempo: fase, cronograma
-  //   lod300  cubo              — o elemento genérico da espec
-  //   lod400  camadas           — o detalhamento, a informação empilhada
-  //   lod500  prédio            — o as-built, o que existe em obra
+  //
+  // Os três LOD usam o PRÓPRIO NÚMERO — ver `ICONE_CHECKLIST`.
   checklist: 'M9 6h12M9 12h12M9 18h12M3 6l1.5 1.5L7 4M3 12l1.5 1.5L7 10M3 18l1.5 1.5L7 16',
   relogio: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2',
-  camadas: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
-  predio: 'M3 21h18M6 21V7l6-4 6 4v14M10 12h4M10 16h4M10 8h4',
 } as const
 
 /** Os seis recortes de auditoria.
@@ -173,13 +173,27 @@ export const ROTULO_CURTO: Record<Checklist, [string, string]> = {
   lod500: ['LOD 500', 'LOD 500'],
 }
 
-/** O ícone de cada recorte. A metáfora de cada um está na tabela `IC`. */
-const IC_CHECKLIST: Record<Checklist, string> = {
-  geral: IC.checklist,
-  '4d': IC.relogio,
-  lod300: IC.cubo,
-  lod400: IC.camadas,
-  lod500: IC.predio,
+/** O ícone de cada recorte — desenho, ou o PRÓPRIO NÚMERO.
+ *
+ *  Os três LOD usam `texto` (01/08/2026, a pedido). Eles tinham desenho —
+ *  cubo, camadas, prédio —, e a objeção a números era que "300", "400" e "500"
+ *  a 19px viram três borrões parecidos. Só que a metáfora só resolve isso para
+ *  quem já sabe qual desenho é qual: um cubo não diz "300" a ninguém que não
+ *  tenha decorado a tabela, e a diferença entre os três LOD é EXATAMENTE o
+ *  número. Ele é lido, não interpretado.
+ *
+ *  O que faz o número funcionar em 19px é ele OCUPAR A CAIXA INTEIRA: o `text`
+ *  do `Icone` usa `textLength`, então os três dígitos esticam até a largura do
+ *  ícone em vez de ficarem miúdos no meio dele.
+ *
+ *  A geral e a 4D continuam com desenho: os rótulos delas não são números, e
+ *  escrever "GE" ou "4D" ali só trocaria um símbolo por outro. */
+const ICONE_CHECKLIST: Record<Checklist, { path?: string; texto?: string }> = {
+  geral: { path: IC.checklist },
+  '4d': { path: IC.relogio },
+  lod300: { texto: '300' },
+  lod400: { texto: '400' },
+  lod500: { texto: '500' },
 }
 
 /** O menu de fora de um projeto: o que vale para a organização inteira.
@@ -407,7 +421,7 @@ export const ITENS_PROJETO: ItemNav[] = [
     rota: `auditoria/${c}`,
     pt: ROTULO_CURTO[c][0],
     en: ROTULO_CURTO[c][1],
-    path: IC_CHECKLIST[c],
+    ...ICONE_CHECKLIST[c],
     grupo: 'auditoria' as const,
     escopo: 'projeto' as const,
     fase: 2,
