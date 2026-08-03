@@ -24,6 +24,7 @@ from app.api.v1 import (
     empresas,
     exports,
     health,
+    importacao,
     ingest,
     kpis,
     lixeira,
@@ -73,3 +74,8 @@ api_router.include_router(portal.router)
 api_router.include_router(trilha.router)
 api_router.include_router(reportes.router)
 api_router.include_router(lixeira.router)
+
+# PONTE PROVISÓRIA — importação das planilhas que a coordenação preenche à mão.
+# Não passa pelo caminho de auditoria e tem tabelas próprias; o porquê está na
+# migration 0012. Sai inteira quando os dados forem migrados.
+api_router.include_router(importacao.router)

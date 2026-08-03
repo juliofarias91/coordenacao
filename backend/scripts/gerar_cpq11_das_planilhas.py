@@ -24,7 +24,7 @@ import re
 import openpyxl
 import yaml
 
-BASES = pathlib.Path(r"k:\SPBIM TECH\PLATAFORMAS\Plataforma de auditoria\Bases")
+BASES = pathlib.Path(__file__).resolve().parents[2] / "Bases"
 SAIDA = pathlib.Path(__file__).resolve().parent / "dados" / "cpq11-real.yaml"
 
 # Macrodisciplina de cada código de disciplina. O enum tem quatro letras e é
