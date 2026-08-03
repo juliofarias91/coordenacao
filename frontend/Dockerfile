@@ -6,6 +6,16 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 COPY package.json package-lock.json ./
+# `scripts/` ANTES do install, igual ao Dockerfile da raiz: o postinstall roda
+# `node scripts/copy-dict.mjs`, que gera os dicionários do corretor a partir do
+# dictionary-pt/dictionary-en. Sem esta linha o `npm ci` morre com "Cannot find
+# module /app/scripts/copy-dict.mjs" — o COPY do restante só acontece depois, e
+# o postinstall não espera por ele.
+#
+# A pasta inteira, e não só o `copy-dict.mjs`, para ser a MESMA linha da raiz:
+# os dois arquivos já divergiram uma vez — a correção foi feita lá e não aqui —,
+# e a divergência só apareceu quando o CI enfim chegou a construir esta imagem.
+COPY scripts ./scripts
 RUN npm ci
 
 COPY . .
