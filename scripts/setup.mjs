@@ -171,6 +171,26 @@ if (existsSync(env)) {
   aviso('ele aponta para um Postgres em localhost — ver o próximo passo')
 }
 
+// --------------------------------------------------------------- 5. identidade
+passo('Identidade do git')
+
+// A IDENTIDADE É DE QUEM DIGITA, mesmo quando a conta do GitHub é compartilhada.
+// São coisas diferentes: a CONTA é a credencial que empurra, o AUTOR é o nome
+// que fica gravado em cada commit e é o que o `git blame` responde daqui a seis
+// meses. Com os dois iguais, "quem fez isto, e por quê?" deixa de ter resposta —
+// e neste repositório essa pergunta é o que mais se faz.
+const nomeGit = saida('git', ['config', 'user.name'])
+const emailGit = saida('git', ['config', 'user.email'])
+if (nomeGit && emailGit) {
+  ok(`seus commits sairão como ${nomeGit} <${emailGit}>`)
+  aviso('se este for o e-mail COMPARTILHADO da equipe, troque pelo seu — ver abaixo')
+} else {
+  aviso('sem identidade configurada; os commits sairão sem autor reconhecível')
+}
+console.log('    git config user.name "Seu Nome"')
+console.log('    git config user.email "voce@spbim.com"')
+console.log('    (sem --global: vale só neste repositório)')
+
 // ------------------------------------------------------------------ o que falta
 console.log(`\n${cor('1;32', '✓')} ${cor('1', 'Máquina pronta.')} Falta o banco, que é escolha sua:\n`)
 console.log(`  ${cor('1', 'Com Docker')} (o caminho curto)`)

@@ -69,10 +69,61 @@ como central e a pasta de rede como espelho.
 
 ---
 
+## Uma conta do GitHub para os dois
+
+É o arranjo daqui: as duas pessoas empurram pela mesma conta
+(`inovacao@spbim.com`). Funciona, e não há nada a instalar por causa disso — mas
+tem três consequências, e a primeira tem conserto de graça.
+
+### A conta é uma; o AUTOR de cada commit não precisa ser
+
+São coisas diferentes. A **conta** é a credencial que empurra para o GitHub. O
+**autor** é o nome e o e-mail gravados dentro de cada commit — é o que o
+`git blame` responde quando alguém pergunta, seis meses depois, quem escreveu
+aquela linha e por quê. Com os dois iguais, essa pergunta deixa de ter resposta,
+e neste repositório ela é a que mais se faz.
+
+**Em cada máquina, uma vez, dentro da pasta do projeto:**
+
+```powershell
+git config user.name "Julio Farias"
+git config user.email "julio@spbim.com"
+```
+
+Sem `--global`: assim vale só neste repositório, e cada máquina tem a sua. Os
+commits passam a dizer quem os escreveu mesmo saindo pela conta compartilhada.
+No GitHub eles aparecem com um avatar genérico quando o e-mail não pertence a
+nenhuma conta de lá — o histórico é o que importa, e ele fica certo.
+
+### O pull request continua valendo, com um ajuste
+
+Com uma conta só, **não marque "Require approvals"** na proteção do `main`:
+o GitHub não deixa a mesma conta aprovar o próprio pull request, e vocês ficariam
+sem conseguir fazer merge de nada. Marque **apenas** *Require a pull request
+before merging* e *Require status checks to pass* (os do CI).
+
+O que se ganha assim: o `main` continua protegido de push direto, e o CI continua
+sendo o juiz — ele roda a suíte inteira num banco descartável antes de qualquer
+coisa entrar. O que se perde: a revisão vira um combinado entre vocês ("dá uma
+olhada antes de eu apertar o merge"), porque o GitHub não tem como exigi-la.
+
+### O que fica em aberto
+
+- **Senha e 2FA compartilhados.** Quando alguém sair da equipe, troque a senha e
+  revogue os tokens — não há como cortar o acesso de uma pessoa só.
+- **Os termos do GitHub pedem uma conta por pessoa.** Contas são gratuitas e
+  colaboradores em repositório privado também; no dia em que quiserem separar, é
+  criar a segunda conta e convidá-la — nada do que está aqui muda.
+
+---
+
 ## Passo a passo de uma máquina nova
 
-**1. Acesso.** No GitHub: `Settings › Collaborators › Add people`. A pessoa
-aceita o convite por e-mail. (Sem GitHub, ver a seção acima.)
+**1. Acesso.** Aqui as duas pessoas usam a mesma conta, então não há convite a
+fazer: basta entrar com ela no git da máquina nova. **Configure a identidade** do
+autor logo depois de clonar — ver a seção acima. (Se um dia forem duas contas:
+`Settings › Collaborators › Add people`, e a pessoa aceita por e-mail. Sem
+GitHub, ver a seção da rede fechada.)
 
 **2. Instalar o que o projeto precisa** — uma vez por máquina:
 
@@ -154,6 +205,11 @@ No GitHub: `Settings › Branches › Add branch protection rule`, com `main` no
 padrão, marcando **Require a pull request before merging** e **Require status
 checks to pass** (escolhendo os do CI). A partir daí o próprio GitHub recusa um
 push direto no `main` — a regra deixa de depender de todo mundo lembrar dela.
+
+⚠ **Não marque "Require approvals"** enquanto a conta do GitHub for a mesma para
+as duas pessoas: ninguém aprova o próprio pull request, e vocês ficariam sem
+conseguir fazer merge de nada. O porquê está na seção *Uma conta do GitHub para
+os dois*.
 
 ---
 

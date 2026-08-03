@@ -466,6 +466,16 @@ duas decisões que valem para quem mexe no código:
   `backend/.venv` guarda caminhos absolutos e que `node_modules` na rede torna
   qualquer coisa lenta. O `K:` continua sendo o lugar dos arquivos de
   referência — planilhas, PDFs, modelos —, que não são código e não vão ao git.
+- **A CONTA DO GITHUB É COMPARTILHADA (`inovacao@spbim.com`), o AUTOR DO COMMIT
+  NÃO DEVE SER.** São coisas diferentes: a conta é a credencial que empurra, o
+  autor é o que o `git blame` responde daqui a seis meses — e neste repositório
+  "quem fez isto, e por quê?" é a pergunta que mais se faz. Cada máquina define
+  o seu com `git config user.name/user.email` **sem `--global`**, e os commits
+  saem com o nome de quem os escreveu mesmo indo pela conta comum.
+  Consequência prática: na proteção do `main`, **não marcar "Require
+  approvals"** — ninguém aprova o próprio pull request, e a conta única
+  travaria todo merge. Ficam *require pull request* e *require status checks*,
+  com o CI no papel de juiz.
 
 - **Fase 0** — schema completo (23 tabelas, 12 enums), RLS multi-tenant, auth Argon2+JWT, OIDC/PKCE (desligado), Celery, shell React, CI.
 - **Fase 1** — cadastro: projetos, empresas+contatos+subcontratação, usuários+permissões, standards+nomenclatura, disciplinas, critérios+checklists.
