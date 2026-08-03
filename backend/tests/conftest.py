@@ -7,6 +7,7 @@ banco alcançável — assim `pytest` roda numa máquina sem infraestrutura, e o
 
 from __future__ import annotations
 
+import os
 import uuid
 from collections.abc import Iterator
 
@@ -58,8 +59,49 @@ from app.models.enums import (
     VersaoFormato,
 )
 
+# --------------------------------------------------------------- a trava
+# A SUÍTE CRIA E APAGA DADO DE VERDADE, e por isso ela recusa um banco que não
+# seja local.
+#
+# Não é zelo abstrato: em 28 e 29/07/2026 sobraram DEZ organizações de teste no
+# banco do piloto. Os testes criam uma organização por cenário e a limpeza é
+# pulada quando uma asserção falha no meio — então cada falha deixa lixo num
+# banco que tem o CPQ11 dentro. Com duas pessoas rodando `pytest` ao mesmo
+# tempo contra o mesmo banco, some-se a isso o teste de uma derrubando o
+# cenário da outra.
+#
+# A trava é por HOST e não por variável de ambiente `APP_ENV`: quem aponta o
+# `.env` para o Supabase e roda a suíte não pensou "estou em produção", pensou
+# "vou rodar os testes" — e é justamente aí que a proteção precisa agir.
+#
+# PARA RODAR CONTRA UM BANCO REMOTO MESMO ASSIM, `PYTEST_BANCO_REMOTO=1`. A
+# saída existe porque houve um motivo legítimo para isso (conferir uma migration
+# contra o Postgres 17 do Supabase antes do deploy); ela só deixou de ser o
+# caminho padrão.
+LOCAIS = {"localhost", "127.0.0.1", "::1", "db", "postgres", ""}
+
+
+def _banco_e_local() -> bool:
+    if os.getenv("PYTEST_BANCO_REMOTO") == "1":
+        return True
+    return (auth_engine.url.host or "") in LOCAIS
+
 
 def _banco_disponivel() -> bool:
+    if not _banco_e_local():
+        pytest.exit(
+            "\n"
+            "  A suíte recusou o banco configurado.\n\n"
+            f"  Host: {auth_engine.url.host}\n\n"
+            "  Os testes CRIAM E APAGAM dados reais, e quando uma asserção falha no\n"
+            "  meio a limpeza é pulada — num banco compartilhado isso deixa lixo ao\n"
+            "  lado do dado do piloto, e duas pessoas rodando ao mesmo tempo derrubam\n"
+            "  o cenário uma da outra.\n\n"
+            "  Use um Postgres local (`docker compose up -d db redis minio`) ou um\n"
+            "  banco só seu, e aponte o DATABASE_URL do seu .env para ele.\n\n"
+            "  Se você REALMENTE quer rodar contra este banco: PYTEST_BANCO_REMOTO=1\n",
+            returncode=2,
+        )
     try:
         with auth_engine.connect() as conn:
             conn.execute(text("SELECT 1"))

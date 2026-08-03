@@ -4,6 +4,7 @@
   "private": true,
   "description": "Lançador da raiz. NÃO tem dependência e NÃO é um pacote: existe só para `npm run dev` funcionar aqui, em vez de dar ENOENT porque o package.json real está em frontend/. A lógica toda vive em scripts/dev.mjs — Node puro, sem PowerShell, os dois serviços no mesmo terminal.",
   "scripts": {
+    "setup": "node scripts/setup.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:web": "node scripts/dev.mjs --web",
     "dev:unico": "node scripts/dev.mjs --unico",

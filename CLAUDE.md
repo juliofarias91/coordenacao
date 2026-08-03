@@ -436,6 +436,37 @@ são filhos do mesmo terminal, com a saída prefixada, e o `Ctrl+C` derruba a
 já usava o projeto — duas implementações divergiriam na primeira mudança de
 porta.
 
+**Máquina nova: `npm run setup`** (`scripts/setup.mjs`) — confere Python 3.12 e
+Node 20+, cria a venv, instala os dois lados e gera o `.env` com um JWT_SECRET
+sorteado. **Ele NÃO sobe banco nem roda migration, de propósito:** escolher onde
+os dados moram é decisão de quem senta na máquina, e um script que decide isso
+sozinho é como se acaba apontando a máquina nova para o banco do piloto. Ele
+também **não toca num `.env` que já exista** — sobrescrever derrubaria todas as
+sessões abertas.
+
+## Duas pessoas no repositório (01/08/2026)
+
+O guia inteiro está em **`docs/COLABORACAO.md`** — acesso, máquina nova, o fluxo
+de ramo → pull request → merge, e a alternativa sem GitHub (um `--bare` numa
+pasta de rede serve de central; git não precisa de internet). Aqui ficam só as
+duas decisões que valem para quem mexe no código:
+
+- **A SUÍTE RECUSA UM BANCO QUE NÃO SEJA LOCAL** (`backend/tests/conftest.py`).
+  Ela cria e apaga dado de verdade, e a limpeza é pulada quando uma asserção
+  falha no meio — foi assim que dez organizações de teste sobraram no banco do
+  piloto em 28–29/07, ao lado do CPQ11. A trava é por **HOST**, e não por
+  `APP_ENV`: quem aponta o `.env` para o Supabase e roda a suíte não pensou
+  "estou em produção", pensou "vou rodar os testes", e é aí que a proteção
+  precisa agir. A saída existe e é explícita — `PYTEST_BANCO_REMOTO=1` —, porque
+  há motivo legítimo para ela (conferir uma migration contra o Postgres 17 do
+  Supabase antes do deploy); ela só deixou de ser o caminho padrão.
+- **CADA PESSOA TEM CÓPIA PRÓPRIA DO CÓDIGO, no disco local.** A pasta de
+  trabalho do git guarda o ramo atual e o que ainda não foi gravado: duas pessoas
+  na mesma pasta são duas pessoas com um estado só. Some-se a isso que
+  `backend/.venv` guarda caminhos absolutos e que `node_modules` na rede torna
+  qualquer coisa lenta. O `K:` continua sendo o lugar dos arquivos de
+  referência — planilhas, PDFs, modelos —, que não são código e não vão ao git.
+
 - **Fase 0** — schema completo (23 tabelas, 12 enums), RLS multi-tenant, auth Argon2+JWT, OIDC/PKCE (desligado), Celery, shell React, CI.
 - **Fase 1** — cadastro: projetos, empresas+contatos+subcontratação, usuários+permissões, standards+nomenclatura, disciplinas, critérios+checklists.
 - **Fase 2** — execução: modelos e versões com upload para o S3, ingestão via webhook do ACC, auditoria com estados e publicação de round, não-conformidades, painel/matriz derivados e exports (PDF/XLSX).

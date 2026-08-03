@@ -141,6 +141,12 @@ código.
 
 ## Como rodar
 
+> **Máquina nova? `npm run setup` faz os passos 1, 3 e 5 de uma vez** — confere
+> as versões, cria o ambiente do backend, instala as dependências dos dois lados
+> e gera um `.env` com um segredo próprio. Ele não mexe em banco de propósito:
+> onde os seus dados moram é decisão sua, e é o passo 2. Para trabalhar com mais
+> gente no repositório, ver **[`docs/COLABORACAO.md`](docs/COLABORACAO.md)**.
+
 ### 1. Ambiente
 
 ```powershell
@@ -259,6 +265,13 @@ npm run build
 ```
 
 O CI (`.github/workflows/ci.yml`) sobe um Postgres de verdade, aplica as migrations, testa o `downgrade` e roda a suíte completa — incluindo os testes de isolamento multi-tenant.
+
+**A suíte recusa um banco que não seja local** (01/08/2026). Ela cria e apaga
+dados reais, e quando uma asserção falha no meio a limpeza é pulada — foi assim
+que dez organizações de teste sobraram no banco do piloto, ao lado do CPQ11.
+Aponte o `DATABASE_URL` do seu `.env` para um Postgres seu. Se precisar mesmo
+rodar contra um banco remoto, a saída é explícita e está no erro:
+`PYTEST_BANCO_REMOTO=1`.
 
 ---
 
