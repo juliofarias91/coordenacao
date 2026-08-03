@@ -4659,9 +4659,6 @@ td.num {
    ============================================================================ */
 /* O estado vazio do recorte precisa do respiro que o `.pgbody` perde quando
    contém a grade — ele é prosa e um botão, não superfície de trabalho. */
-.pgvazio {
-  padding: 20px var(--pad-x) 40px;
-}
 .grade-rolagem {
   height: 100%;
   overflow: auto;

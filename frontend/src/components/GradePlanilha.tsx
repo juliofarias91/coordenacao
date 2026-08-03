@@ -9,18 +9,15 @@
  *  naquelas abas. Uma tabela espaçada e sem calha não é "mais limpa" para esse
  *  leitor: é um lugar onde ele não sabe contar linha nem nomear coluna.
  *
- *  A GRADE TEM DOIS MODOS, e a diferença entre eles é ter ou não um MODELO.
+ *  A GRADE É SEMPRE DE UM MODELO (01/08/2026, a pedido). Cada linha é um
+ *  `resultado_check`, e resultado pertence a uma auditoria, que pertence a uma
+ *  versão de um modelo — sem modelo escolhido não há o que desenhar, e quem
+ *  decide isso é a página: ela nem monta a grade. Houve um modo de PRÉVIA, que
+ *  mostrava o gabarito do recorte com as células travadas; ele saiu junto, e o
+ *  que ficou no lugar é uma tela dizendo para escolher um modelo à esquerda.
  *
- *  - **Ligada** (`dados` + `onSalvar`): cada linha é um `resultado_check` e cada
- *    célula editável grava nele. É o que se vê ao escolher um modelo no painel
- *    da esquerda. O valor exibido vem SEMPRE do servidor — a grade não guarda
- *    resposta própria, senão a tela e o banco divergiriam no primeiro erro de
- *    rede.
- *  - **Prévia** (`celulas`, sem `onSalvar`): o gabarito do recorte, sem modelo.
- *    Aqui não há linha no banco em que gravar — auditoria pertence a um modelo —,
- *    então as células editáveis ficam TRAVADAS em vez de aceitarem texto que
- *    ninguém guardaria. Um campo que aceita o que digitam e perde no refresh é
- *    pior do que um campo desabilitado: o segundo diz a verdade.
+ *  O valor exibido vem SEMPRE do servidor: a grade não guarda resposta própria,
+ *  senão a tela e o banco divergiriam no primeiro erro de rede.
  *
  *  A CÉLULA MUDA COM A COLUNA, não com a linha. `Coluna.tipo` é o que decide se
  *  ela é lista, texto, anexo ou conta — e é isso que permite a mesma grade servir
@@ -29,21 +26,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useI18n } from '@/i18n'
-
-/** O nome da coluna como Excel a escreve: A…Z, AA, AB…
- *
- *  Base 26 sem zero — 'Z' é 26 e 'AA' é 27, não 26. O `-1` a cada volta é o que
- *  corrige isso; sem ele a 27ª coluna sai 'BA'. */
-function letraDaColuna(indice: number): string {
-  let n = indice + 1
-  let nome = ''
-  while (n > 0) {
-    const resto = (n - 1) % 26
-    nome = String.fromCharCode(65 + resto) + nome
-    n = Math.floor((n - 1) / 26)
-  }
-  return nome
-}
 
 /** O que a célula desta coluna é.
  *
@@ -117,32 +99,25 @@ export type LinhaGrade = {
 }
 
 export default function GradePlanilha({
-  colunas = 12,
-  linhas = 30,
-  rotulos,
-  celulas,
+  colunas,
   dados,
   travada = false,
   onSalvar,
   onImagem,
   onAcao,
 }: {
-  colunas?: number
-  /** Quantas linhas desenhar QUANDO NÃO HÁ DADO. Havendo `celulas` ou `dados`, o
-   *  total é o deles e nada mais: a planilha não tem linha vazia de enfeite
-   *  abaixo do último item — a auditoria geral tem 17 itens e 17 linhas. */
-  linhas?: number
-  rotulos?: Coluna[]
-  /** MODO PRÉVIA: o conteúdo de leitura, linha por linha, sem modelo por trás. */
-  celulas?: Array<Array<string | null>>
-  /** MODO LIGADO: uma linha por resultado, com o valor que está no servidor. */
-  dados?: LinhaGrade[]
+  colunas: Coluna[]
+  /** Uma linha por resultado, com o valor que está no servidor. A grade não
+   *  guarda resposta própria: se guardasse, a tela e o banco divergiriam no
+   *  primeiro erro de rede. */
+  dados: LinhaGrade[]
   /** Round publicado: a planilha vira leitura. O PDF já emitido tem os números
    *  dela. */
   travada?: boolean
-  /** Grava uma célula. Sem isto a grade é prévia, e as células editáveis ficam
-   *  desabilitadas — ver o cabeçalho do arquivo. */
-  onSalvar?: (chave: string, coluna: number, valor: string) => void
+  /** Grava uma célula. A PROMESSA IMPORTA: é por ela que a célula de texto sabe
+   *  que o pedido anterior terminou, e é isso que faz o salvamento imediato não
+   *  virar um pedido por letra. */
+  onSalvar: (chave: string, coluna: number, valor: string) => void | Promise<unknown>
   /** Abre o painel de imagem da linha. A grade não sobe arquivo: ela não sabe o
    *  que é evidência nem para onde ela vai. */
   onImagem?: (chave: string) => void
@@ -153,22 +128,8 @@ export default function GradePlanilha({
   onAcao?: (chave: string) => void
 }) {
   const { L } = useI18n()
-  const cabecalhos: Coluna[] = useMemo(
-    () =>
-      rotulos ??
-      // A letra é igual nos dois idiomas — é justamente por não ter tradução que
-      // ela serve de rótulo provisório.
-      Array.from({ length: colunas }, (_, i) => {
-        const letra = letraDaColuna(i)
-        return { pt: letra, en: letra }
-      }),
-    [rotulos, colunas],
-  )
-  const total = dados?.length ?? celulas?.length ?? linhas
-  /** Ligada quando há linha do banco E quem grave. Faltando um dos dois, os
-   *  campos ficam travados: ver o cabeçalho do arquivo. */
-  const ligada = !!dados && !!onSalvar
-  const somenteLeitura = travada || !ligada
+  const cabecalhos = colunas
+  const total = dados.length
   /** A soma dos pesos vira o piso da tabela: acima disso ela estica para ocupar
    *  a largura toda, abaixo ela rola na horizontal em vez de espremer coluna. */
   const minimo = useMemo(
@@ -180,21 +141,14 @@ export default function GradePlanilha({
   const iSelecao = cabecalhos.findIndex((c) => c.tipo === 'selecao')
 
   const [sel, setSel] = useState<Celula | null>({ l: 0, c: 0 })
-  const [valores, setValores] = useState<Record<string, string>>({})
   const caixa = useRef<HTMLDivElement>(null)
 
-  const chave = (l: number, c: number) => `${l}:${c}`
-
-  /** O valor da célula: do SERVIDOR quando ligada, do rascunho local quando é
-   *  prévia. Um só lugar decide isso, para não haver célula que leia de um e
-   *  grave no outro. */
-  const valorDe = (l: number, c: number): string =>
-    (ligada ? dados?.[l]?.valores[c] : valores[chave(l, c)]) ?? ''
+  /** O valor da célula vem SEMPRE do servidor. */
+  const valorDe = (l: number, c: number): string => dados[l]?.valores[c] ?? ''
 
   const gravar = (l: number, c: number, v: string) => {
-    const linha = dados?.[l]
-    if (ligada && linha) onSalvar?.(linha.chave, c, v)
-    else setValores((atual) => ({ ...atual, [chave(l, c)]: v }))
+    const linha = dados[l]
+    return linha ? onSalvar(linha.chave, c, v) : undefined
   }
 
   const mover = useCallback(
@@ -285,14 +239,14 @@ export default function GradePlanilha({
         </thead>
         <tbody>
           {Array.from({ length: total }, (_, l) => {
-            const linha = dados?.[l]
+            const linha = dados[l]
             // A FAIXA DO GRUPO sai da comparação com a linha ANTERIOR, e não de
             // um agrupamento montado antes: os resultados já vêm do servidor na
             // ordem da planilha impressa, e reagrupá-los aqui arriscaria
             // reordená-los. Ver `agrupar` na planilha de LOD, que fazia o mesmo
             // com um `Map` justamente para preservar a ordem.
             const grupo = linha?.grupo ?? null
-            const abreGrupo = !!grupo && grupo !== (dados?.[l - 1]?.grupo ?? null)
+            const abreGrupo = !!grupo && grupo !== (dados[l - 1]?.grupo ?? null)
             return (
               <Fragment key={linha?.chave ?? l}>
                 {abreGrupo && (
@@ -321,19 +275,17 @@ export default function GradePlanilha({
                       >
                         <CelulaDe
                           col={col}
-                          leitura={linha?.leitura[c] ?? celulas?.[l]?.[c] ?? null}
+                          leitura={linha?.leitura[c] ?? null}
                           titulo={linha?.titulos?.[c] ?? null}
                           valor={valorDe(l, c)}
                           calculado={percentual(l)}
-                          travada={somenteLeitura}
+                          travada={travada}
                           anexos={linha?.anexos ?? 0}
                           reprovada={valorDe(l, iSelecao) === 'reprovado'}
                           onMudar={(v) => gravar(l, c, v)}
                           onImagem={linha && onImagem ? () => onImagem(linha.chave) : undefined}
                           onAcao={
-                            linha && onAcao && !somenteLeitura
-                              ? () => onAcao(linha.chave)
-                              : undefined
+                            linha && onAcao && !travada ? () => onAcao(linha.chave) : undefined
                           }
                         />
                       </td>
@@ -448,31 +400,39 @@ function CelulaDe({
   }
 }
 
-/** Quanto tempo sem digitar antes de gravar. 600ms é o intervalo típico entre
- *  palavras: curto o bastante para "salvou sozinho" e longo o bastante para não
- *  virar um PATCH por letra. */
-const ATRASO = 600
-
-/** A CÉLULA DE TEXTO QUE SALVA SOZINHA.
+/** A CÉLULA DE TEXTO QUE SALVA NA HORA.
  *
  *  Não há botão de salvar em lugar nenhum desta planilha, e é de propósito — a
- *  de origem é um .xlsx, onde ninguém salva célula. Antes o texto ia embora ao
- *  SAIR do campo; quem digitasse e trocasse de tela pelo menu perdia o que
- *  escreveu, porque trocar de rota desmonta o campo sem passar por `blur`.
+ *  de origem é um .xlsx, onde ninguém salva célula. O que se digita vai para o
+ *  servidor NO ATO (01/08/2026, a pedido); antes havia uma espera de 600ms, e
+ *  antes dela o texto só ia embora ao SAIR do campo.
+ *
+ *  SEM ESPERA E SEM UM PEDIDO POR LETRA — as duas coisas ao mesmo tempo, e é o
+ *  que a coalescência faz. A primeira tecla dispara o PATCH imediatamente; o que
+ *  for digitado ENQUANTO ele está no ar não vira um pedido novo, fica guardado
+ *  como "o último valor", e é ele que sai assim que o anterior responde. Digitar
+ *  uma frase de 200 letras custa três ou quatro requisições, não duzentas —
+ *  e cada uma delas devolve a auditoria recalculada, então duzentas seriam
+ *  duzentas releituras da planilha inteira.
+ *
+ *  A COALESCÊNCIA TAMBÉM É O QUE MANTÉM A ORDEM. Sem ela, dois PATCH da mesma
+ *  célula viajam em paralelo e nada garante que o último a sair seja o último a
+ *  chegar — a resposta lenta de um valor antigo sobrescreveria o novo no banco.
+ *  Com um pedido em voo por vez, a ordem é a da digitação.
  *
  *  TRÊS COISAS PRECISAM SER VERDADE AO MESMO TEMPO, e cada uma tem uma linha
  *  aqui:
  *
  *  1. **O cursor não pode saltar.** O valor exibido é o do servidor, e o PATCH
- *     devolve a auditoria recalculada — se cada tecla gravasse, a resposta
- *     reescreveria o campo e o cursor iria para o fim. Por isso o texto é estado
- *     LOCAL enquanto se digita.
+ *     devolve a auditoria recalculada — sem cuidado, a resposta reescreveria o
+ *     campo e o cursor iria para o fim. Por isso o texto é estado LOCAL enquanto
+ *     se digita.
  *  2. **O que vem do servidor tem de aparecer** — a automação preencheu, outra
  *     aba editou. Por isso o `useEffect` sincroniza; mas SÓ com o campo fora de
  *     foco, senão a resposta de um PATCH sobrescreveria o que se está digitando.
- *  3. **Nada pode se perder.** Além do temporizador, grava no `blur` e ao
- *     DESMONTAR — que é o caso de quem navega para outra tela com o campo ainda
- *     em foco. */
+ *  3. **Nada pode se perder.** Grava também no `blur` e ao DESMONTAR — que é o
+ *     caso de quem navega para outra tela com o campo ainda em foco, e o de um
+ *     valor que ficou pendente porque o pedido anterior ainda não respondeu. */
 function CampoTexto({
   valor,
   travada,
@@ -480,11 +440,14 @@ function CampoTexto({
 }: {
   valor: string
   travada: boolean
-  onSalvar: (v: string) => void
+  onSalvar: (v: string) => void | Promise<unknown>
 }) {
   const [texto, setTexto] = useState(valor)
   const focado = useRef(false)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** Há um PATCH desta célula no ar. */
+  const emVoo = useRef(false)
+  /** O que foi digitado enquanto ele estava no ar. `null` = nada pendente. */
+  const pendente = useRef<string | null>(null)
   // Refs para o desmonte: o cleanup roda uma vez, e sem elas ele enxergaria o
   // texto e o valor do PRIMEIRO render.
   const ultimo = useRef(texto)
@@ -499,22 +462,23 @@ function CampoTexto({
     if (!focado.current) setTexto(valor)
   }, [valor])
 
-  const agendar = (v: string) => {
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => {
-      if (v !== doServidor.current) gravador.current(v)
-    }, ATRASO)
-  }
-
-  const agora = () => {
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = null
-    if (ultimo.current !== doServidor.current) gravador.current(ultimo.current)
-  }
+  const gravar = useCallback((v: string) => {
+    if (v === doServidor.current) return
+    if (emVoo.current) {
+      pendente.current = v
+      return
+    }
+    emVoo.current = true
+    Promise.resolve(gravador.current(v)).finally(() => {
+      emVoo.current = false
+      const seguinte = pendente.current
+      pendente.current = null
+      if (seguinte !== null) gravar(seguinte)
+    })
+  }, [])
 
   useEffect(
     () => () => {
-      if (timer.current) clearTimeout(timer.current)
       if (ultimo.current !== doServidor.current) gravador.current(ultimo.current)
     },
     [],
@@ -527,14 +491,14 @@ function CampoTexto({
       readOnly={travada}
       onChange={(e) => {
         setTexto(e.target.value)
-        agendar(e.target.value)
+        gravar(e.target.value)
       }}
       onFocus={() => {
         focado.current = true
       }}
       onBlur={() => {
         focado.current = false
-        agora()
+        gravar(ultimo.current)
       }}
       // `title` com o próprio valor: a célula trunca, e reler o que se escreveu
       // não pode exigir alargar a coluna.

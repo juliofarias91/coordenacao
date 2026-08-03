@@ -753,26 +753,38 @@ ordem. O que varia entre os arquivos é a resposta, nunca a pergunta.
     referência dele em projeto nenhum. O valor continua no enum do banco —
     tirar valor de enum no Postgres exige recriar o tipo e trava se houver
     linha usando.
-- **A CÉLULA SALVA SOZINHA** (01/08/2026, a pedido): 600ms depois da última
-  tecla, e também no `blur` e AO DESMONTAR. Não há botão "salvar planilha",
-  porque não há rascunho — cada célula é um PATCH e a aprovação volta
+- **A CÉLULA SALVA NA HORA** (01/08/2026, a pedido). Não há botão "salvar
+  planilha", porque não há rascunho — cada célula é um PATCH e a aprovação volta
   recalculada do servidor. A tela **nunca** calcula percentual: duas contas de
   aprovação divergem no primeiro arredondamento.
-  Antes gravava só no `blur`, e quem digitasse e trocasse de tela pelo menu
-  perdia o que escreveu — trocar de rota desmonta o campo sem passar por `blur`.
-  Daí a gravação no desmonte, que é a que fecha o buraco.
-  **Três coisas precisam ser verdade ao mesmo tempo** em `CampoTexto`
-  (`components/GradePlanilha.tsx`), e cada uma tem uma linha lá: o texto é estado
-  LOCAL enquanto se digita (senão a resposta do PATCH reescreve o campo e o
-  cursor salta para o fim); o valor do servidor é sincronizado, mas **só com o
-  campo fora de foco** (senão a resposta sobrescreve o que se está digitando); e
-  nada se perde. **`selecao` grava NA HORA**, sem espera: escolher numa lista é
-  um ato terminado, não há "ainda estou escrevendo".
-- **A GRADE É A ÚNICA SUPERFÍCIE DE AUDITORIA**, e tem dois modos. Com modelo
-  (`auditoria/<recorte>/<modeloId>`) cada linha é um `resultado_check` e grava;
-  sem modelo é a **prévia do gabarito**, com as células TRAVADAS — auditoria
-  pertence a um modelo, e um campo que aceita o que digitam e perde no refresh é
-  pior do que um campo desabilitado.
+  **SEM ESPERA E SEM UM PEDIDO POR LETRA**, e é a COALESCÊNCIA que permite as
+  duas coisas ao mesmo tempo (`CampoTexto`, em `components/GradePlanilha.tsx`): a
+  primeira tecla dispara o PATCH imediatamente, e o que se digita enquanto ele
+  está no ar não vira pedido novo — fica guardado como "o último valor" e sai
+  quando o anterior responde. Uma frase de 200 letras custa três ou quatro
+  requisições, não duzentas; e como cada resposta traz a auditoria recalculada,
+  duzentas seriam duzentas releituras da planilha inteira.
+  **A coalescência também é o que mantém a ORDEM**: dois PATCH da mesma célula em
+  paralelo não têm garantia de chegar na ordem em que saíram, e a resposta lenta
+  de um valor antigo sobrescreveria o novo.
+  Houve um atraso de 600ms antes disto, e antes dele a gravação era só no `blur`
+  — quem digitasse e trocasse de tela pelo menu perdia o texto, porque trocar de
+  rota desmonta o campo sem passar por `blur`. **A gravação no desmonte continua**,
+  e é ela que fecha esse buraco.
+  **Três coisas precisam ser verdade ao mesmo tempo** lá, e cada uma tem uma
+  linha: o texto é estado LOCAL enquanto se digita (senão a resposta do PATCH
+  reescreve o campo e o cursor salta para o fim); o valor do servidor é
+  sincronizado, mas **só com o campo fora de foco** (senão a resposta sobrescreve
+  o que se está digitando); e nada se perde.
+- **A GRADE É SEMPRE DE UM MODELO** (01/08/2026, a pedido). Linha, coluna e
+  célula pertencem a um: a linha é um `resultado_check`, e resultado pertence a
+  uma auditoria, que pertence a uma versão de um modelo. **Sem modelo escolhido a
+  página não monta a grade** — mostra uma tela pedindo que se escolha um no
+  painel da esquerda. Houve um modo de PRÉVIA, que desenhava o gabarito do
+  recorte com as células travadas; ele saiu, e com ele o modo de rascunho local
+  da grade. Uma tabela que não é de nada convida a preencher o que não se grava.
+  `GET /gabaritos/{checklist}` continua na API — é a leitura do padrão de
+  fábrica, e a tela é que deixou de usá-la.
   Isto substituiu `pages/PlanilhaGeral.tsx` e `pages/PlanilhaLod.tsx`
   (01/08/2026): eram duas telas com tabela própria, e os outros três recortes não
   tinham nenhuma — clicar num modelo de LOD 400 caía numa rota inexistente e o

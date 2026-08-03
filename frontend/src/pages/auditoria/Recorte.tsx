@@ -1,18 +1,17 @@
-/** O RECORTE DE AUDITORIA — a planilha, com modelo ou sem ele.
+/** O RECORTE DE AUDITORIA — a planilha de UM MODELO.
  *
  *  Uma tela só, parametrizada pela rota (`auditoria/:checklist/:modeloId?`),
  *  dentro do esqueleto de `index.tsx`. É a MESMA para os cinco recortes: o que
  *  muda entre eles são as COLUNAS, e elas estão na tabela `COLUNAS` abaixo.
  *
- *  **Com modelo** (`auditoria/lod300/<id>`) ela é a planilha de verdade: cada
- *  linha é um `resultado_check` e cada célula grava sozinha. **Sem modelo** ela é
- *  a prévia do gabarito — a estrutura do recorte, travada, porque auditoria
- *  pertence a um modelo e não há linha no banco em que gravar.
- *
- *  A ESTRUTURA É O PADRÃO, NÃO CONFIGURAÇÃO DE PROJETO (31/07/2026, a pedido).
- *  Os 17 itens da auditoria geral são os mesmos nas oito disciplinas e em todo
- *  projeto — é o que `services/gabarito.py` guarda, e é isso que a prévia
- *  desenha, via `GET /gabaritos/{checklist}`.
+ *  SEM MODELO NÃO HÁ PLANILHA (01/08/2026, a pedido). Linha, coluna e célula
+ *  pertencem a um modelo — a linha é um `resultado_check`, e resultado pertence a
+ *  uma auditoria, que pertence a uma versão de um modelo. Antes, `auditoria/geral`
+ *  sem modelo desenhava a PRÉVIA do gabarito, com as células travadas; a prévia
+ *  saiu, e no lugar dela fica uma tela dizendo para escolher um modelo à
+ *  esquerda. Uma grade que não é de nada convida a preencher o que não se grava.
+ *  `GET /gabaritos/{checklist}` continua existindo na API — é a leitura do padrão
+ *  de fábrica, e quem a usa é `services/gabarito.py` do lado de lá.
  *
  *  ISTO SUBSTITUIU `pages/PlanilhaGeral.tsx` E `pages/PlanilhaLod.tsx`
  *  (01/08/2026, a pedido: "todas as páginas terão a mesma cara"). Eram duas
@@ -22,8 +21,8 @@
  *  cinco a próxima coluna que a planilha ganhar; o comportamento comum continua
  *  em `components/planilha.tsx`, que era de onde as duas já saíam.
  */
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useCallback, useState } from 'react'
+import { useParams } from 'react-router-dom'
 
 import GradePlanilha, { type Coluna, type LinhaGrade } from '@/components/GradePlanilha'
 import ImagemDaLinha from '@/components/ImagemDaLinha'
@@ -31,10 +30,9 @@ import { usePlanilha } from '@/components/planilha'
 import { Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { useMigalha } from '@/layout/migalha'
-import { CHECKLISTS, ROTULO_CHECKLIST, type Checklist } from '@/layout/nav'
-import { ApiError, api } from '@/lib/api'
-import type { ChecklistTipo, LinhaGabarito, Resultado } from '@/lib/types'
-import { rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
+import { CHECKLISTS, type Checklist } from '@/layout/nav'
+import type { ChecklistTipo, Resultado } from '@/lib/types'
+import { useProjeto } from '@/projeto/ProjetoContext'
 
 /** O campo de `resultado_check` que a coluna grava. Sem `campo`, a coluna é de
  *  leitura (ou calculada, ou de ação) e não grava nada. */
@@ -228,17 +226,29 @@ export default function Recorte() {
     )
   }
 
-  return modeloId ? (
-    <Planilha key={`${checklist}:${modeloId}`} checklist={checklist} modeloId={modeloId} />
-  ) : (
-    <Previa key={checklist} checklist={checklist} />
-  )
+  // SEM MODELO NÃO HÁ PLANILHA (01/08/2026, a pedido). Linha, coluna e célula
+  // pertencem a UM modelo: a linha é um `resultado_check`, e resultado pertence
+  // a uma auditoria, que pertence a uma versão de um modelo. Desenhar a grade
+  // antes de escolher um mostra uma tabela que não é de nada — e a versão
+  // anterior disto, a prévia do gabarito, era pior: parecia preenchível.
+  if (!modeloId) {
+    return (
+      <Vazio
+        titulo={L('Escolha um modelo', 'Pick a model')}
+        texto={L(
+          'A planilha é de um modelo: escolha um no painel à esquerda, sob a disciplina dele. Se não houver nenhum listado, o "+" abre a primeira auditoria deste recorte.',
+          'The sheet belongs to a model: pick one in the left panel, under its discipline. If none is listed, the "+" opens the first audit of this scope.',
+        )}
+      />
+    )
+  }
+
+  return <Planilha key={`${checklist}:${modeloId}`} checklist={checklist} modeloId={modeloId} />
 }
 
 /** A PLANILHA DE UM MODELO — o que se preenche. */
 function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: string }) {
   const { L, lang } = useI18n()
-  const { projeto } = useProjeto()
   const p = usePlanilha(modeloId, checklist as ChecklistTipo)
   const [linhaDaImagem, setLinhaDaImagem] = useState<string | null>(null)
 
@@ -249,12 +259,15 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
 
   const colunas = colunasDe(checklist)
 
+  /** RETORNA A PROMESSA, e isso não é detalhe: é por ela que a célula de texto
+   *  sabe que o pedido anterior terminou. Sem o `return`, o salvamento imediato
+   *  viraria um PATCH por letra digitada. */
   const salvarCelula = useCallback(
     (chave: string, coluna: number, valor: string) => {
       const campo = colunas[coluna]?.campo
       const resultado = p.detalhe?.resultados.find((r) => r.id === chave)
       if (!campo || !resultado) return
-      p.salvar(resultado, paraOServidor(campo, valor))
+      return p.salvar(resultado, paraOServidor(campo, valor))
     },
     [colunas, p],
   )
@@ -268,8 +281,6 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
   )
 
   if (p.carregando) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
-
-  const voltar = rotaProjeto(projeto?.id ?? '', `auditoria/${checklist}`)
 
   if (!p.modelo) {
     return (
@@ -382,7 +393,7 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
       <Erro mensagem={p.erro} />
 
       <GradePlanilha
-        rotulos={colunas}
+        colunas={colunas}
         dados={linhas}
         travada={p.publicada}
         onSalvar={salvarCelula}
@@ -403,78 +414,6 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
         onRemover={p.removerEvidencia}
       />
 
-      {/* O caminho de volta ao recorte sem modelo. Discreto e no fim: quem está
-          aqui veio para preencher, e a lista de modelos continua no painel da
-          esquerda — este link é para quem quer ver a ESTRUTURA do recorte. */}
-      <div className="crumb">
-        <Link to={voltar}>
-          {L(`← Estrutura de ${L(...ROTULO_CHECKLIST[checklist])}`, '← Scope structure')}
-        </Link>
-      </div>
-    </div>
-  )
-}
-
-/** A PRÉVIA DO RECORTE — a estrutura, sem modelo. */
-function Previa({ checklist }: { checklist: Checklist }) {
-  const { L, lang } = useI18n()
-
-  const [itens, setItens] = useState<LinhaGabarito[]>([])
-  const [erro, setErro] = useState<string | null>(null)
-  const [carregando, setCarregando] = useState(true)
-
-  const carregar = useCallback(async () => {
-    setErro(null)
-    setCarregando(true)
-    try {
-      setItens(await api.gabaritos.obter(checklist as ChecklistTipo))
-    } catch (e) {
-      setErro(e instanceof ApiError ? e.message : String(e))
-      setItens([])
-    } finally {
-      setCarregando(false)
-    }
-  }, [checklist])
-
-  useEffect(() => {
-    carregar()
-  }, [carregar])
-
-  if (carregando) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
-
-  // Recorte SEM estrutura de fábrica — hoje 4D, LOD 400 e 500. Não é erro nem
-  // pendência do projeto: é o gabarito daquele recorte que ainda não foi
-  // desenhado, e o lugar de desenhá-lo é `services/gabarito.py`.
-  if (!erro && itens.length === 0) {
-    return (
-      <div className="pgvazio">
-        <Vazio
-          titulo={L('Este recorte não tem estrutura definida', 'This scope has no structure yet')}
-          texto={L(
-            'As linhas e colunas deste recorte ainda não foram definidas. A auditoria geral já tem as dela; as dos demais entram à medida que os arquivos de referência forem levantados.',
-            'The rows and columns of this scope have not been defined yet. The general audit already has its own; the others come as the reference files are gathered.',
-          )}
-        />
-      </div>
-    )
-  }
-
-  // A COLUNA INFORMATION é a primeira; as outras se respondem na planilha de um
-  // modelo. `nome_en` no inglês e `nome_pt` no português: o rótulo da coluna é o
-  // inglês, mas quem está com a interface em português lê a linha em português
-  // no resto do sistema.
-  const celulas = itens.map((i) => [lang === 'en' ? i.nome_en : i.nome_pt])
-
-  return (
-    <div className="plan-tela">
-      <Erro mensagem={erro} />
-      <p className="hint">
-        {L(
-          'Esta é a ESTRUTURA do recorte — os itens de fábrica, iguais em todo projeto. Para preencher, escolha um modelo no painel à esquerda: a auditoria pertence a um modelo, e é lá que as respostas são gravadas.',
-          'This is the scope STRUCTURE — the factory items, the same in every project. To fill it in, pick a model in the left panel: an audit belongs to a model, and that is where answers are stored.',
-        )}
-      </p>
-      <GradePlanilha rotulos={colunasDe(checklist)} celulas={celulas} />
     </div>
   )
 }
