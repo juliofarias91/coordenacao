@@ -1,4 +1,4 @@
-/** O COMPORTAMENTO da planilha de auditoria: carregar, gravar, publicar.
+/** O COMPORTAMENTO da planilha de auditoria: carregar, gravar, anexar.
  *
  *  Um hook, e não uma tela — a tela é `pages/auditoria/Recorte.tsx`, uma só para
  *  os cinco recortes. Este arquivo nasceu quando eram DUAS telas (a geral e a de
@@ -9,32 +9,23 @@
  *  em 01/08/2026 com as duas telas antigas. O que as substituiu está em
  *  `components/GradePlanilha.tsx` (a grade) e `components/ImagemDaLinha.tsx` (o
  *  painel de colar imagem).
+ *
+ *  PUBLICAR ROUND NÃO ESTÁ AQUI, e é decisão de 01/08/2026: o botão saiu da
+ *  planilha a pedido, e a porta dele continua sendo a TELA DO MODELO
+ *  (`pages/Modelo.tsx`) — que é onde se cuida do modelo, enquanto aqui se
+ *  preenche a auditoria dele. Um método de hook que ninguém chama é andaime.
  */
 import { useCallback, useEffect, useState } from 'react'
 
-import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type {
   Auditoria,
   AuditoriaDetalhe,
-  AuditoriaEstado,
   ChecklistTipo,
   ModeloDetalhe,
   Resultado,
   Versao,
 } from '@/lib/types'
-
-export const CLASSE_ESTADO: Record<AuditoriaEstado, string> = {
-  publicado: 'pill ok',
-  nao_publicado: 'pill',
-  desatualizado: 'pill alerta',
-}
-
-export const ROTULO_ESTADO: Record<AuditoriaEstado, [string, string]> = {
-  publicado: ['Publicado', 'Published'],
-  nao_publicado: ['Em andamento', 'In progress'],
-  desatualizado: ['Desatualizado', 'Outdated'],
-}
 
 /** Tudo o que uma planilha precisa saber e fazer.
  *
@@ -154,15 +145,6 @@ export function usePlanilha(modeloId: string | undefined, checklist: ChecklistTi
     [publicada, comErro, carregarDetalhe],
   )
 
-  const publicar = useCallback(async () => {
-    if (!detalhe) return
-    await comErro(async () => {
-      await api.auditorias.publicar(detalhe.id)
-      await carregarDetalhe()
-      await carregarAuditoria()
-    })
-  }, [detalhe, comErro, carregarDetalhe, carregarAuditoria])
-
   /** Gera a NC a partir da linha reprovada. NÃO manda descrição nem
    *  recomendação: o servidor herda `comentario` → descrição e `direcao` →
    *  recomendação, com os papéis certos. Mandar daqui duplicaria a regra. */
@@ -187,61 +169,6 @@ export function usePlanilha(modeloId: string | undefined, checklist: ChecklistTi
     enviarEvidencia,
     abrirEvidencia,
     removerEvidencia,
-    publicar,
     gerarNc,
   }
-}
-
-/** O cabeçalho de números da planilha, igual nas duas.
- *
- *  O percentual vem do SERVIDOR. A tela não soma nada, senão passariam a
- *  existir duas contas de aprovação que divergem no primeiro arredondamento.
- */
-export function CabecalhoPlanilha({
-  versao,
-  detalhe,
-}: {
-  versao: Versao
-  detalhe: AuditoriaDetalhe
-}) {
-  const { L } = useI18n()
-  const pct = detalhe.aprovacao_pct === null ? null : Math.round(Number(detalhe.aprovacao_pct))
-
-  return (
-    <div className="metrics">
-      <div className="metric">
-        <div className="lb">{L('Versão analisada', 'Analyzed version')}</div>
-        <div className="vl">
-          {versao.versao}
-          {detalhe.round !== null && <small> · round {detalhe.round}</small>}
-        </div>
-      </div>
-      <div className="metric">
-        <div className="lb">{L('Itens', 'Items')}</div>
-        <div className="vl">
-          {detalhe.resultados.length}
-          {detalhe.pendentes > 0 && (
-            <small>
-              {' '}
-              · {detalhe.pendentes} {L('pendente(s)', 'pending')}
-            </small>
-          )}
-        </div>
-      </div>
-      <div className="metric">
-        <div className="lb">{L('Aprovação', 'Approved')}</div>
-        {/* Regra 2: o número fica em `--ink`. Uma fileira de números coloridos
-            vira semáforo e perde-se qual valor é grande. */}
-        <div className="vl">{pct === null ? '—' : `${pct}%`}</div>
-      </div>
-      <div className="metric">
-        <div className="lb">{L('Estado', 'State')}</div>
-        <div className="vl">
-          <span className={CLASSE_ESTADO[detalhe.estado]}>
-            {L(...ROTULO_ESTADO[detalhe.estado])}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
 }

@@ -779,7 +779,21 @@ ordem. O que varia entre os arquivos é a resposta, nunca a pergunta.
   conteúdo abria **vazio**. Uma tela por recorte multiplicaria por cinco a
   próxima coluna que a planilha ganhar. O que cada recorte tem de próprio são as
   COLUNAS, em `pages/auditoria/Recorte.tsx`; o comportamento (carregar, gravar,
-  publicar) segue em `components/planilha.tsx`.
+  anexar) segue em `components/planilha.tsx`.
+- **ACIMA DA PLANILHA HÁ UMA LINHA, E SÓ** (01/08/2026, a pedido: "mantenha
+  aquele padrão que tínhamos antes, mais simplificado"). Saíram a fileira de
+  métricas (versão · itens · aprovação · estado) e a de ações (`Ver o modelo`,
+  `Publicar round`): juntas comiam ~140px do alto de uma tela cuja razão de
+  existir é a grade, e empurravam a linha 1 para baixo da dobra num notebook.
+  **Nada de função se perdeu** — publicar round e o detalhe da versão vivem em
+  `pages/Modelo.tsx`, que é onde se cuida do modelo, enquanto aqui se preenche a
+  auditoria dele; e o percentual, que era a métrica útil, está na coluna
+  APROVAÇÃO (%) linha a linha. `usePlanilha` perdeu o `publicar` junto: método
+  de hook que ninguém chama é andaime.
+  **O que fica é o que a tela não diz sozinha:** que ninguém precisa salvar, ou
+  que o round já foi publicado e por isso nada aceita edição — sem essa segunda
+  frase, a planilha travada seria uma tela que ignora o que se digita sem
+  explicar por quê.
 - **A IMAGEM DA LINHA SE COLA COM Ctrl+V** (`components/ImagemDaLinha.tsx`).
   Recorte de tela nasce na ÁREA DE TRANSFERÊNCIA — quem apertou Print Screen não
   tem arquivo para escolher num seletor, e só havia o seletor. O `paste` é ouvido
@@ -832,6 +846,13 @@ categorias de elemento**, para STRC.
   tabela (`grupo`, em `LinhaGrade`). A faixa sai da comparação com a linha
   ANTERIOR, e não de um agrupamento montado antes: os resultados já vêm do
   servidor na ordem da planilha impressa, e reagrupá-los arriscaria reordená-los.
+- **A FAIXA EXISTE SÓ AQUI** — `AGRUPA_POR_ELEMENTO`, em `Recorte.tsx`. Ela
+  chegou a aparecer na auditoria geral, porque lá `criterio.categoria` também
+  vem preenchida; mas ali a categoria é SEÇÃO DO CHECKLIST ("ASPECTOS GERAIS",
+  "PARÂMETROS"), e o arquivo de referência da geral tem os 17 itens **chapados**,
+  sem seção nenhuma. Três faixas numa planilha de dezessete linhas dividem em
+  três o que se lê de uma vez. Recorte novo só entra nesse conjunto se a planilha
+  DELE tiver a coluna ELEMENT.
 - **`projeto_membro` registra participação e NÃO autoriza** (migration 0004).
   Quem decide continua sendo `requer_permissao` sobre as permissões de
   organização. `tests/test_membros.py::test_participacao_nao_e_permissao`

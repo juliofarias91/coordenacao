@@ -3996,10 +3996,14 @@ td.num {
 .plan-tela {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  /* 8px, e não os 12 de antes: sem a fileira de métricas e a de ações, o que
+     resta acima da grade é uma frase de uma linha — e um respiro grande entre
+     ela e a planilha faria a frase parecer um título, que é justamente o que
+     nenhuma página daqui tem. */
+  gap: 8px;
   height: 100%;
   min-height: 0;
-  padding: 16px var(--pad-x) 8px;
+  padding: 12px var(--pad-x) 8px;
 }
 /* A grade DESFAZ o respiro lateral da tela — ver `.pgbody:has(> .plan-tela)`. */
 .plan-tela .grade-rolagem {
@@ -4012,15 +4016,24 @@ td.num {
 .plan-tela .crumb {
   margin: 0;
 }
-/* "salvando…" em tinta apagada, ao lado das ações. Não é pílula nem barra de
-   progresso: uma célula grava em ~200ms, e um elemento com cor piscando a cada
-   palavra digitada seria a coisa com mais movimento na tela (regra 2). Ele
-   existe porque não há botão de salvar — sem nenhum sinal, "salvou?" vira uma
-   pergunta sem resposta. */
-.plan-salvando {
+/* A ÚNICA LINHA ACIMA DA PLANILHA (01/08/2026). Antes havia a fileira de
+   métricas e a de ações; juntas comiam ~140px do alto de uma tela cuja razão de
+   existir é a grade. O que sobrou é uma frase apagada, com a altura de uma
+   linha — ela diz o que a tela não consegue dizer sozinha: que ninguém precisa
+   salvar, ou que este round já foi publicado e por isso nada aceita edição. */
+.plan-aviso {
   flex: none;
+  margin: 0;
   color: var(--ink-3);
   font-size: 11.5px;
+  line-height: 1.4;
+}
+/* "salvando…" na mesma linha do aviso. Não é pílula nem barra de progresso: uma
+   célula grava em ~200ms, e um elemento com cor piscando a cada palavra
+   digitada seria a coisa com mais movimento na tela (regra 2). Ele existe
+   porque não há botão de salvar — sem nenhum sinal, "salvou?" vira uma pergunta
+   sem resposta. */
+.plan-salvando {
   font-style: italic;
 }
 

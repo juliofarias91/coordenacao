@@ -27,7 +27,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import GradePlanilha, { type Coluna, type LinhaGrade } from '@/components/GradePlanilha'
 import ImagemDaLinha from '@/components/ImagemDaLinha'
-import { CabecalhoPlanilha, usePlanilha } from '@/components/planilha'
+import { usePlanilha } from '@/components/planilha'
 import { Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { useMigalha } from '@/layout/migalha'
@@ -164,6 +164,21 @@ const LOD: ColunaAud[] = [
  *  que precise de mais ganha a própria lista no dia em que o arquivo de
  *  referência dele aparecer. */
 const COLUNAS: Partial<Record<Checklist, ColunaAud[]>> = { lod300: LOD }
+
+/** ONDE A FAIXA DE GRUPO EXISTE — e ela existe onde a PLANILHA DE ORIGEM tem a
+ *  coluna ELEMENT.
+ *
+ *  No LOD 300 o agrupamento é a estrutura do arquivo: 60 linhas em 4 categorias
+ *  de elemento, e "Level" na laje não é o mesmo critério que "Level" no pilar.
+ *  Sem a faixa, a planilha vira uma lista de nomes repetidos sem dizer de que
+ *  elemento se fala.
+ *
+ *  NA AUDITORIA GERAL NÃO (01/08/2026, a pedido). Lá `criterio.categoria` é
+ *  seção do checklist ("ASPECTOS GERAIS", "PARÂMETROS"), não elemento — e o
+ *  arquivo de referência tem os 17 itens CHAPADOS, sem seção nenhuma. A faixa
+ *  acrescentava três linhas de cabeçalho a uma planilha de dezessete, dividindo
+ *  em três o que se lê de uma vez. */
+const AGRUPA_POR_ELEMENTO: ReadonlySet<Checklist> = new Set<Checklist>(['lod300'])
 
 function colunasDe(c: Checklist): ColunaAud[] {
   return COLUNAS[c] ?? BASE
@@ -319,9 +334,9 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
   const en = lang === 'en'
   const linhas: LinhaGrade[] = p.detalhe.resultados.map((r) => ({
     chave: r.id,
-    // A coluna ELEMENT da planilha de LOD. Nos recortes sem categoria isto é
-    // nulo e nenhuma faixa aparece.
-    grupo: r.criterio.categoria,
+    // A faixa de grupo é a coluna ELEMENT, e ela só existe onde a planilha de
+    // origem tem essa coluna — ver `AGRUPA_POR_ELEMENTO`.
+    grupo: AGRUPA_POR_ELEMENTO.has(checklist) ? r.criterio.categoria : null,
     leitura: colunas.map((col) => col.le?.(r, en) ?? null),
     // A INSTRUÇÃO é a coluna OCULTA da planilha — diz COMO conferir o item, e
     // nunca foi para o fornecedor. Aqui ela é o `title` da célula do nome: uma
@@ -337,43 +352,32 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
 
   return (
     <div className="plan-tela">
-      <CabecalhoPlanilha versao={p.versao} detalhe={p.detalhe} />
+      {/* UMA LINHA ACIMA DA PLANILHA, e só (01/08/2026, a pedido: "mantenha
+          aquele padrão que tínhamos antes, mais simplificado").
 
-      <div className="acoes">
-        <span className="hint" style={{ margin: 0 }}>
-          {p.publicada
-            ? L(
-                'Round publicado — a planilha ficou somente leitura. Uma versão nova reabre a auditoria em outro round.',
-                'Round published — the sheet is read-only. A new version reopens the audit in another round.',
-              )
-            : L(
-                'Cada célula salva sozinha — não há botão de salvar.',
-                'Every cell saves on its own — there is no save button.',
-              )}
-        </span>
-        <div style={{ flex: 1 }} />
-        {p.ocupado && <span className="plan-salvando">{L('salvando…', 'saving…')}</span>}
-        <Link className="btn" to={rotaProjeto(projeto?.id ?? '', `modelos/${p.modelo.id}`)}>
-          {L('Ver o modelo', 'Open the model')}
-        </Link>
-        {!p.publicada && (
-          <button
-            className="btn pri"
-            onClick={p.publicar}
-            disabled={p.ocupado || p.detalhe.pendentes > 0}
-            title={
-              p.detalhe.pendentes > 0
-                ? L(
-                    `Ainda há ${p.detalhe.pendentes} item(ns) pendente(s)`,
-                    `${p.detalhe.pendentes} item(s) still pending`,
-                  )
-                : undefined
-            }
-          >
-            {L('Publicar round', 'Publish round')}
-          </button>
-        )}
-      </div>
+          Saíram daqui a fileira de métricas (versão · itens · aprovação ·
+          estado) e a de ações (`Ver o modelo`, `Publicar round`) — juntas
+          comiam ~140px do alto de uma tela cuja razão de existir é a grade, e
+          empurravam a linha 1 para baixo da dobra em monitor de notebook.
+
+          NADA DE FUNÇÃO SE PERDEU: publicar round e o detalhe da versão vivem
+          na TELA DO MODELO, que é onde se cuida do modelo — aqui se preenche a
+          planilha. O percentual, que era a métrica útil, está na coluna
+          APROVAÇÃO (%) linha a linha.
+
+          O que fica é o que a tela não consegue dizer sozinha: que ninguém
+          precisa salvar, ou que este round já foi publicado e por isso nada
+          aceita edição. Sem essa segunda frase, a planilha travada seria uma
+          tela que ignora o que se digita sem explicar por quê. */}
+      <p className="plan-aviso">
+        {p.publicada
+          ? L(
+              'Round publicado — a planilha ficou somente leitura. Uma versão nova reabre a auditoria em outro round.',
+              'Round published — the sheet is read-only. A new version reopens the audit in another round.',
+            )
+          : L('Cada célula salva sozinha — não há botão de salvar.', 'Every cell saves on its own — there is no save button.')}
+        {p.ocupado && <span className="plan-salvando"> · {L('salvando…', 'saving…')}</span>}
+      </p>
 
       <Erro mensagem={p.erro} />
 
