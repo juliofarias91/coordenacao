@@ -18,7 +18,7 @@ Princípio central: **a auditoria é a única fonte de dado. Painel de controle,
 - `docs/Especificacao_Plataforma_Auditoria_BIM.md` — modelo de dados conceitual e regras de negócio.
 - `docs/Backlog_Piloto_SPBIM.md` — backlog do piloto (se precisar de tarefas granularizadas).
 - `docs/prototipo_auditoria_bim.html` — **protótipo navegável**: define os fluxos, as telas e os estados. Continua sendo a referência de **o que cada tela mostra**. Não é mais a referência de **como ela parece** — ver a seção "Sistema visual" abaixo.
-- `ui-kit-export/README.md` — **a linguagem visual**: as seis regras, as escalas e a régua do esqueleto. **Consulte antes de criar ou ajustar qualquer visual** — é a seção 3 dele, e o resumo está na seção "Sistema visual" abaixo.
+- A **linguagem visual** está na seção "Sistema visual" deste arquivo — as seis regras, as escalas e a régua do esqueleto. **É a fonte, não um resumo:** o `ui-kit-export/` de onde ela veio foi removido em 30/07/2026 (ver a nota no fim daquela seção).
 
 ## Ordem de construção (roadmap — ver plano técnico, seção 8)
 
@@ -38,23 +38,37 @@ Princípio central: **a auditoria é a única fonte de dado. Painel de controle,
 - Inicialize git cedo e faça commits por etapa.
 - Ao replicar uma tela, tire do protótipo HTML **o conteúdo e o comportamento**; a aparência sai do sistema visual abaixo.
 
-## Sistema visual (`ui-kit-export/` aplicado)
+## Sistema visual
 
-A linguagem visual da plataforma é a do `ui-kit-export/` (extraído do VDCity).
-A marca continua SPBIM: o accent é o azul `#2547b0` / `#6e8cf2` e as quatro
-cores de macrodisciplina não mudaram — o kit dá estrutura e régua, não cor.
+A linguagem visual veio do VDCity, e **esta seção é a fonte dela.** A marca é
+SPBIM: o accent é o azul `#2547b0` / `#6e8cf2` e as quatro cores de
+macrodisciplina não mudaram — o que veio de lá foi estrutura e régua, não cor.
 
 O transplante foi feito **sem Tailwind**. As classes semânticas de sempre
 (`.card`, `.btn`, `.pill`, `.seg`, `.chip`…) continuam valendo e as 25 telas
-não foram tocadas: `src/styles/tokens.css` e `src/styles/app.css` é que passaram
-a expressar a linguagem do kit. Para mudar o visual de algo, mexa nesses dois —
-não espalhe estilo pelas páginas.
+não foram tocadas: `src/styles/tokens.css` e `src/styles/app.css` é que expressam
+a linguagem. Para mudar o visual de algo, mexa nesses dois — não espalhe estilo
+pelas páginas.
 
 **LEIA ESTAS REGRAS ANTES DE CRIAR OU AJUSTAR QUALQUER VISUAL** — tela nova,
 componente novo, ou mexida num que já existe. Elas não são preferência de
 estilo: cada uma foi paga com uma tela que ficou errada. Uma tela que as siga
-"parece do sistema"; que as ignore, não. A versão longa, com exemplos de código
-e contra-exemplos, está em `ui-kit-export/README.md` §3.
+"parece do sistema"; que as ignore, não.
+
+**Antes das regras, a escolha estrutural: tela de trabalho × tela pontual.**
+Toda tela nova cai numa das duas famílias, e o critério não é estético — é o
+tipo de uso. *"É tela onde se passa o dia trabalhando, ou é config/formulário/
+diálogo pontual?"*
+
+- **Trabalho contínuo** (lista de modelos, matriz, painel, planilha): **sem
+  moldura**. Bandas separadas por borda, largura cheia, altura da viewport. É o
+  caso da maioria das telas daqui.
+- **Pontual** (configuração, formulário, perfil, resumo): **card** — `.card` /
+  `.editor`, com `--r-2xl` e `--sh-sm`.
+
+Nenhuma das duas é dívida. O card só vira problema quando envolve uma tela de
+trabalho contínuo: aí ele acrescenta uma moldura e um scroll a mais entre quem
+coordena e o dado que ele veio ler.
 
 **As seis regras:**
 
@@ -90,6 +104,29 @@ e contra-exemplos, está em `ui-kit-export/README.md` §3.
    preenchimento, destrutivo fica vermelho translúcido (regra 2), e estado
    semântico está lá com ou sem mouse. O token `--hover-ink` foi retirado.
 
+**A GAVETA é a terceira família, e ela tem regras próprias** (30/07/2026).
+Painel da direita, `position: fixed`, largura FIXA (`--w-gaveta`, 400px), que
+SOBREPÕE — é a regra 4 concretizada. Formulário pontual disparado de uma tela de
+trabalho entra nela, não no meio da página. O componente é
+`components/Gaveta.tsx`; o CSS, a seção GAVETA LATERAL do `app.css`. Quatro
+decisões, e nenhuma é preferência:
+
+- **Sem raio.** A escala de raio pressupõe uma superfície com quatro cantos
+  dentro da tela; a gaveta encosta em três bordas, e arredondar só a esquerda
+  produzia dois cantos meio-arredondados que não pertencem a degrau nenhum.
+  Quem a separa do fundo é a borda e a sombra.
+- **Sem botão Cancelar.** A gaveta já tem três saídas — o X, o clique fora e o
+  Esc — e nenhuma grava nada. Um quarto caminho para "não fazer" ao lado do
+  único caminho para "fazer" dá o mesmo peso visual a duas coisas de peso muito
+  diferente.
+- **A ação ocupa a largura inteira do rodapé**, que é o que sobra quando não há
+  um segundo botão para dividir a linha.
+- **Sem divisor no rodapé.** O `border-top` existia para separá-lo do corpo
+  quando havia dois botões à direita e o resto da linha vazio; com o botão
+  ocupando a linha, ele já se separa sozinho — a linha seria contorno sobre
+  contorno. O rodapé continua FORA do corpo rolável: ação que exige rolar até o
+  fim para existir some no instante em que o formulário cresce.
+
 **Escalas — não invente um sexto degrau.** Raio: `--r-md` controle pequeno,
 `--r-lg` input/botão, `--r-xl` card interno/popover, `--r-2xl` **card de página
 e modal** (a superfície de página tem raio próprio, acima do dos controles).
@@ -114,16 +151,104 @@ domina; em dúvida é ela).
   não fica exposto na barra — é destrutivo, e um clique errado derrubaria a
   sessão no meio de uma auditoria. As classes `.userbox/.av/.nm/.rl` continuam
   valendo: o que mudou foi onde o bloco é montado, não do que ele é feito.
+- **O painel da conta virou o do VDCity em forma, não em hover** (31/07/2026).
+  Cabeçalho de identidade em três linhas (avatar de 40px, nome, login, papel),
+  itens em **grupos** separados por um traço, e `--w-popover` como todos os
+  outros popovers da barra — eram 248px, o único fora da régua, e o login não
+  cabia numa linha. Duas divergências deliberadas do original: **o hover é
+  tinta**, não `bg-muted` (regra 6 — se estar ativo não ganha retângulo, estar
+  sob o cursor ganha menos), e **o `border-bottom` por item saiu**. Sete réguas
+  de largura cheia davam ao divisor entre `Configurações` e `Lixeira` o mesmo
+  peso do divisor entre coisas sem relação; agora ele separa BLOCOS. O papel
+  deixou de ser linha própria com pílula: é atributo de quem está no cabeçalho,
+  e a pílula punha cor na primeira coisa que o painel mostra (regra 2). **Não
+  entraram** os itens do VDCity que aqui não têm função — Novidades, Ajuda,
+  Silenciar, pins — nem `Tema`, que por decisão de 30/07/2026 vive em
+  `Configurações › Preferências`.
+- **`Apontar erro` é pílula PRÓPRIA na topbar** (31/07/2026, a pedido), vizinha
+  do sino: um traz o que o sistema tem a dizer, o outro leva o que se tem a
+  dizer sobre ele. Dentro do menu da conta custava dois cliques, e o primeiro
+  era em "minha conta" — o lugar de quem vai trocar de senha, não de quem
+  acabou de esbarrar num defeito. O componente é `components/ApontarErro.tsx`,
+  agora botão **e** painel, no arranjo do `Sino`. **Ele não fecha por clique
+  fora nem por Esc**, ao contrário do sino e do menu: tem texto digitado, e os
+  dois gestos custariam o relato inteiro. Armadilha paga junto:
+  `.app[data-nav='off'] .side-painel` valia com três classes de especificidade
+  contra uma e vencia o `left: auto` do `.erro-painel`, esmagando-o na largura
+  da pílula com a barra recolhida — a regra foi escopada em `.side-acao`, que é
+  o único lugar de onde ela nasceu.
 - A sidebar nasce **expandida**, ao contrário do padrão do kit — mas agora
   recolher **devolve espaço de verdade**, e a razão original caiu: `main` já
   foi limitado a 1180px e centrado, e desde 29/07/2026 usa a **largura cheia**
-  com `--pad-x` de margem lateral (o mesmo da topbar, para o breadcrumb cair
-  sobre o título). As telas daqui são tabela, matriz modelo × área e grade de
-  projetos: largura é informação, não sobra.
-  As duas exceções são **prosa**, e continuam limitadas de propósito —
-  `.top .sub` a 660px e a política de privacidade (`.doc`) a 760px. Medida de
-  leitura não é medida de layout: um parágrafo a 1800px atravessa a tela e o
-  olho perde o começo da linha seguinte.
+  com `--pad-x` de margem lateral (o mesmo da topbar). As telas daqui são
+  tabela, matriz modelo × área e grade de projetos: largura é informação, não
+  sobra. A exceção é **prosa**, e continua limitada de propósito: a política de
+  privacidade (`.doc`) a 760px. Medida de leitura não é medida de layout — um
+  parágrafo a 1800px atravessa a tela e o olho perde o começo da linha seguinte.
+
+**PÁGINA NÃO TEM TÍTULO NEM SUBTÍTULO** (30/07/2026, a pedido). O `Cabecalho` de
+`components/ui.tsx` e o bloco `.top` (`h1` + `.sub`) saíram das 20 telas que os
+tinham: o `h1` repetia o breadcrumb da topbar, que fica poucos pixels acima e na
+mesma margem — `--pad-x` é o mesmo nos dois justamente para eles se alinharem —,
+e o par consumia ~90px do alto de toda página antes do primeiro dado. Quem nomeia
+a tela agora é o breadcrumb, e só ele.
+
+- **Tela nova não ganha `<h1>`.** O `main` já começa com 26px de respiro; a
+  primeira coisa da página é o dado, o filtro ou a barra de ferramentas dela.
+- **O que precisar ser explicado vira `.hint` JUNTO DO DADO que ele explica**,
+  não parágrafo no topo. Alguns `sub` eram o único lugar onde uma regra do
+  produto estava escrita — "tudo gerado a partir das auditorias, não há onde
+  digitar estes números", em Modelos, era um deles. Instrução longe do que
+  explica não é lida; se algum precisar voltar, volta ao lado do número.
+- **Caiu junto a indireção que existia só para dar título:**
+  `pages/configuracao/paginas.tsx` (cinco invólucros) foi apagado e
+  `pages/admin/paginas.tsx` ficou só com `PaginaGerenciarMembros`, que nunca foi
+  cabeçalho — é a guarda de permissão de `/membros`, a porta que NÃO passa pelo
+  componente `Admin`. As rotas apontam direto para as abas em `App.tsx`.
+
+**O TEMA É ESCOLHÍVEL — aparência e cor de destaque** (30/07/2026, o sistema do
+VDCity `services/theme.js` + `navbar-panels.jsx`). São duas preferências
+independentes, as duas do NAVEGADOR e não da conta, e vivem em
+`Configurações › Preferências` como AMOSTRAS, não `<select>`: cor não se escolhe
+pelo nome — "Petróleo" e "Menta" não dizem nada até se ver os dois lado a lado.
+
+- **Aparência: claro · escuro · AUTO.** `auto` segue o sistema operacional, e é
+  por causa dele que existem DOIS valores no contexto: `modo` é a escolha (o que
+  se guarda) e `theme` é o que está valendo agora. Guardar só o resolvido, como
+  se fazia antes, perde a escolha — quem pediu "auto" às 10h viraria "claro"
+  para sempre. A chave `spbim_theme` é a mesma de antes de propósito: 'light' e
+  'dark' continuam modos válidos, e ninguém perde a preferência.
+- **Cor de destaque: dez amostras** (`theme/cores.ts`), a paleta do VDCity com
+  o azul da SPBIM em primeiro como default e o "Royal" fora — três azuis quase
+  iguais numa fileira de dez viram uma escolha que não se consegue fazer.
+- **O DEFAULT NÃO É CALCULADO.** Escolher SPBIM APAGA as propriedades inline e
+  devolve o controle ao `tokens.css`: o par #2547b0/#6e8cf2 foi validado à mão
+  para os dois temas, e recalculá-lo por fórmula só o afastaria do que já se
+  conferiu.
+- **A escolha reescreve os CINCO membros da família `--accent*`, e por tema.** O
+  VDCity escreve um `--primary` e pronto; aqui `--accent-hover` anda em direções
+  opostas nos dois temas e `--accent-ink` depende da luminância da cor escolhida
+  — escrever só `--accent` deixaria o hover do `.btn.pri` na cor antiga e texto
+  branco sobre amarelo.
+- **A luminosidade é ANCORADA** (`limitar`, em `cores.ts`): as amostras foram
+  desenhadas para um fundo shadcn e vão de `l=41%` a `l=63%`; soltas, a menta
+  some no escuro e o cinza some no claro. É a mesma ideia da banda de
+  luminosidade da paleta de macrodisciplina.
+- **`--macro-A..S` NÃO seguem o accent**, ainda que `--macro-A` seja o mesmo hex.
+  Aquela é paleta categórica validada (banda de luminosidade, piso de saturação,
+  daltonismo); amarrá-la à preferência de cor de alguém quebraria os gráficos.
+- **A cor aplica em `useLayoutEffect`, não no script do `index.html`.** O script
+  inline cuida só da APARÊNCIA, que precisa valer antes de o React carregar para
+  a tela não piscar branca. Duplicar a derivação de cor lá criaria duas fórmulas
+  para divergir; o `useLayoutEffect` roda antes da pintura e resolve sem isso.
+
+**O `ui-kit-export/` saiu em 30/07/2026.** Ele eram vinte arquivos JSX com
+Tailwind, um `tailwind.config.js` e um `tokens.css` — e **nenhuma linha de
+código o importava**: as classes semânticas daqui já expressavam a linguagem
+inteira. O que ele tinha de próprio eram as regras em prosa, com exemplos em
+classes Tailwind (`text-foreground font-semibold`, `bg-*/10`) que não existem
+neste projeto. As regras estão acima, no vocabulário daqui; o kit era o
+andaime. Recuperável no histórico: `git log -- ui-kit-export/`.
 
 ## Módulo de auditoria de arquivos (portado do Auditer)
 
@@ -166,14 +291,130 @@ todo o conjunto era um `../` que virou `../../`, porque o arquivo desceu um
 nível de pasta. O que restava era casca: `package.json`, Dockerfile, nginx e
 uma UI que já havia sido reimplementada no sistema visual da plataforma.
 
-Recuperável em três lugares, se algum dia precisar: o histórico deste
-repositório (`git log -- auditer/`), o histórico git original em
-`referencias/auditer-historico.git` e o `backup-auditer-2026-07-27.zip` ao
-lado dele.
+Recuperável no histórico deste repositório: `git log -- auditer/`, e o conteúdo
+de qualquer arquivo com `git show <commit>:auditer/<caminho>`. O histórico git
+original e o zip de backup ficavam em `referencias/` e **foram apagados em
+30/07/2026** — eles guardavam a proveniência (autoria e evolução do app antes de
+ser trazido), não código, e o código está aqui.
 
 Uma diferença de comportamento ficou, e é de propósito: o Auditer rodava sem
 login e a aba equivalente exige autenticação. Quem auditava pasta sem ter
 conta na plataforma passa a precisar de uma.
+
+## Acesso: login, usuários e senha (30/07/2026)
+
+**Senha não se digita para outra pessoa.** Dar acesso é
+`POST /usuarios/{id}/convite` → link de uso único → a pessoa escolhe a própria em
+`/definir-senha/:token`. O campo de senha no editor de usuários continua lá, mas
+quem o usa fica sabendo a senha de quem recebe. Convite e redefinição são a mesma
+tabela (`token_acesso`, migration 0010); o tipo sai de haver ou não `senha_hash`.
+
+**Não reverta — o porquê longo está no arquivo citado:**
+
+- **O token é guardado como SHA-256, nunca em claro** (`services/acesso.py`).
+  Diferente de `ConviteCliente.token`, que fica em claro de propósito.
+- **`usuario.sessoes_validas_apos` é a única revogação que existe.** Conferida
+  **só no `/auth/refresh`**. Corta em: sair, redefinir por link, admin trocando a
+  senha DE OUTRO. **Não** corta na troca da própria — a tela de Configurações
+  promete que a sessão continua.
+- **`ACCESS_TOKEN_MINUTES` é a janela de revogação, não preferência**: nada no
+  caminho da requisição lê o banco, então desativar alguém só vale quando o
+  access token expira.
+- **É a SENHA que decide a organização** quando o e-mail existe em várias
+  (`api/v1/auth.py::login`). O campo de organização no login só aparece no 409.
+- **Trilha: o valor do campo sensível é mascarado, o ATO não** — `ATOS`, em
+  `db/trilha.py`. **A ordem de `ATOS` importa.** Ação nova precisa entrar no
+  `pattern` de `GET /trilha` **e** nos mapas de `pages/admin/Trilha.tsx`.
+- **`SENHA_MINIMA` é duplicado entre back e front de propósito** (a tela de
+  definir senha é pública e valida offline). Quem tranca é
+  `test_contrato.py::test_minimo_de_senha_igual_no_front_e_no_back`, que LÊ o
+  arquivo TypeScript.
+- **O `detail` de um 422 é uma lista de OBJETOS**, não de strings — `String(item)`
+  dava `[object Object]` na tela. `linhaDeValidacao`, em `lib/api.ts`, traduz.
+- **`POST /auth/senha/esqueci` responde 202 sempre**, exista a conta ou não, e
+  tem janela por usuário (`INTERVALO_ENTRE_PEDIDOS`). É rota pública: confirmar
+  a existência a transformaria em lista de usuários.
+- **`sub` vazio no OIDC é RECUSADO.** `oidc_sub == None` virava `IS NULL` no SQL
+  e casava com todo usuário sem SSO — entregaria a sessão de outra pessoa.
+  `_um_por_identidade` existe para o mesmo callback não dar 500.
+
+**Três superfícies, e elas não se misturam** — a régua está na seção
+AUTENTICAÇÃO do `app.css`, com o porquê de cada valor:
+
+- **`.auth`** (login, definir-senha) — escura SEMPRE, com glows de accent.
+  **É a única tela onde a regra 2 cede**, porque é a única sem dado com que a cor
+  possa competir e sem tema a seguir. Não leve a permissão para outra tela. A
+  paleta é local ao seletor, e é isso que faz `.f`/`.btn`/`.hint` valerem lá
+  dentro sem estilo próprio.
+- **`.telacheia` + `.avisocard`** — segue o tema. É o "Carregando…" da
+  reidratação (aparece para quem JÁ entrou; escuro piscaria preto) e os estados
+  do portal do cliente. Chamavam-se `.login*`, nome que mentia.
+- **`.auth a` existe porque não há regra global de `a`.** Dívida conhecida: os
+  `<Link>` dentro de `.hint` no resto do app ainda renderizam no azul do
+  navegador.
+
+**Do VDCity não veio:** a marca gráfica (o tetraedro é deles; aqui não há símbolo
+até haver logotipo), o cadastro aberto, o login social e o MFA/TOTP.
+
+**Sem SMTP, a entrega é o link copiado pelo admin.** `POST /auth/senha/esqueci`
+cria o token e notifica os admins pelo PAPEL (`NotifTipo.ACESSO`), para o pedido
+não morrer nas férias de um admin específico. Quando houver servidor de e-mail, o
+canal entra em `esqueci_a_senha` e o resto não muda.
+
+**Ainda não existe, e é decisão em aberto:** limite de tentativas no login
+(cada tentativa paga um Argon2, então é vetor de DoS além de brute force),
+registro de falha de login, e exigir a senha atual ao trocar a própria.
+
+## Importação de planilha — PONTE PROVISÓRIA (30/07/2026)
+
+**Isto é dívida assumida, com prazo e com nome.** Foi feito sob pressa, para uma
+apresentação, e existe para haver número na tela a partir das planilhas que a
+coordenação já preenche à mão. **Não passa pelo caminho de auditoria da
+plataforma** (`criterio` → `checklist_item` → `auditoria` → `resultado_check`) e
+não deve passar a passar aos poucos: ou some, ou é substituído por uma
+importação que crie auditoria de verdade.
+
+Onde mora, para sair inteiro num `grep`: migration `0012`, tabelas
+`importacao_planilha`/`importacao_item`, `models/importacao.py`,
+`services/importacao_planilha.py`, `api/v1/importacao.py`,
+`schemas/importacao.py`, `pages/Importacao.tsx`, CSS com prefixo `imp-`,
+`api.importacao` e a rota `/importacao`.
+
+**Por que numa tabela à parte, e não dentro de `auditoria`:** o caminho certo
+exige disciplina, modelo, versão, round e critério cadastrados, e casar item a
+item com os critérios do projeto — trabalho de dias. Fazer isso *dentro* das
+tabelas de auditoria criaria linhas que **parecem** auditoria de verdade sem ter
+passado por round nem publicação, e a dívida ficaria invisível. Com "importacao"
+no nome da tabela, ela fica à vista.
+
+**O que as 14 planilhas reais ensinaram — não reverta:**
+
+- **A aba de LOD 300 tem SEIS layouts de coluna diferentes.** `VERIFICATION`
+  aparece na coluna 9, 11 ou 12; `INFORMATION` existe em seis arquivos e falta
+  em dois (lá o nome do item está em `REVIT PARAMETER`). **Nada é lido por
+  índice fixo** — tudo passa por `_mapa_de_colunas`, que casa por RÓTULO. A aba
+  `BASE GERAL`, essa sim, é estável.
+- **A porcentagem escrita na planilha está errada, e há prova.** A aba STRC
+  declara 30%; a fórmula dela é `=COUNTIF(I6:I33, TRUE)/COUNTA(I6:I65)` — alguém
+  acrescentou linhas e arrastou só metade da conta. O certo é 60%. Por isso a
+  aprovação é **sempre recontada** a partir das linhas, e a declarada fica ao
+  lado para a tela mostrar a divergência. É o argumento do produto numa célula:
+  a planilha não erra a auditoria, erra a CONTA sobre ela.
+  `test_geral_reconta_em_vez_de_confiar_na_planilha` tranca isso.
+- **A disciplina sai do NOME DO ARQUIVO, não da célula.** A célula do arquivo de
+  MECH diz "FPRT-FPRT-DATA" — cópia que ficou pela metade. O nome do arquivo
+  está certo nos catorze.
+- **"NOT APPROVED" contém "APPROVED".** Uma comparação por substring na ordem
+  errada aprova a planilha inteira, e o número sai bonito e falso.
+- **A média é PONDERADA pelos itens**, não a média das porcentagens: uma
+  planilha de LOD 300 tem 191 linhas e outra tem 54.
+- **Reimportar SUBSTITUI** (projeto+tipo+disciplina). Sem isso a média conta o
+  mesmo modelo duas vezes e anda sozinha a cada upload repetido.
+- **O upload é tolerante a falha parcial.** São catorze arquivos: um 400 por
+  causa do décimo obrigaria a descobrir qual e refazer o lote.
+- **`projeto_id` é NULO PERMITIDO.** As planilhas do DANTE 2 dizem
+  `CPQ04-ARCH-R26`, nome do projeto anterior. Exigir o vínculo travaria a
+  importação no erro de digitação deles.
 
 ## Estado atual
 
@@ -182,8 +423,18 @@ conta na plataforma passa a precisar de uma.
 **A plataforma é uma aplicação só.** `backend/` e `frontend/` são divisão de
 código-fonte, não de produto: o `Dockerfile` da raiz compila o React dentro da
 imagem da API, que o serve na mesma porta (`app/spa.py` liga isso ao encontrar
-`backend/static/`). Para desenvolver, `.\dev.ps1` — `-Unico` roda só a :8000
-servindo o build, que é o arranjo de produção, e `-Parar` encerra.
+`backend/static/`). Para desenvolver, **`npm run dev`** — `dev:unico` roda só a
+:8000 servindo o build, que é o arranjo de produção, `dev:web` sobe só o Vite
+contra a API já publicada (`API_REMOTA` no `.env`) e `parar` encerra.
+
+**`scripts/dev.mjs` é a fonte de verdade de como a plataforma sobe**, e o
+`dev.ps1` virou casca que o chama. O PowerShell abria a API numa JANELA
+SEPARADA (`Start-Process -NoExit`): cada execução deixava um terminal novo, e
+fechar a sessão deixava a janela órfã ouvindo na 8000. Em Node os dois processos
+são filhos do mesmo terminal, com a saída prefixada, e o `Ctrl+C` derruba a
+árvore inteira. A casca fica porque `.\dev.ps1` está na memória muscular de quem
+já usava o projeto — duas implementações divergiriam na primeira mudança de
+porta.
 
 - **Fase 0** — schema completo (23 tabelas, 12 enums), RLS multi-tenant, auth Argon2+JWT, OIDC/PKCE (desligado), Celery, shell React, CI.
 - **Fase 1** — cadastro: projetos, empresas+contatos+subcontratação, usuários+permissões, standards+nomenclatura, disciplinas, critérios+checklists.
@@ -195,7 +446,9 @@ servindo o build, que é o arranjo de produção, e `-Parar` encerra.
 
 - **Administração** (`/admin`, fora do roadmap original) — organização, projetos e usuários no nível do tenant. `GET/PATCH /organizacao` é a única rota nova; projetos e usuários já tinham API desde a Fase 1 e só não tinham tela: até aqui um projeto novo só nascia por `scripts/seed.py` ou pelo importador YAML. Aparece no menu só para quem tem `admin_cadastro`; a guarda real continua no `requer_permissao` de cada rota. **Não existe listagem nem criação de organização** de propósito — listar é o que o isolamento multi-tenant impede, e criar é provisionamento, sai do seed.
 
-73 endpoints; 289 testes contra Postgres, MinIO e arquivos IFC reais.
+135 rotas em `api/v1`; 331 funções de teste contra Postgres, MinIO e arquivos
+IFC reais. **A suíte inteira leva ~1h** rodando contra o Supabase — o de todo
+dia é rodar os arquivos que a mudança alcança.
 
 **O que resta não é código:** subir o ambiente produtivo num servidor e rodar o piloto assistido. Se o usuário pedir "continue", pergunte o que ele quer — não há próxima fase para implementar sozinho.
 
@@ -205,6 +458,15 @@ Ao continuar:
   `localStorage` (que sobrou como memória do último visitado). Quem monta o
   caminho é `rotaProjeto()`, em `frontend/src/projeto/ProjetoContext.tsx`.
   Nunca escreva `/painel` à mão.
+  **Um projeto abre em `kpis`** — `TELA_INICIAL`, no mesmo arquivo (31/07/2026, a
+  pedido; era `modelos`). Quem abre um projeto vem perguntar COMO ELE ESTÁ, e a
+  lista de modelos responde outra coisa: quais arquivos existem, que é a
+  pergunta de quem já sabe o estado e vai trabalhar. É o **default** de
+  `rotaProjeto`, e os quatro caminhos que abrem projeto — card da home, resultado
+  de busca, troca de projeto no breadcrumb e a própria função — passaram a
+  omitir o segundo argumento em vez de repetir a string. A **criação** é a
+  exceção e continua indo para `ficha`: o projeto nasceu com código e nome, e o
+  resto se preenche com ele aberto na frente.
 - **A sidebar é contextual em TRÊS áreas** (`frontend/src/layout/nav.ts`):
   `ITENS_ADMIN` sob `/admin`, `ITENS_PROJETO` dentro de um projeto,
   `ITENS_GLOBAIS` no resto. Tela nova entra numa das três — na global se a API
@@ -218,15 +480,177 @@ Ao continuar:
   com nove linhas — mais do que os outros dois somados. Recorte novo entra
   primeiro em `CHECKLISTS_SEM_BANCO` (hoje vazio), que faz a tela dizer o que
   falta em vez de tomar um 422.
+- **Cada recorte é um DROPDOWN dos modelos auditados nele** (31/07/2026, a
+  pedido), e o cabeçalho do painel virou **busca + "+"**. A lista de tipos
+  respondia "que recortes existem", pergunta que se faz uma vez; a de todo dia é
+  "o que já foi auditado e falta o quê", e para respondê-la era preciso entrar em
+  cada recorte. O rótulo `RECORTES` saiu: em 300px não cabem título, campo e
+  botão, e o placeholder da busca faz o mesmo trabalho.
+  **A linha do tipo tem DUAS áreas de clique** — o chevron abre, o rótulo
+  navega. Um clique só que fizesse as duas tiraria da tela quem só queria espiar
+  a lista; é por isso que `.pgpai` é contêiner e não botão. A busca casa com os
+  **dois** níveis (nome do recorte e código do modelo), porque quem procura não
+  sabe em qual deles está o que quer, e um recorte fora do filtro **some** em vez
+  de mostrar "0" — o zero passaria por "nada auditado" quando o que houve foi
+  filtro. **Prioridade é PONTO, não pílula com texto**: a cor é estado semântico
+  e pode entrar (regra 2), mas vinte pílulas coloridas em 300px viram o elemento
+  mais pesado do painel e afundam o código do modelo, que é o que se lê.
+  A quem consome: `GET /projetos/{id}/auditorias` devolve o projeto inteiro com
+  o modelo resolvido — sem isso a barra faria uma requisição por linha só para
+  escrever um nome.
+
+## O PLANO da auditoria: andamento e prioridade (0013)
+
+A auditoria sempre soube ser executada; passou a poder ser **planejada**. A
+gaveta `components/NovaAuditoria.tsx` grava tipo, modelo, responsável, as três
+datas, andamento e prioridade.
+
+**`andamento` NÃO é `estado`, e é a decisão central desta migration.** `estado`
+(publicado / nao_publicado / desatualizado) é de PUBLICAÇÃO e ninguém o escolhe —
+quem o move é o fluxo de round em `services/auditoria.py`. Se a gaveta
+escrevesse nele, uma auditoria poderia **nascer publicada** sem round nenhum, e
+publicar é o ato que congela o resultado para o fornecedor. Os dois convivem
+porque respondem perguntas diferentes: "o fornecedor já pode ver?" e "alguém está
+mexendo nisto?". `test_estado_continua_fora_do_alcance_do_plano` tranca isso.
+
+**Não reverta:**
+- **`TEXT` e não enum nativo**, nos dois campos — precedente de
+  `apontamento.prioridade`. São vocabulário de PROCESSO, e processo de auditoria
+  em obra muda mais do que schema; tirar valor de enum no Postgres exige recriar
+  o tipo. Quem valida são os `Literal` de `schemas/auditoria.py`: validação na
+  borda, que é onde dá para afrouxá-la sem `ALTER TYPE`.
+- **O plano se aplica À AUDITORIA QUE JÁ EXISTIA.** `abrir_auditoria` é
+  idempotente no round — repetir devolve a aberta em vez de duplicar. Sem
+  `_aplicar_plano` alcançando a existente, quem preenchesse a gaveta para um par
+  (modelo, checklist) já aberto receberia 201 e veria responsável e datas
+  sumirem sem aviso. Abrir a gaveta de novo é REPLANEJAR, e replanejar grava.
+- **Campo ausente é "não mexa"; `null` explícito apaga** (`exclude_unset`). Sem
+  isso um PATCH de prioridade limparia o responsável.
+- **Round publicado recusa `PATCH` (409)**, pela mesma regra de
+  `_exigir_round_aberto`: o PDF já emitido nomeia o responsável e a data.
+- **`entrega_estimada` existia desde a 0001 e nunca havia sido exposta** — a data
+  planejada estava no banco e não chegava a tela nenhuma.
+- **`POST /modelos/{id}/auditar` resolve a última versão por `created_at`**, não
+  pelo nome: `versao` é Text, e 'V10' vem antes de 'V9' em ordem alfabética. A
+  gaveta escolhe MODELO porque é como a coordenação pensa; a auditoria pertence a
+  uma VERSÃO porque é ela que muda entre rounds. `/versoes/{id}/auditar` continua
+  existindo para quem precisa apontar uma versão específica.
 - **A configuração do projeto é uma PÁGINA COM ABAS, não uma área.** Chegou a
-  ter sidebar própria e voltou às abas em 29/07/2026: as seis seções são o
-  cadastro de um projeto, feito de uma vez e em sequência, e trocar a barra a
-  cada seção fazia perder de vista em que projeto se estava — além de deixar a
-  área indistinguível do painel administrativo. **São TRÊS áreas contextuais**
+  ter sidebar própria e voltou às abas em 29/07/2026: as seções são o cadastro
+  de um projeto, feito de uma vez e em sequência, e trocar a barra a cada seção
+  fazia perder de vista em que projeto se estava — além de deixar a área
+  indistinguível do painel administrativo. **São TRÊS áreas contextuais**
   (global, projeto, admin), não quatro; não existe `escopo: 'config'`.
+- **A FICHA diz QUEM É a obra; a CONFIGURAÇÃO diz COMO ela é auditada.** A aba
+  `Configuração › Projeto` foi removida em 30/07/2026 quando `pages/Ficha.tsx`
+  entrou na barra: as duas editavam os mesmos cinco campos, e duas telas para o
+  mesmo dado divergem na primeira mudança. A rota antiga redireciona.
+  A ficha **salva no blur, campo por campo** — sem botão e sem rascunho, como
+  as planilhas de auditoria. E é **card, não full-bleed**: preenche-se uma vez,
+  então é tela pontual pela régua da seção "Sistema visual".
+- **Projeto é REMOVÍVEL desde a migration 0011**, e é a nona entidade da
+  lixeira. `DELETE /projetos/{id}` marca `deleted_at`; os filhos (disciplina,
+  modelo, auditoria) **não são tocados** e voltam junto na restauração —
+  marcá-los faria a restauração ter de adivinhar quais já estavam removidos
+  antes, informação que não existe.
 - **O layout de página dividida** (`.pgsplit`) é o padrão para navegação de
   SEGUNDO nível: quando a escolha é entre visões de uma mesma tela, ela vai
-  num painel da página, não na barra do app.
+  num painel da página, não na barra do app. **O único uso é a auditoria.**
+- **`Configurações` da conta é a QUARTA área contextual** (`ITENS_CONTA` em
+  `nav.ts`, `escopo: 'conta'`, 31/07/2026, a pedido). Eram quatro `.editor`
+  empilhados num rolo só — para trocar a senha passava-se por dados pessoais,
+  idioma e dez amostras de cor, e o que se procurava estava sempre fora da tela.
+  Chegou a virar `.pgsplit` e foi para a barra do app no mesmo dia.
+  **A diferença que decide entre painel de página e área contextual não é
+  estética, é se HÁ CONTEXTO A PERDER:** trocar a barra dentro de um projeto
+  apaga da tela em que projeto se está, e é isso que mantém a configuração DO
+  PROJETO como página com abas. Em `/configuracoes` não há projeto — quem entra
+  saiu do trabalho para cuidar da conta, como quem entra em `/admin` —, então
+  não sobra contexto para a barra apagar. Continua não existindo
+  `escopo: 'config'`; o que passou a existir é `'conta'`.
+  **A seção vai na URL** (`/configuracoes/seguranca`), que é o que a barra
+  precisa para marcar o item ativo. Duas rotas em `App.tsx` e não um `:secao?`
+  opcional — a forma sem seção é o que o menu da conta aponta e o que está no
+  histórico de quem já usa; ela redireciona de dentro do componente.
+  `SECOES_CONTA` é a fonte de quais existem e o `ehSecaoConta` valida `:secao`.
+  **`pages/Configuracoes.tsx` não desenha navegação nenhuma** e **nenhuma seção
+  repete o próprio nome num `h3`** — quem nomeia são a barra e o breadcrumb, a
+  mesma razão que tirou o `h1` das vinte telas.
+- **A GAVETA** (`components/Gaveta.tsx`) tem as regras dela na seção "Sistema
+  visual". O que ela substituiu na home: o `.editor` inline do "+ Novo projeto"
+  ficava entre a barra e a grade e empurrava os projetos para baixo — quem
+  clicava com uma pasta aberta perdia de vista o cliente para o qual estava
+  criando.
+- **`--criar` é a cor da ação de CRIAR**, e existe como token para o accent não
+  ir escorrendo para o próximo botão que alguém achar importante (regra 2). É
+  **alias de `--accent`**, então segue o tema E a cor de destaque escolhida sem
+  valor repetido para divergir. Quem o consome é o "+" da home (`.home-nova`),
+  uma `.pillact` da regra 3: nasce redondo de 36px só com o ícone, e o rótulo
+  cresce **para a direita** (na topbar cresce para a esquerda, porque lá o ícone
+  está ancorado na borda). A superfície dele é a da **barra de busca** — branco
+  `--panel`, contorno `--line`, cápsula, 36px: os dois ficam colados na mesma
+  linha, e um com fundo translúcido colorido e o outro com contorno faria a
+  linha parecer montada de peças de sistemas diferentes. No hover, borda
+  (`--line-2`), nunca fundo, e o ícone NÃO perde o accent.
+- **Criar um projeto exige `recarregar()` do `ProjetoContext` ANTES de
+  navegar**, e com `await`. O provider lista os projetos uma vez, na montagem, e
+  é a lista dele que responde "este id existe?" — sem isso a ficha abre em
+  "Projeto não encontrado" para um projeto que acabou de nascer.
+
+## Membros e disciplinas: a equipe e os nomes (0014 e 0015)
+
+Duas migrations pequenas de 31/07, cada uma uma coluna, e as duas pelo mesmo
+motivo: a tela mostrava um código onde a coordenação fala um nome.
+
+**`projeto_membro.equipe` (0014) — COORDENAÇÃO, INOVAÇÃO, COMERCIAL.**
+
+- **Equipe NÃO é `funcao`, e por isso é coluna nova.** `funcao` é o que a pessoa
+  FAZ no projeto ("modelador", "auditor de estrutura"); equipe é a que GRUPO ela
+  pertence. Um modelador e um auditor podem estar na mesma; e a mesma pessoa é
+  COORDENAÇÃO num projeto e COMERCIAL noutro — que é por que a coluna fica em
+  `projeto_membro`, não em `usuario`.
+- **TEXT livre, sem tabela de equipes.** Uma tabela exigiria cadastrá-las antes
+  de poder usá-las, e hoje ninguém sabe quais são. Quando o conjunto estabilizar
+  e alguém precisar renomear uma equipe em todos os projetos de uma vez, ela
+  vira entidade — e a migration que fizer isso terá os nomes reais.
+- **A migration NÃO MEXE em `papel`, e `projeto_membro` continua sem
+  autorizar.** O vocabulário de projeto (coordinator / user / viewer) é
+  validação de borda, em `schemas/membro.py`, pela mesma razão de
+  `auditoria.andamento`. Os três papéis de projeto (`PAPEIS_PROJETO`, em
+  `components/TabelaMembros.tsx`) são valores que o enum JÁ TEM: um vocabulário
+  novo obrigaria a manter um mapa entre os dois, e o mapa divergiria.
+  `test_participacao_nao_e_permissao` continua trancando isso.
+- **"Todos os membros" são as CONTAS, não a união dos vínculos** — e a distinção
+  custou uma quebra. Numa primeira versão o recorte listava os vínculos de todos
+  os projetos; como `projeto_membro` estava vazio, a tela que mostrava as pessoas
+  da organização passou a mostrar nada, e junto foi embora o "+ Novo usuário",
+  que a lista de contas é quem trazia. São duas perguntas: **quem existe**
+  (contas, `AbaUsuarios`, a mesma tela de `/admin/usuarios`) e **quem está neste
+  projeto** (vínculos). Por isso o "+" MUDA DE SIGNIFICADO com o recorte — em
+  "Todos" criar é criar uma CONTA, dentro de um projeto é VINCULAR alguém que já
+  tem uma; um botão só teria de perguntar qual antes de fazer qualquer coisa.
+- **`MembroOut` resolve empresa, status da conta e projeto no servidor.** A tela
+  lista pessoas, não ids, e sem isso ela cruzaria duas listas ou faria uma
+  consulta por linha. O **status** vem de `usuario` de propósito: quem foi
+  convidado e ainda não definiu senha aparece como pendente na lista do projeto,
+  que é a informação que responde "por que essa pessoa não apareceu".
+
+**`disciplina.nome` (0015) — o nome por extenso, e OPCIONAL.**
+
+- A disciplina se identifica por `codigo` (`STRC-STEEL`), montado de `disc` +
+  `sub`: é o que entra na nomenclatura do arquivo e é o que se digita — mas não
+  é o que se FALA. Ninguém diz "abre o STRC-STEEL", diz "abre a estrutura
+  metálica".
+- **Ser opcional é o que mantém isso honesto.** O UNIQUE continua sobre
+  `codigo`, a nomenclatura de arquivo não muda, e a tela mostra
+  "Arquitetura (ARCH)" onde houver nome e "ARCH" onde não — sem inventar nada.
+- **NÃO entrou coluna de cor junto.** A cor da disciplina já existe: vem de
+  `macro` (A/C/M/S), e a paleta é categórica validada (banda de luminosidade,
+  piso de saturação, daltonismo — ver "Ao criar gráfico"). Uma cor por
+  disciplina daria duas fontes para a mesma informação e deixaria alguém
+  escolher um tom que falha no escuro ou para um daltônico. A aba
+  `Configuração › Cores` saiu porque a cor passou a ser mostrada AO LADO da
+  disciplina, não porque virou editável.
 
 ## Auditoria geral: a planilha dentro do sistema
 
@@ -318,6 +742,7 @@ categorias de elemento**, para STRC.
 - `backend/tests/` tem o padrão de teste: `cenario` monta uma organização isolada, `auditavel` vai até o ponto de auditar, e `ifc_fabrica.py` gera IFC de verdade.
 
 **Cinco armadilhas já pagas — não reverta:**
+- **`openpyxl` (em `services/exports.py`) e `boto3` (em `services/storage.py`) são importados DENTRO das funções, de propósito** — não "arrume" movendo-os para o topo. Os dois somavam ~9 s do import da aplicação, pagos em toda subida do servidor e em todo reinício do `--reload`, por bibliotecas que só entram quando alguém baixa a planilha ou toca em arquivo. `botocore.exceptions` fica no topo porque é barato e o `ClientError` aparece em `except` no meio do módulo. O `ifcopenshell` já era preguiçoso pelo mesmo motivo.
 - O `db.flush()` no início de `recalcular_aprovacao`: a sessão roda com `autoflush=False` e sem ele o percentual sai um passo atrasado.
 - `broker_connection_max_retries=0` no Celery significa "tentar para sempre". Precisa ser positivo.
 - `fila_disponivel()` checa o broker por socket antes de qualquer `delay()`; sem isso um Redis fora do ar prende a requisição por ~107 s. **`storage.endpoint_alcancavel()` é a mesma ideia para o S3**, e existe porque o `/health/ready` a reintroduziu: `head_bucket` contra endpoint fora do ar custa ~45 s com o cliente normal e ~8 s mesmo com timeout curto e uma tentativa. Num endpoint que o monitoramento chama a cada 30 s, isso transforma "o storage caiu" em "a API caiu".

@@ -4,13 +4,13 @@ Plataforma SaaS que audita modelos BIM (Revit/IFC) contra os critérios de um PE
 
 > **Princípio central:** a auditoria é a única fonte de dado. Painel de controle, matriz, relatório e KPIs são visões derivadas.
 
-Documentação de origem em [docs/](docs/) — o [plano técnico](docs/Plano_Tecnico_Piloto_SPBIM.md) é o documento mestre; o [protótipo navegável](docs/prototipo_auditoria_bim.html) define as telas e os fluxos, e o [ui-kit](ui-kit-export/README.md) define a linguagem visual.
+Documentação de origem em [docs/](docs/) — o [plano técnico](docs/Plano_Tecnico_Piloto_SPBIM.md) é o documento mestre e o [protótipo navegável](docs/prototipo_auditoria_bim.html) define as telas e os fluxos. A linguagem visual está no [CLAUDE.md](CLAUDE.md), na seção *Sistema visual*.
 
 ---
 
 ## Estado
 
-**As seis fases do roadmap estão implementadas.** 72 endpoints, 190 testes. A auditoria 4D de parâmetros em IFC roda de verdade, sem custo de token.
+**As seis fases do roadmap estão implementadas.** 135 rotas em `api/v1`, 331 funções de teste. A auditoria 4D de parâmetros em IFC roda de verdade, sem custo de token.
 
 O que resta da Fase 5 não é código: subir o ambiente de produção num servidor seu e rodar o piloto assistido. O caminho está em [`docs/OPERACAO.md`](docs/OPERACAO.md) (runbook) e [`docs/PILOTO.md`](docs/PILOTO.md) (roteiro semana a semana).
 
@@ -51,7 +51,7 @@ spbim-auditoria/
 │       │   └── auditer/  motor de nomenclatura e corretor (portado, JS)
 │       ├── pages/      telas
 │       │   └── admin/    organização, projetos e usuários
-│       ├── styles/     tokens e sistema visual (o ui-kit aplicado)
+│       ├── styles/     tokens e sistema visual (ver CLAUDE.md)
 │       ├── theme/      claro/escuro
 │       └── workers/    corretor ortográfico (Hunspell/WebAssembly)
 ├── infra/
@@ -60,9 +60,10 @@ spbim-auditoria/
 ├── docs/               plano técnico, especificação, backlog, protótipo,
 │                       runbook de operação e roteiro do piloto
 ├── bases/              as planilhas de controle reais (LOD300/400/500, 4D)
-├── referencias/        vídeos, links e o histórico git do Auditer (fora do git)
-├── ui-kit-export/      kit de design — aplicado em src/styles/ (ver CLAUDE.md)
-├── dev.ps1             sobe a plataforma para desenvolvimento
+├── referencias/        links e material de apoio (fora do git)
+├── package.json        lançador da raiz, sem dependência (`npm run dev`)
+├── scripts/dev.mjs     sobe API + aplicação no mesmo terminal
+├── dev.ps1             casca que chama o dev.mjs
 ├── Dockerfile               imagem única: aplicação + API num container só
 ├── docker-compose.yml       desenvolvimento
 └── docker-compose.prod.yml  produção (SP-501)
@@ -78,10 +79,39 @@ presença de `backend/static/` que liga esse comportamento (ver
 `backend/app/spa.py`); sem ele, a API responde só a API.
 
 ```powershell
-.\dev.ps1            # API :8000 + Vite :5173, com hot-reload — o de todo dia
-.\dev.ps1 -Unico     # só :8000, servindo o build — igual à produção
-.\dev.ps1 -Parar     # encerra as duas
+npm run dev          # API :8000 + Vite :5173, com hot-reload — o de todo dia
+npm run dev:web      # SÓ o Vite, contra uma API já publicada — para mexer em tela
+npm run dev:unico    # só :8000, servindo o build — igual à produção
+npm run parar        # encerra as duas
 ```
+
+**Abra a `:5173`** — é onde a aplicação está. A `:8000` é a API; em
+desenvolvimento, abri-la no navegador devolve só o JSON de identificação.
+
+Os dois processos rodam **no mesmo terminal**, com a saída prefixada por
+`[api]` e `[web]`, e `Ctrl+C` derruba os dois. A lógica está em
+[`scripts/dev.mjs`](scripts/dev.mjs) — Node puro, sem PowerShell, e por isso o
+mesmo arquivo serve Linux e macOS.
+
+**A API sobe ANTES do Vite, e é de propósito.** O Vite fica pronto em ~3 s e a
+API leva mais; em paralelo, o navegador abria, pedia `/auth/me` e o terminal
+enchia de `ECONNREFUSED` que não era erro nenhum — era só a ordem. O
+`--reload` também vigia só `backend/app`: editar uma migration ou um teste não
+reinicia mais o servidor.
+
+**`dev:web` é o arranjo de um processo só**, e ele existe porque não há backend
+para subir: a aplicação bate numa API já publicada, cujo endereço vem de
+`API_REMOTA` no `.env`. É como o VDCity consegue ter `dev: "vite"` — o backend
+dele (SQL e edge functions) vive na Supabase e nunca sobe no desenvolvimento.
+Use quando for mexer em TELA. Não é o padrão porque a instância é
+**compartilhada**: se o schema dela divergir do código em que se está mexendo, a
+tela quebra sem explicar por quê.
+
+O `package.json` da raiz **não tem dependência nenhuma** e não é um pacote:
+existe só porque `npm run dev` aqui dava `ENOENT`, já que o `package.json` real
+está em `frontend/`. O `.\dev.ps1` continua valendo para quem o tem na memória
+muscular, mas virou uma casca que chama o `dev.mjs` — duas implementações de
+"subir os dois processos" divergiriam na primeira mudança de porta.
 
 O `-Unico` existe para conferir o que de fato vai para produção: é o mesmo
 arranjo da imagem, numa porta só. No dia a dia vale o outro, porque o Vite
@@ -93,9 +123,10 @@ e `src/workers/` — byte a byte o mesmo código, sem uma linha alterada — e a
 telas viraram três sub-abas de *Configuração › Nomenclaturas & padrões*.
 Manter o app separado significava manter dois deploys, dois `package.json` e
 duas cópias do mesmo motor para entregar o que a plataforma já entrega. O
-histórico git dele continua em `referencias/auditer-historico.git`, e há um
-`backup-auditer-2026-07-27.zip` ao lado; o código também segue recuperável no
-histórico deste repositório (`git log -- auditer/`).
+código segue recuperável no histórico deste repositório
+(`git log -- auditer/`); o histórico git original e o zip de backup ficavam em
+`referencias/` e foram apagados em 30/07/2026 — guardavam a proveniência, não o
+código.
 
 ---
 

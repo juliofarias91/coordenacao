@@ -1,7 +1,61 @@
-# Onde paramos — 29/07/2026
+# Onde paramos — 03/08/2026
 
 Estado da plataforma no fim do dia, o que está no ar, e o que vem a seguir.
 Escrito para retomar amanhã sem reconstruir o contexto.
+
+---
+
+## 03/08 — o trabalho de 30 e 31/07 entrou no git
+
+**Nada tinha sido commitado desde 30/07 01:53.** A árvore tinha 77 arquivos
+modificados, 33 novos e **seis migrations sem versionar** (0010 a 0015) — dois
+dias inteiros de trabalho existindo em um lugar só, o disco desta máquina. Foi
+o primeiro item do dia, antes de qualquer melhoria nova: melhoria em cima de
+base não versionada é trabalho que ninguém consegue reverter.
+
+O que estava fora, por migration:
+
+| | O que é | Onde está documentado |
+|---|---|---|
+| **0010** | Convite, definir senha, corte de sessão | `CLAUDE.md` › *Acesso* |
+| **0011** | Ficha do projeto e o projeto na lixeira | `CLAUDE.md` › *O PLANO* |
+| **0012** | Importação de planilha (ponte provisória) | `CLAUDE.md` › *Importação* |
+| **0013** | Andamento e prioridade da auditoria | `CLAUDE.md` › *O PLANO* |
+| **0014** | Equipe do membro no projeto | `CLAUDE.md` › *Membros e disciplinas* |
+| **0015** | Nome por extenso da disciplina | `CLAUDE.md` › *Membros e disciplinas* |
+
+Fora do banco, no mesmo lote: o **tema escolhível** (aparência + cor de
+destaque), a **gaveta** lateral, **páginas sem `h1`**, `Configurações` da conta
+como quarta área contextual, `Apontar erro` como pílula própria da topbar, os
+recortes de auditoria virando **dropdown de modelos**, e a saída do
+`ui-kit-export/`. As regras de cada uma dessas decisões já estavam escritas no
+`CLAUDE.md` — o que faltava era o código estar sob controle de versão.
+
+**As 0014 e 0015 não estavam documentadas em lugar nenhum** além da docstring da
+própria migration. Ganharam seção no `CLAUDE.md` junto do commit.
+
+Duas faxinas pequenas: `vite.config.ts.timestamp-*.mjs` (arquivo temporário que
+o Vite deixa quando morre no meio) e `.claude/` foram para o `.gitignore` — o
+segundo porque o que há nele é da máquina, caminho absoluto e lista de comandos
+aprovados.
+
+### O que foi conferido antes de commitar
+
+```
+frontend   tsc limpo · eslint limpo · npm test 28/28 · build ok
+backend    os arquivos que o lote alcança (acesso, autenticação, contrato,
+           ficha, importação, plano da auditoria, membros)
+```
+
+**Os commits intermediários não foram rodados um a um.** Os arquivos
+compartilhados — `lib/api.ts`, `lib/types.ts`, `App.tsx`, `styles/app.css`,
+`models/cadastro.py` — carregam pedaços de todas as seis features, e dividir
+hunk a hunk produziria commits que não compilam. A divisão é por assunto, para
+quem for ler depois; **quem passa nos checks é a ponta**, e é ela que foi
+verificada. A suíte inteira (~1h contra o Supabase) não foi rodada hoje.
+
+**As telas não foram vistas em navegador nesta sessão** — a última verificação
+visual registrada é a de 29/07.
 
 ---
 
@@ -248,7 +302,7 @@ rodar a suíte inteira pela primeira vez desde que ela entrou:
    disciplinas ligadas a ele. Teste reescrito para o contrato novo.
 
 ```
-backend    289 testes; a suíte inteira leva ~1h contra o Supabase
+backend    319 testes; a suíte inteira leva ~1h contra o Supabase
 frontend   tsc limpo, build ok
 ```
 
@@ -475,10 +529,15 @@ backend já existe.
    visão geral passou a contar clientes.
 2. ~~**Log de atividade**~~ — **feito em 29/07**, aba na Administração.
 3. ~~**Notificações**~~ — **feito em 29/07**, central em `/notificacoes`.
-4. **Perfil separado, em sections** — hoje é um painel no menu da conta.
-   *(a decidir: adotar o padrão de sections do VDCity, `?s=`, ou não)*
+4. ~~**Perfil separado, em sections**~~ — **feito em 31/07**, e a decisão foi
+   NÃO adotar o `?s=` do VDCity: `/configuracoes/:secao` é rota de verdade, e a
+   navegação entre as seções virou a **quarta área contextual** da sidebar
+   (`ITENS_CONTA`). O critério que decidiu — se há contexto a perder ao trocar
+   a barra — está no `CLAUDE.md`.
 5. **Home em sections** — a home atual é uma tela só; o VDCity divide em
-   seções navegáveis (`?s=`). *(mesma decisão do item 4)*
+   seções navegáveis. **Continua aberto**, e agora com um precedente: quando
+   virar seções, elas vão para a URL como em `/configuracoes`, não para uma
+   query string.
 6. ~~**Política de privacidade**~~ — **feito em 29/07**, rota pública
    `/privacidade`. **Falta preencher os campos entre colchetes (DPO, contato)
    e passar por revisão jurídica** — o texto é a descrição técnica correta do
@@ -486,20 +545,43 @@ backend já existe.
 
 ### Precisa de backend novo
 
-7. **Lixeira** — soft delete de verdade: `deleted_at` nas tabelas, filtro em
-   toda query **e nas policies de RLS**. Hoje `DELETE` é definitivo. É a mais
-   invasiva da lista: toca todas as entidades.
-8. **Apontamento de erros do sistema** — tabela própria de bug report. Não
-   confundir com `Apontamento`, que já existe e é de auditoria de modelo.
+7. ~~**Lixeira**~~ — **feita** (migrations 0006 e 0007; o projeto entrou na
+   0011, como nona entidade). `deleted_at`, policy de RLS por comando e
+   `/lixeira` para restaurar. A armadilha que custou uma tarde — a policy de
+   SELECT sendo aplicada à LINHA NOVA do UPDATE — está no `CLAUDE.md`.
+8. ~~**Apontamento de erros do sistema**~~ — **feito** (migration 0005,
+   `reporte_erro`, rotas em `api/v1/reportes.py`). A porta é a pílula
+   `Apontar erro` na topbar, vizinha do sino. Não confundir com `Apontamento`,
+   que é de auditoria de modelo.
 9. **Personalização de navbar (pins)** — precisa persistir a escolha por
-   usuário; hoje só a ordem da sidebar persiste, em `localStorage`.
+   usuário; hoje só a ordem da sidebar persiste, em `localStorage`. **Continua
+   aberto**, e os pins do VDCity não foram trazidos junto do painel da conta.
 
 ### Decidido, mas ainda não implementado
 
 10. ~~**Rotas por projeto**~~ — **feito em 29/07**, ver o topo.
-11. **Login/cadastro** — decidido: **só por convite do admin**. Cadastro aberto
-    contradiz "SSO autentica, não provisiona" (`docs/SUPABASE.md`). O que falta
-    é a tela de convite + definição de senha.
+11. ~~**Login/cadastro**~~ — **feito em 30/07** (migration 0010). Segue "só por
+    convite do admin": cadastro aberto contradiz "SSO autentica, não provisiona"
+    (`docs/SUPABASE.md`). `POST /usuarios/{id}/convite` gera o link de uso único,
+    `/definir-senha/:token` é a tela pública, e `POST /auth/senha/esqueci`
+    notifica os admins enquanto não houver SMTP. Ver a seção "Acesso" do
+    `CLAUDE.md` para as regras que não devem ser revertidas.
+
+### Achado no caminho, e corrigido em 30/07
+
+**`alembic upgrade head` num banco NOVO estava quebrado**, e era o caminho de
+provisionar o ambiente produtivo — o único que ninguém repetia. A migration 0001
+importava `app.models.TENANT_TABLES`, uma lista que CRESCE a cada tabela
+multi-tenant que entra no sistema, e criava índice e policy para cada nome dela.
+Três entraram depois da 0001: `cliente` (0003), `projeto_membro` (0004) e
+`reporte_erro` (0005). O resultado era `CREATE INDEX ix_cliente_org_id ON
+cliente` emitido oito mil caracteres de SQL antes do `CREATE TABLE cliente`. Num
+banco já migrado nada acontecia, porque a 0001 não roda de novo.
+
+A correção é uma lista local, `TABELAS_DESTA_REVISAO`, e a regra que fica é:
+**uma migration descreve o schema NA REVISÃO DELA** e não importa estrutura que
+muda depois. As três já criavam o próprio índice e a própria policy, então a
+lista era duplicação pura.
 
 ### ~~Precisa de UMA decisão sua~~ — RESOLVIDA em 30/07 pelos próprios arquivos
 
@@ -581,7 +663,7 @@ uma ação sua no painel** — não há como fazê-las daqui.
 | Migração e armadilhas do Supabase | `docs/SUPABASE.md` |
 | Deploy no Easypanel | `docs/EASYPANEL.md` |
 | Runbook de produção | `docs/OPERACAO.md` |
-| Linguagem visual (as cinco regras) | `ui-kit-export/README.md` e `CLAUDE.md` |
+| Linguagem visual (as seis regras) | `CLAUDE.md`, seção *Sistema visual* |
 | Bootstrap de um Supabase novo | `backend/scripts/supabase_bootstrap.py` |
 | Criar usuário / recuperar acesso | `backend/scripts/criar_usuario.py` |
 
