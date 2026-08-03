@@ -1,67 +1,60 @@
-/** Membros do projeto — quem participa dele, e com que papel nele.
+/** MEMBROS DO PROJETO — a mesma estrutura da tela global, outro recorte.
  *
- *  Não confundir com `Gestão de membros` (`/membros`), que é o cadastro de
- *  quem tem CONTA na organização. Aqui se responde "quem está no CPQ11", que é
- *  outra pergunta: a mesma pessoa é auditora num projeto e só leitora noutro.
+ *  Não confundir com `Gerenciar membros` (`/membros`), que mostra os vínculos da
+ *  organização inteira, nem com `/admin/usuarios`, que é o cadastro de CONTAS.
+ *  Aqui se responde "quem está no CPQ11": a mesma pessoa é coordenadora num
+ *  projeto e só visualizadora noutro.
  *
- *  A TELA DIZ, EM VOZ ALTA, QUE ISTO NÃO É PERMISSÃO. A tabela `projeto_membro`
- *  (migration 0004) registra participação; quem autoriza continua sendo a
- *  permissão de organização. Esconder essa distinção faria alguém pôr um leitor
- *  como "coordenador do projeto" e esperar que ele passasse a publicar rounds.
+ *  A diferença em relação à tela global é uma só, e é a que o pedido descreve:
+ *  aqui a barra agrupa por EQUIPE, não por projeto, e o corpo mostra apenas as
+ *  pessoas DESTE projeto. Layout, tabela e gaveta de ações são os mesmos —
+ *  `TabelaMembros` é compartilhado, para as duas não divergirem na primeira
+ *  coluna que alguém acrescentar.
+ *
+ *  POR QUE EQUIPE E NÃO FUNÇÃO. `funcao` é o que a pessoa FAZ ('modelador') e é
+ *  quase única por pessoa — agrupar por ela daria quinze grupos de um. `equipe` é
+ *  o grupo a que ela pertence, e é como a coordenação fala do time (0014).
+ *
+ *  A TELA CONTINUA DIZENDO, EM VOZ ALTA, QUE ISTO NÃO É PERMISSÃO — o aviso está
+ *  na gaveta, em `TabelaMembros`. `projeto_membro` registra participação; quem
+ *  autoriza é a permissão de organização. Esconder isso faria alguém pôr um
+ *  visualizador e esperar que ele deixasse de publicar rounds.
  */
-import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { Cabecalho, Campo, Editor, Erro, Vazio } from '@/components/ui'
+import TabelaMembros, { AdicionarMembro } from '@/components/TabelaMembros'
+import { Erro } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
-import type { Membro, UsuarioCadastro } from '@/lib/types'
+import type { Membro } from '@/lib/types'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
-const PAPEIS = [
-  'coordenador',
-  'auditor',
-  'revisor',
-  'fornecedor',
-  'leitor',
-  'cliente',
-  'admin',
-] as const
+const TODAS = '__todas__'
+/** Quem não tem equipe cai aqui. Não é rótulo de enfeite, é um estado real: o
+ *  vínculo pode nascer antes de alguém decidir a equipe, e escondê-lo faria a
+ *  soma dos grupos não fechar com o total. */
+const SEM_EQUIPE = '__sem__'
 
-type Rascunho = {
-  id?: string
-  usuario_id: string
-  papel: string
-  funcao: string
-}
-
-const VAZIO: Rascunho = { usuario_id: '', papel: 'auditor', funcao: '' }
+const LUPA = 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3'
 
 export default function MembrosProjeto() {
   const { L } = useI18n()
   const { projeto } = useProjeto()
-
   const [membros, setMembros] = useState<Membro[]>([])
-  const [usuarios, setUsuarios] = useState<UsuarioCadastro[]>([])
-  const [rascunho, setRascunho] = useState<Rascunho | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [salvando, setSalvando] = useState(false)
   const [carregando, setCarregando] = useState(true)
+  const [aberta, setAberta] = useState<string>(TODAS)
+  const [busca, setBusca] = useState('')
 
   const carregar = useCallback(async () => {
     if (!projeto) return
     setErro(null)
+    setCarregando(true)
     try {
-      const [ms, us] = await Promise.all([
-        api.membros.listar(projeto.id),
-        // Para o seletor de "quem acrescentar". Se a rota negar (403), a tela
-        // continua listando os membros — só não oferece acrescentar.
-        api.usuarios.listar().catch(() => ({ itens: [] as UsuarioCadastro[] })),
-      ])
-      setMembros(ms)
-      setUsuarios(us.itens)
+      setMembros(await api.membros.listar(projeto.id))
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : String(e))
+      setMembros([])
     } finally {
       setCarregando(false)
     }
@@ -71,208 +64,129 @@ export default function MembrosProjeto() {
     carregar()
   }, [carregar])
 
-  async function salvar() {
-    if (!rascunho || !projeto) return
-    setErro(null)
-    setSalvando(true)
-    const funcao = rascunho.funcao.trim() || null
-    try {
-      if (rascunho.id) {
-        await api.membros.atualizar(rascunho.id, { papel: rascunho.papel, funcao })
-      } else {
-        await api.membros.adicionar(projeto.id, {
-          usuario_id: rascunho.usuario_id,
-          papel: rascunho.papel,
-          funcao,
-        })
-      }
-      setRascunho(null)
-      await carregar()
-    } catch (e) {
-      setErro(e instanceof ApiError ? e.message : String(e))
-    } finally {
-      setSalvando(false)
+  /** As equipes que existem NESTE projeto, com a contagem. Saem dos próprios
+   *  vínculos: não há cadastro de equipes, e não deve haver enquanto o conjunto
+   *  não estabilizar (ver a migration 0014). */
+  const equipes = useMemo(() => {
+    const mapa = new Map<string, number>()
+    for (const m of membros) {
+      const chave = m.equipe?.trim() || SEM_EQUIPE
+      mapa.set(chave, (mapa.get(chave) ?? 0) + 1)
     }
-  }
+    return [...mapa.entries()].sort(([a], [b]) => {
+      // "Sem equipe" por último, sempre: ele é o resto, não uma equipe.
+      if (a === SEM_EQUIPE) return 1
+      if (b === SEM_EQUIPE) return -1
+      return a.localeCompare(b)
+    })
+  }, [membros])
 
-  async function remover(m: Membro) {
-    const nome = m.usuario_nome || m.usuario_login || '—'
-    if (
-      !confirm(
-        L(
-          `Tirar ${nome} deste projeto? A conta e o que a pessoa já auditou continuam intactos.`,
-          `Remove ${nome} from this project? Their account and past audits stay intact.`,
-        ),
+  /** A BUSCA CASA COM PESSOA, E-MAIL, EMPRESA E EQUIPE — os quatro textos da
+   *  linha. Quem procura "METASA" quer as pessoas da METASA; restringir ao nome
+   *  faria a maior parte das buscas falhar em silêncio. */
+  const visiveis = useMemo(() => {
+    const t = busca.trim().toLowerCase()
+    return membros
+      .filter((m) => {
+        if (aberta === TODAS) return true
+        return (m.equipe?.trim() || SEM_EQUIPE) === aberta
+      })
+      .filter((m) =>
+        !t
+          ? true
+          : [m.usuario_nome, m.usuario_login, m.empresa_nome, m.equipe].some((v) =>
+              (v ?? '').toLowerCase().includes(t),
+            ),
       )
-    ) {
-      return
-    }
-    setErro(null)
-    try {
-      await api.membros.remover(m.id)
-      await carregar()
-    } catch (e) {
-      setErro(e instanceof ApiError ? e.message : String(e))
-    }
-  }
+  }, [membros, aberta, busca])
 
-  if (!projeto || carregando) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
+  if (!projeto) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
 
-  // Quem ainda não é membro. Oferecer alguém que já está na lista só produziria
-  // um 409 — o backend tem a unicidade, mas o erro certo é não sugerir.
-  const jaMembros = new Set(membros.map((m) => m.usuario_id))
-  const disponiveis = usuarios.filter((u) => !jaMembros.has(u.id) || u.id === rascunho?.usuario_id)
+  const rotuloAtual =
+    aberta === TODAS
+      ? L('Todas as equipes', 'All teams')
+      : aberta === SEM_EQUIPE
+        ? L('Sem equipe', 'No team')
+        : aberta
 
   return (
-    <>
-      <Cabecalho
-        // "Membros", igual ao item do menu. O contexto já é o projeto — a
-        // barra inteira é dele e o breadcrumb diz qual —, e o subtítulo logo
-        // abaixo nomeia o projeto. Repetir "do projeto" no título era a mesma
-        // redundância que tirou o código do projeto do caminho de volta.
-        titulo={L('Membros', 'Members')}
-        sub={L(
-          `Quem participa do ${projeto.codigo} e com que papel nele. É registro de participação, não de acesso: o que cada pessoa consegue fazer continua vindo das permissões dela na organização.`,
-          `Who takes part in ${projeto.codigo} and in what role. This records participation, not access: what each person can actually do still comes from their organization permissions.`,
-        )}
-      />
-
-      <div className="acoes">
-        <button
-          className="btn pri"
-          disabled={disponiveis.length === 0}
-          onClick={() => setRascunho({ ...VAZIO })}
-        >
-          + {L('Adicionar membro', 'Add member')}
-        </button>
-        <div style={{ flex: 1 }} />
-        <Link className="btn sm" to="/membros">
-          {L('Gerenciar contas', 'Manage accounts')}
-        </Link>
-      </div>
-
-      {!rascunho && <Erro mensagem={erro} />}
-
-      {rascunho && (
-        <Editor
-          titulo={rascunho.id ? L('Editar membro', 'Edit member') : L('Adicionar membro', 'Add member')}
-          onSalvar={salvar}
-          onCancelar={() => {
-            setRascunho(null)
-            setErro(null)
-          }}
-          salvando={salvando}
-          erro={erro}
-        >
-          <Campo rotulo={L('Pessoa', 'Person')}>
-            {/* Não se troca a pessoa de um vínculo: isso é remover um membro e
-                acrescentar outro, e fazê-lo por edição deixaria a trilha
-                dizendo "alterou" onde houve duas coisas distintas. */}
-            <select
-              className="f"
-              disabled={!!rascunho.id}
-              value={rascunho.usuario_id}
-              onChange={(e) => setRascunho({ ...rascunho, usuario_id: e.target.value })}
+    <div className="pgsplit">
+      <aside className="pgside">
+        <div className="pghead pgferramentas">
+          <div className="pgbusca">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              aria-hidden="true"
             >
-              <option value="">{L('— escolha —', '— pick one —')}</option>
-              {disponiveis.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nome || u.login}
-                </option>
-              ))}
-            </select>
-          </Campo>
-          <Campo rotulo={L('Papel neste projeto', 'Role in this project')}>
-            <select
-              className="f"
-              value={rascunho.papel}
-              onChange={(e) => setRascunho({ ...rascunho, papel: e.target.value })}
-            >
-              {PAPEIS.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </Campo>
-          <Campo rotulo={L('Função', 'Function')} largo>
+              <path d={LUPA} />
+            </svg>
             <input
               className="f"
-              placeholder={L('Coordenação de estruturas', 'Structural coordination')}
-              value={rascunho.funcao}
-              onChange={(e) => setRascunho({ ...rascunho, funcao: e.target.value })}
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder={L('Buscar membro…', 'Search member…')}
+              aria-label={L('Buscar membro', 'Search member')}
             />
-          </Campo>
-        </Editor>
-      )}
-
-      {membros.length === 0 ? (
-        <Vazio
-          titulo={L('Ninguém registrado ainda', 'No one registered yet')}
-          texto={L(
-            'Ninguém foi registrado como membro deste projeto. Isso não impede o acesso — quem tem permissão na organização continua enxergando o projeto. O que falta é o registro de quem trabalha nele.',
-            'No one is registered as a member of this project. That does not block access — anyone with organization permission still sees the project. What is missing is the record of who works on it.',
-          )}
-        />
-      ) : (
-        <div className="card">
-          <table>
-            <thead>
-              <tr>
-                <th>{L('Pessoa', 'Person')}</th>
-                <th>{L('Papel no projeto', 'Role here')}</th>
-                <th>{L('Papel na organização', 'Organization role')}</th>
-                <th>{L('Função', 'Function')}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {membros.map((m) => (
-                <tr key={m.id}>
-                  <td>
-                    <b>{m.usuario_nome || m.usuario_login}</b>
-                    {m.usuario_nome && <div className="mmeta">{m.usuario_login}</div>}
-                  </td>
-                  <td>
-                    <span className="pill">{m.papel}</span>
-                  </td>
-                  {/* Lado a lado de propósito: é o par que responde o que a
-                      pessoa consegue fazer. Divergirem é normal e informativo,
-                      não um erro a esconder. */}
-                  <td className="co">{m.usuario_papel_org ?? '—'}</td>
-                  <td className="co">{m.funcao ?? '—'}</td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button
-                      className="btn sm"
-                      style={{ marginRight: 6 }}
-                      onClick={() =>
-                        setRascunho({
-                          id: m.id,
-                          usuario_id: m.usuario_id,
-                          papel: m.papel,
-                          funcao: m.funcao ?? '',
-                        })
-                      }
-                    >
-                      {L('Editar', 'Edit')}
-                    </button>
-                    <button className="btn sm danger" onClick={() => remover(m)}>
-                      {L('Tirar', 'Remove')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          </div>
+          {/* ADICIONAR MEMBRO, e NÃO o `Convidar`. Este vincula ao projeto quem
+              já tem conta na organização; o `Convidar` gera link de token para o
+              PORTAL DO CLIENTE, que é outra coisa e continua no rodapé da barra
+              do app. Trocá-los aqui tirou, por um momento, o único caminho que
+              existia para criar um vínculo. */}
+          <AdicionarMembro
+            projetoId={projeto.id}
+            jaMembros={membros.map((m) => m.usuario_id)}
+            onMudou={carregar}
+          />
         </div>
-      )}
 
-      <p className="hint">
-        {L(
-          'O papel aqui é combinado, não aplicado: a plataforma ainda decide o acesso pelas permissões de organização, em Gestão de membros. Ligar as duas coisas mudaria como todas as rotas autorizam, e é decisão à parte.',
-          'The role here is agreed, not enforced: the platform still decides access from organization permissions, under Member management. Wiring the two together would change how every route authorizes, and is a separate decision.',
-        )}
-      </p>
-    </>
+        <nav className="pglist">
+          <div className={`pgitem pgpai${aberta === TODAS ? ' on' : ''}`}>
+            <button type="button" className="pgrotulo" onClick={() => setAberta(TODAS)}>
+              {L('Todas as equipes', 'All teams')}
+            </button>
+            <span className="pgconta">{membros.length}</span>
+          </div>
+
+          {equipes.map(([chave, n]) => (
+            <div key={chave} className={`pgitem pgpai${aberta === chave ? ' on' : ''}`}>
+              <button type="button" className="pgrotulo" onClick={() => setAberta(chave)}>
+                {chave === SEM_EQUIPE ? L('Sem equipe', 'No team') : chave}
+              </button>
+              <span className="pgconta">{n}</span>
+            </div>
+          ))}
+
+          {equipes.length === 0 && !carregando && (
+            <span className="pgsubvazio">
+              {L('Ninguém neste projeto ainda.', 'Nobody on this project yet.')}
+            </span>
+          )}
+        </nav>
+      </aside>
+
+      <section className="pgmain">
+        <div className="pghead">
+          <span>{rotuloAtual}</span>
+          <span className="co">
+            · {visiveis.length} {L('pessoa(s)', 'person(s)')}
+          </span>
+        </div>
+        <div className="pgbody">
+          <Erro mensagem={erro} />
+          {carregando ? (
+            <p className="hint">{L('Carregando…', 'Loading…')}</p>
+          ) : (
+            <TabelaMembros membros={visiveis} onMudou={carregar} />
+          )}
+        </div>
+      </section>
+    </div>
   )
 }

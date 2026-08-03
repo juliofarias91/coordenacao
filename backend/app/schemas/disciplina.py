@@ -19,6 +19,14 @@ SEG = r"^[A-Za-z0-9]+$"
 class DisciplinaBase(BaseModel):
     model_config = ESCRITA
 
+    nome: str | None = Field(
+        default=None,
+        max_length=120,
+        description=(
+            "O nome por extenso: 'Estrutura metálica'. OPCIONAL — a identidade é "
+            "o `codigo`, que é o que entra na nomenclatura do arquivo."
+        ),
+    )
     macro: MacroDisc = Field(description="A=ARCH · C=CIVIL/ESTRUT · M=MEP · S=SITE")
     disc: str = Field(min_length=1, max_length=20, pattern=SEG, description="Ex.: STRC, ARCH, PLMB")
     sub: str = Field(
@@ -49,6 +57,7 @@ class DisciplinaCreate(DisciplinaBase):
 class DisciplinaUpdate(BaseModel):
     model_config = ESCRITA
 
+    nome: str | None = Field(default=None, max_length=120)
     macro: MacroDisc | None = None
     disc: str | None = Field(default=None, min_length=1, max_length=20, pattern=SEG)
     sub: str | None = Field(default=None, min_length=1, max_length=20, pattern=SEG)
@@ -62,6 +71,7 @@ class DisciplinaOut(Identificado):
     org_id: uuid.UUID
     projeto_id: uuid.UUID
     codigo: str
+    nome: str | None
     macro: MacroDisc
     disc: str
     sub: str
