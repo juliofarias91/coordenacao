@@ -17,13 +17,35 @@ from sqlalchemy.dialects import postgresql as psql
 
 from alembic import op
 from app.core.config import settings
-from app.models import TENANT_TABLES
 from app.models.enums import ENUM_TYPES
 
 revision: str = "0001"
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+# AS TABELAS QUE ESTA REVISÃO CRIA — e não `app.models.TENANT_TABLES`.
+#
+# Importar a lista viva daqui QUEBRAVA O BANCO NOVO. `TENANT_TABLES` cresce a
+# cada tabela multi-tenant que entra no sistema, e as três seguintes entraram
+# depois desta revisão: `cliente` (0003), `projeto_membro` (0004) e
+# `reporte_erro` (0005). Como o loop abaixo cria índice e policy para cada nome
+# da lista, a 0001 passou a emitir `CREATE INDEX ix_cliente_org_id ON cliente`
+# — oito mil caracteres de SQL antes do `CREATE TABLE cliente` da 0003. Num
+# banco já migrado nada acontecia, porque a 0001 não roda de novo; num banco
+# VAZIO, `alembic upgrade head` morria na primeira revisão. Era o caminho de
+# provisionar o ambiente produtivo, e o único que ninguém repetia.
+#
+# A regra que fica: uma migration descreve o schema NA REVISÃO DELA. Nada aqui
+# pode importar estrutura que muda depois — e cada uma das três já cria o
+# próprio índice e a própria policy, então esta lista é a correção inteira.
+TABELAS_DESTA_REVISAO: tuple[str, ...] = (
+    "projeto", "empresa", "contato", "usuario", "standard", "nomenclatura_padrao",
+    "disciplina", "criterio", "checklist_item", "modelo", "versao_modelo",
+    "auditoria", "resultado_check", "ocorrencia", "evidencia", "nao_conformidade",
+    "comentario_fornecedor", "apontamento", "notificacao", "penalidade",
+    "convite_cliente", "trilha_auditoria",
+)
 
 
 # --------------------------------------------------------------------------
@@ -472,7 +494,7 @@ def upgrade() -> None:
     )
 
     # Índice de org_id em toda tabela de negócio — é a coluna de todo filtro.
-    for table in TENANT_TABLES:
+    for table in TABELAS_DESTA_REVISAO:
         op.create_index(f"ix_{table}_org_id", table, ["org_id"])
 
     # --------------------------------------------------- row-level security
@@ -492,7 +514,7 @@ def upgrade() -> None:
         f"USING (id::text = current_setting('{guc}', true))"
     )
 
-    for table in TENANT_TABLES:
+    for table in TABELAS_DESTA_REVISAO:
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(
             f"CREATE POLICY tenant_isolation ON {table} "
@@ -521,7 +543,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    for table in ("organizacao", *TENANT_TABLES):
+    for table in ("organizacao", *TABELAS_DESTA_REVISAO):
         op.execute(f"DROP POLICY IF EXISTS tenant_isolation ON {table}")
 
     for table in reversed(
