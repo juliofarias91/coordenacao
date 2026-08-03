@@ -115,14 +115,29 @@ const IC = {
   // Os três LOD usam o PRÓPRIO NÚMERO — ver `ICONE_CHECKLIST`.
   checklist: 'M9 6h12M9 12h12M9 18h12M3 6l1.5 1.5L7 4M3 12l1.5 1.5L7 10M3 18l1.5 1.5L7 16',
   relogio: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2',
+
+  // OS TRÊS DOCUMENTOS DO PROJETO, e o que separa um do outro é O AUTOR
+  // (01/08/2026, a pedido). A ficha e o PEB dividiam a MESMA prancheta, e o
+  // mandate usava o escudo que a Organização também usa — três itens seguidos e
+  // dois desenhos, o que anula o motivo de haver ícone.
+  //
+  //   prancheta  Ficha do projeto — o cadastro da obra, os dados dela
+  //   bussola    PEB · diretrizes — o RUMO que a própria equipe define
+  //   folhaSelo  BIM Mandate      — o documento que vem de FORA e prevalece
+  //
+  // A bússola no PEB e não outro papel: ele é o único dos três que diz PARA
+  // ONDE se vai, e desenhar um terceiro documento manteria o problema que a
+  // troca veio resolver.
+  bussola:
+    'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z',
+  folhaSelo: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 14l2 2 4-4',
 } as const
 
-/** Os seis recortes de auditoria.
+/** Os recortes de auditoria — a fonte de verdade de quais existem.
  *
- *  Eles JÁ FORAM seis entradas da barra lateral e hoje são o painel de dentro
- *  da página de auditoria (`pages/auditoria/`) — a barra tem uma entrada só. A
- *  lista continua aqui porque é a fonte de verdade de quais recortes existem, e
- *  quem a consome são o painel da página, o validador da rota e os rótulos.
+ *  É daqui que saem as entradas da barra (uma por recorte, desde 01/08/2026), o
+ *  validador da rota `:checklist` e os rótulos. Acrescentar um recorte é
+ *  acrescentar uma string nesta lista.
  *
  *  `lod300` e `lod350` são novos no enum `ChecklistTipo` (migration 0004).
  */
@@ -334,7 +349,7 @@ export const ITENS_PROJETO: ItemNav[] = [
     rota: 'peb',
     pt: 'PEB · diretrizes',
     en: 'BEP · guidelines',
-    path: IC.prancheta,
+    path: IC.bussola,
     grupo: 'projeto',
     escopo: 'projeto',
     fase: 1,
@@ -347,7 +362,7 @@ export const ITENS_PROJETO: ItemNav[] = [
     rota: 'mandate',
     pt: 'BIM Mandate',
     en: 'BIM Mandate',
-    path: IC.selo,
+    path: IC.folhaSelo,
     grupo: 'projeto',
     escopo: 'projeto',
     fase: 1,
