@@ -4385,7 +4385,9 @@ td.num {
   background: none;
   border-radius: var(--r-md);
   color: var(--ink-3);
-  font-size: 12px;
+  /* 13px, o MESMO do recorte e do grupo de disciplina: a árvore tem três níveis
+     e uma fonte só — quem diz o nível é o recuo. */
+  font-size: 13px;
   font-weight: 500;
   text-align: left;
   transition: color var(--dur-fast);
@@ -4437,44 +4439,64 @@ td.num {
 .pgprio.p-baixa {
   background: var(--na);
 }
-/* O GRUPO DE DISCIPLINA dentro do recorte. Cabeçalho em versalete apagado, como
-   todo cabeçalho de grupo do sistema — ele é etiqueta, não item clicável, e
-   nesta barra a única coisa que clica são o tipo e o modelo. */
+/* O GRUPO DE DISCIPLINA dentro do recorte (01/08/2026, a pedido).
+   Ele era uma ETIQUETA em versalete de 10px com a amostra de cor da
+   macrodisciplina à esquerda, e as duas coisas saíram:
+
+   A BARRA COLORIDA SAIU porque a cor não estava respondendo a pergunta nenhuma
+   aqui. Ela é paleta categórica (regra 2 — cor é significado), e o significado
+   dela é "que família é esta"; mas dentro de um recorte os modelos JÁ estão
+   agrupados pelo nome da disciplina, escrito por extenso na linha de cima. A
+   cor repetia o que o texto dizia, e num painel de 300px era o elemento mais
+   saturado da coluna — competia com a bolinha de prioridade, que é a única cor
+   ali que informa algo que o texto não diz. A `.macro` continua valendo na
+   tabela de disciplinas e nos gráficos, onde não há rótulo por extenso.
+
+   E ELE VIROU GRUPO DE VERDADE: chevron, e uma fonte só. Três tamanhos em três
+   níveis (13 / 10 / 12px) faziam a árvore ler como três listas empilhadas — o
+   nível do meio, em caixa alta apagada, parecia cabeçalho de seção e não item
+   da mesma árvore. Agora quem diz o nível é o RECUO e o chevron; a fonte é a
+   mesma nos três, e o peso continua reservado ao ativo (regra 1). */
 .pgdisc {
   display: flex;
   flex-direction: column;
 }
+/* Botão inteiro, e não duas áreas de clique como no nível de cima: disciplina
+   não tem tela para onde navegar, então a linha toda faz a única coisa que ela
+   sabe fazer — abrir e fechar. */
 .pgdisc-cab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 8px 3px;
-  color: var(--ink-3);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  gap: 2px;
+  width: 100%;
+  padding: 5px 8px 5px 0;
+  border: none;
+  background: none;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  transition: color var(--dur-fast);
 }
-.pgdisc-cab > span:nth-of-type(1) {
+.pgdisc-cab:hover {
+  color: var(--ink);
+}
+.pgdisc-nome {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* A contagem encostada à direita, para as de todos os grupos alinharem numa
-   coluna só em vez de flutuarem atrás de nomes de comprimentos diferentes. */
-.pgdisc-cab .pgconta {
-  margin-left: auto;
-}
-/* A amostra de cor da macrodisciplina — a MESMA `.macro` da tabela de
-   disciplinas, e é isso que faz as duas telas falarem a mesma língua. */
-.pgdisc-cab .macro {
-  flex: none;
+.pgdisc-cab:hover .pgchevron {
+  color: var(--ink-2);
 }
 /* Os modelos recuam sob o cabeçalho do grupo: é o recuo que diz "isto pertence
-   àquilo", o mesmo mecanismo do nível de cima. */
+   àquilo", o mesmo mecanismo do nível de cima — e os 22px são os mesmos do
+   `.pgsub`, para o código alinhar com o nome da disciplina e não com o chevron
+   dela. */
 .pgdisc .pgsubitem {
-  padding-left: 16px;
+  padding-left: 22px;
 }
 .pgsubvazio {
   display: block;

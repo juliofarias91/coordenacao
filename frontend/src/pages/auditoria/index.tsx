@@ -70,15 +70,17 @@ function leRecolhido(): boolean {
  *  não fechar com a contagem do recorte.
  *
  *  A ORDEM VEM DO SERVIDOR (`ORDER BY disciplina, modelo`), então o `Map`
- *  preserva-a: é ele que garante que reagrupar não reordene. */
-function agrupar(
-  linhas: AuditoriaDaLista[],
-): Array<[string, string | null, AuditoriaDaLista[]]> {
-  const grupos = new Map<string, [string, string | null, AuditoriaDaLista[]]>()
+ *  preserva-a: é ele que garante que reagrupar não reordene.
+ *
+ *  A CHAVE VEM JUNTO com o rótulo porque ela é o que identifica o grupo entre
+ *  renderizações — dois projetos podem ter disciplinas de nome parecido, e é a
+ *  chave que decide qual grupo está recolhido. */
+function agrupar(linhas: AuditoriaDaLista[]): Array<[string, string, AuditoriaDaLista[]]> {
+  const grupos = new Map<string, [string, string, AuditoriaDaLista[]]>()
   for (const l of linhas) {
     const chave = l.disciplina_codigo ?? '—'
     const rotulo = l.disciplina_nome ?? l.disciplina_codigo ?? 'Sem disciplina'
-    if (!grupos.has(chave)) grupos.set(chave, [rotulo, l.disciplina_macro, []])
+    if (!grupos.has(chave)) grupos.set(chave, [chave, rotulo, []])
     grupos.get(chave)?.[2].push(l)
   }
   return [...grupos.values()]
@@ -114,6 +116,12 @@ export default function Auditoria() {
   const [busca, setBusca] = useState('')
   const [criando, setCriando] = useState(false)
   const [abertos, setAbertos] = useState<Record<string, boolean>>({})
+  // OS GRUPOS DE DISCIPLINA GUARDAM OS FECHADOS, e não os abertos — ao contrário
+  // do nível de cima. Quem abriu um recorte quer ver o que há nele; se o padrão
+  // fosse fechado, abrir o recorte mostraria uma coluna de nomes de disciplina e
+  // exigiria um segundo clique para chegar ao modelo, que é o destino. Guardar o
+  // fechado é o que faz "não mexi em nada" significar aberto.
+  const [fechados, setFechados] = useState<Record<string, boolean>>({})
 
   const alternar = useCallback(() => {
     setRecolhido((atual) => {
@@ -262,48 +270,66 @@ export default function Auditoria() {
                           recorte, e o que se procura é "como está a estrutura",
                           não um código específico — sem o agrupamento a lista é
                           uma coluna de siglas parecidas que só se lê de cima a
-                          baixo. O cabeçalho do grupo leva a amostra de cor da
-                          MACRODISCIPLINA, que é a mesma da tabela de disciplinas
-                          e dos gráficos: a cor identifica a família, e é ela que
-                          se varre com o olho antes de ler qualquer texto. */}
-                      {agrupar(doTipo).map(([rotulo, macro, doGrupo]) => (
-                        <div key={rotulo} className="pgdisc">
-                          <div className="pgdisc-cab">
-                            {macro && (
-                              <span
-                                className="macro"
-                                style={{ background: `var(--macro-${macro})` }}
-                              />
-                            )}
-                            <span>{rotulo}</span>
-                            <span className="pgconta">{doGrupo.length}</span>
-                          </div>
-                          {doGrupo.map((l) => (
+                          baixo.
+
+                          O GRUPO É UM BOTÃO INTEIRO, e aqui não há as duas áreas
+                          de clique do nível de cima: disciplina não tem tela para
+                          onde navegar, então a linha toda faz a única coisa que
+                          ela sabe fazer. O chevron é `<span>`, não botão — dentro
+                          de um botão seria HTML inválido. */}
+                      {agrupar(doTipo).map(([chave, rotulo, doGrupo]) => {
+                        const chaveDisc = `${c}::${chave}`
+                        const abertaDisc = !fechados[chaveDisc]
+                        return (
+                          <div key={chave} className="pgdisc">
                             <button
-                              key={l.id}
                               type="button"
-                              className={`pgsubitem${
-                                dentro && modeloId === l.modelo_id ? ' on' : ''
-                              }`}
+                              className="pgdisc-cab"
+                              aria-expanded={abertaDisc}
                               onClick={() =>
-                                navegar(
-                                  rotaProjeto(projeto.id, `auditoria/${c}/${l.modelo_id ?? ''}`),
-                                )
+                                setFechados((f) => ({ ...f, [chaveDisc]: !f[chaveDisc] }))
                               }
-                              title={l.modelo_codigo ?? ''}
                             >
-                              <span className="pgsubnome">{l.modelo_codigo}</span>
-                              {/* A ÁREA quando houver: em LOD 400/500 o mesmo
-                                  modelo aparece uma vez por área, e sem ela as
-                                  linhas ficam idênticas. */}
-                              {l.area && <span className="pgsubarea">{l.area}</span>}
-                              {l.prioridade && (
-                                <span className={`pgprio p-${l.prioridade}`} aria-hidden="true" />
-                              )}
+                              <span className={`pgchevron${abertaDisc ? ' on' : ''}`}>
+                                <Ico path={PATH_CHEVRON} tam={13} />
+                              </span>
+                              <span className="pgdisc-nome">{rotulo}</span>
+                              <span className="pgconta">{doGrupo.length}</span>
                             </button>
-                          ))}
-                        </div>
-                      ))}
+                            {abertaDisc &&
+                              doGrupo.map((l) => (
+                                <button
+                                  key={l.id}
+                                  type="button"
+                                  className={`pgsubitem${
+                                    dentro && modeloId === l.modelo_id ? ' on' : ''
+                                  }`}
+                                  onClick={() =>
+                                    navegar(
+                                      rotaProjeto(
+                                        projeto.id,
+                                        `auditoria/${c}/${l.modelo_id ?? ''}`,
+                                      ),
+                                    )
+                                  }
+                                  title={l.modelo_codigo ?? ''}
+                                >
+                                  <span className="pgsubnome">{l.modelo_codigo}</span>
+                                  {/* A ÁREA quando houver: em LOD 400/500 o mesmo
+                                      modelo aparece uma vez por área, e sem ela as
+                                      linhas ficam idênticas. */}
+                                  {l.area && <span className="pgsubarea">{l.area}</span>}
+                                  {l.prioridade && (
+                                    <span
+                                      className={`pgprio p-${l.prioridade}`}
+                                      aria-hidden="true"
+                                    />
+                                  )}
+                                </button>
+                              ))}
+                          </div>
+                        )
+                      })}
                       {doTipo.length === 0 && (
                         <span className="pgsubvazio">
                           {L('Nada auditado ainda.', 'Nothing audited yet.')}
