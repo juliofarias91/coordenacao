@@ -26,6 +26,7 @@ from app.models import (
     Contato,
     Criterio,
     Evidencia,
+    Projeto,
     ProjetoMembro,
     ReporteErro,
     Standard,
@@ -37,6 +38,9 @@ from app.models import (
 # nome da entidade no singular — não o da classe. Aceitar só estas chaves é o
 # que impede alguém de restaurar uma tabela que não tem `deleted_at`.
 REMOVIVEIS: dict[str, type[Base]] = {
+    # O projeto ENCABEÇA a lista porque é o de maior consequência: ele é o pai
+    # de disciplina, modelo, auditoria e não-conformidade (migration 0011).
+    "projeto": Projeto,
     "cliente": Cliente,
     "criterio": Criterio,
     "standard": Standard,
@@ -50,6 +54,7 @@ REMOVIVEIS: dict[str, type[Base]] = {
 # Como cada entidade se apresenta na lista. A lixeira mostra "o quê", não os
 # campos — quem restaura precisa reconhecer o item, não auditá-lo.
 _ROTULO = {
+    "projeto": lambda o: f"{o.codigo} · {o.nome}",
     "cliente": lambda o: o.nome,
     "criterio": lambda o: f"{o.codigo} · {o.nome_pt}",
     "standard": lambda o: f"{o.nome} ({o.tipo})",

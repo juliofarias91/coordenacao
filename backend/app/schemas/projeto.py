@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from pydantic import BaseModel, Field, computed_field
 
@@ -25,6 +26,16 @@ class ProjetoBase(BaseModel):
         max_length=200,
         description="Documento normativo vigente (ex.: 'A5.3.2 · Construction BEP')",
     )
+    # --- ficha cadastral (migration 0011) ---------------------------------
+    descricao: str | None = Field(default=None, max_length=4000)
+    endereco: str | None = Field(default=None, max_length=400)
+    data_inicio: date | None = None
+    data_prevista: date | None = Field(
+        default=None, description="Previsão de conclusão — muda ao longo do contrato"
+    )
+    data_conclusao: date | None = Field(
+        default=None, description="Conclusão de fato — acontece uma vez"
+    )
 
 
 class ProjetoCreate(ProjetoBase):
@@ -45,6 +56,11 @@ class ProjetoUpdate(BaseModel):
     coordenacao: str | None = Field(default=None, max_length=200)
     bep_ref: str | None = Field(default=None, max_length=200)
     status: str | None = Field(default=None, pattern=r"^(config|ativo|piloto|encerrado)$")
+    descricao: str | None = Field(default=None, max_length=4000)
+    endereco: str | None = Field(default=None, max_length=400)
+    data_inicio: date | None = None
+    data_prevista: date | None = None
+    data_conclusao: date | None = None
 
 
 class ProjetoOut(Identificado):
@@ -55,6 +71,11 @@ class ProjetoOut(Identificado):
     coordenacao: str | None
     bep_ref: str | None
     status: str
+    descricao: str | None
+    endereco: str | None
+    data_inicio: date | None
+    data_prevista: date | None
+    data_conclusao: date | None
 
     # Excluído da serialização: é o objeto do relacionamento, e quem lê a API
     # quer o nome, não o registro inteiro aninhado em toda listagem.

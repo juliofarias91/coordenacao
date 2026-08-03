@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { useAuth } from '@/auth/AuthContext'
-import { Cabecalho, Erro, Vazio } from '@/components/ui'
+import { Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { ItemLixeira } from '@/lib/types'
@@ -23,6 +23,9 @@ import type { ItemLixeira } from '@/lib/types'
 /** Nome de entidade → nome de gente. O que não estiver aqui aparece como veio:
  *  é melhor mostrar `evidencia` do que esconder a linha. */
 const ROTULO_TIPO: Record<string, [string, string]> = {
+  // Encabeça porque é o de maior consequência: o projeto é o pai de
+  // disciplina, modelo e auditoria (migration 0011).
+  projeto: ['Projeto', 'Project'],
   cliente: ['Cliente', 'Client'],
   criterio: ['Critério', 'Criterion'],
   standard: ['Padrão / diretriz', 'Standard / guideline'],
@@ -116,7 +119,6 @@ export default function Lixeira() {
   if (!podeAdministrar) {
     return (
       <>
-        <Cabecalho titulo={L('Lixeira', 'Trash')} />
         <Vazio
           titulo={L('Sem permissão', 'No permission')}
           texto={L(
@@ -130,14 +132,6 @@ export default function Lixeira() {
 
   return (
     <>
-      <Cabecalho
-        titulo={L('Lixeira', 'Trash')}
-        sub={L(
-          'O que foi removido continua aqui até alguém apagar de vez. Restaurar traz de volta ao lugar de origem — mas não refaz os vínculos que a remoção desfez: um cliente restaurado não recupera sozinho os projetos que ficaram sem cliente.',
-          'Removed items stay here until someone deletes them for good. Restoring brings an item back where it was — but does not redo the links the removal undid: a restored client does not automatically recover the projects that were left without one.',
-        )}
-      />
-
       {tipos.length > 1 && (
         <div className="filters">
           <button
@@ -168,8 +162,8 @@ export default function Lixeira() {
         <Vazio
           titulo={L('A lixeira está vazia', 'The trash is empty')}
           texto={L(
-            'Nada foi removido. Quando alguém apagar um cliente, um critério, uma diretriz ou um apontamento, o item aparece aqui em vez de sumir.',
-            'Nothing has been removed. When someone deletes a client, a criterion, a guideline or an issue, it shows up here instead of vanishing.',
+            'Nada foi removido. Quando alguém apagar um projeto, um cliente, um critério, uma diretriz ou um apontamento, o item aparece aqui em vez de sumir.',
+            'Nothing has been removed. When someone deletes a project, a client, a criterion, a guideline or an issue, it shows up here instead of vanishing.',
           )}
         />
       ) : (
