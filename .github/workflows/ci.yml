@@ -29,20 +29,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
-      # A partir da Fase 2 há upload de modelo, evidência e logo. Sem storage
-      # no CI esses testes se pulariam sozinhos — e o caminho do S3 nunca
-      # seria exercitado.
-      minio:
-        image: bitnami/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports: ['9000:9000']
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 12
+      # O MinIO NÃO é service container — ver o passo "Subir o MinIO".
 
     env:
       POSTGRES_HOST: localhost
@@ -63,6 +50,34 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # A partir da Fase 2 há upload de modelo, evidência e logo. Sem storage
+      # no CI esses testes se pulariam sozinhos — e o caminho do S3 nunca
+      # seria exercitado.
+      #
+      # Isto era um `services:` com `bitnami/minio:latest`, e quebrou sozinho:
+      # a Broadcom tirou os Bitnami do Docker Hub gratuito e o repositório
+      # ficou SEM NENHUMA TAG. Service container que não baixa derruba o job
+      # inteiro antes do primeiro passo — daí "Docker pull failed", sem log de
+      # nada, num commit que só mexeu em documentação.
+      #
+      # A imagem oficial `minio/minio` existe e é mantida, mas o entrypoint
+      # dela exige o argumento `server /data`, e service container do GitHub
+      # Actions não deixa sobrescrever o comando. Por isso `docker run` num
+      # passo: é o que permite usar a imagem de quem faz o MinIO. O único
+      # `bitnamilegacy/minio` que restou está congelado desde 2025, e
+      # `minio/minio:edge-cicd` — a tag feita para CI — parou em 2021.
+      - name: Subir o MinIO (storage do S3)
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
+          for _ in $(seq 1 30); do
+            curl -fsS http://localhost:9000/minio/health/live >/dev/null && exit 0
+            sleep 2
+          done
+          echo "MinIO não respondeu:" && docker logs minio && exit 1
 
       - uses: actions/setup-python@v5
         with:
@@ -142,6 +157,20 @@ jobs:
           assert not faltando, f'módulos ausentes na imagem: {faltando}'
           print('pacote completo')
           "
+
+      # O papel da aplicação é criado pelo PROVISIONAMENTO, nunca pela
+      # migration — ele é o dono de nada e existe para ficar sujeito ao RLS.
+      # Aqui ele precisa existir por dois motivos: os GRANTs das migrations, e
+      # o container abaixo, que conecta com ele (`sqlalchemy_url` cai em
+      # APP_DB_USER quando não há DATABASE_URL). Sem isto a API subia e o
+      # `/health/ready` respondia com o banco em erro.
+      - name: Criar o papel de aplicação (sujeito ao RLS)
+        env:
+          PGPASSWORD: spbim
+        run: |
+          psql -h localhost -U spbim -d spbim_auditoria -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE spbim_app LOGIN PASSWORD 'spbim_app';" \
+            -c "GRANT CONNECT ON DATABASE spbim_auditoria TO spbim_app;"
 
       - name: Migrations aplicam a partir da imagem
         run: |
