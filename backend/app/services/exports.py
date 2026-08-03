@@ -11,9 +11,16 @@ import io
 import uuid
 from datetime import UTC, datetime
 
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.utils import get_column_letter
+# O `openpyxl` NÃO É IMPORTADO AQUI, e sim dentro de `controle_xlsx` — a única
+# função que o usa.
+#
+# Ele custava ~5,9 s no import da aplicação, o maior item isolado do boot, e
+# este módulo é alcançado pelo router. O preço era pago em toda subida do
+# servidor, inclusive nos reinícios do `--reload`, por uma biblioteca que só
+# entra quando alguém baixa a planilha de controle.
+#
+# O PDF, logo acima, não tem custo equivalente: ele é montado com string, sem
+# dependência de terceiro.
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -300,6 +307,12 @@ def relatorio_pdf(db: Session, modelo_id: uuid.UUID, *, idioma: str = "pt") -> b
 # ------------------------------------------------------------------- Excel
 def controle_xlsx(db: Session, projeto_id: uuid.UUID) -> bytes:
     """Controle modelo × status. Substitui a planilha, gerado do mesmo dado."""
+    # Import local — ver a nota no topo do módulo. `openpyxl` é o item mais caro
+    # do boot da aplicação e só serve a esta função.
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
     projeto = db.get(Projeto, projeto_id)
     if projeto is None:
         raise ValueError("projeto não encontrado")

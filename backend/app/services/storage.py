@@ -16,13 +16,22 @@ from functools import lru_cache
 from pathlib import PurePosixPath
 from urllib.parse import urlparse
 
-import boto3
-from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from app.core.config import settings
 
 log = logging.getLogger(__name__)
+
+# O `boto3` NÃO É IMPORTADO AQUI, e sim dentro das duas fábricas de cliente.
+#
+# Ele custava ~3,6 s no import da aplicação, e como este módulo é alcançado pelo
+# router, o preço era pago em TODA subida do servidor — inclusive nos reinícios
+# do `--reload`, dezenas de vezes por dia, para um cliente que só é construído
+# quando alguém envia ou baixa arquivo.
+#
+# `botocore.exceptions` fica no topo de propósito: é barato (não arrasta o
+# `boto3`) e `ClientError` aparece em `except` no meio do módulo, onde um import
+# tardio seria pior de ler.
 
 
 class StorageError(RuntimeError):
@@ -38,6 +47,9 @@ def cliente():
     próprias (Storage → Settings → S3 access keys). É configuração, não
     código — por isso o endpoint sempre veio de variável de ambiente.
     """
+    import boto3
+    from botocore.config import Config
+
     return boto3.client(
         "s3",
         endpoint_url=settings.s3_endpoint_url or None,
@@ -55,6 +67,9 @@ def cliente_sonda():
     Nunca use para gravar ou ler de verdade — um upload legítimo de modelo BIM
     PRECISA dos retries que aqui foram removidos.
     """
+    import boto3
+    from botocore.config import Config
+
     return boto3.client(
         "s3",
         endpoint_url=settings.s3_endpoint_url or None,
