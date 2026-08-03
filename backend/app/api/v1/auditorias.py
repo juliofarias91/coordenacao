@@ -17,25 +17,31 @@ from app.models import (
     Auditoria,
     ComentarioFornecedor,
     Criterio,
+    Disciplina,
     Empresa,
     Evidencia,
     Modelo,
     NaoConformidade,
     Ocorrencia,
+    Projeto,
     ResultadoCheck,
+    Usuario,
     VersaoModelo,
 )
 from app.models.enums import AuditoriaEstado, ChecklistTipo, CheckStatus, OrigemResult
 from app.schemas.auditoria import (
     AbrirAuditoria,
+    AuditoriaDaLista,
     AuditoriaDetalhe,
     AuditoriaOut,
+    AuditoriaUpdate,
     ComentarioCreate,
     ComentarioOut,
     EvidenciaOut,
     NaoConformidadeCreate,
     NaoConformidadeOut,
     NaoConformidadeUpdate,
+    PlanoAuditoria,
     ResultadoOut,
     ResultadoUpdate,
 )
@@ -147,17 +153,36 @@ def auditar(
     abertas: list[Auditoria] = []
     for c in alvos:
         for area in _areas_do_checklist(c, payload.area, areas_da_disciplina):
-            abertas.append(
-                abrir_auditoria(
-                    db,
-                    org_id=user.org_id,
-                    versao=versao,
-                    checklist=c,
-                    area=area,
-                    auditor_id=user.id,
-                )
+            auditoria = abrir_auditoria(
+                db,
+                org_id=user.org_id,
+                versao=versao,
+                checklist=c,
+                area=area,
+                auditor_id=payload.auditor_id or user.id,
             )
+            _aplicar_plano(auditoria, payload)
+            abertas.append(auditoria)
+    db.flush()
     return [AuditoriaOut.model_validate(a) for a in abertas]
+
+
+def _aplicar_plano(auditoria: Auditoria, plano: PlanoAuditoria) -> None:
+    """Grava o que foi PLANEJADO, ignorando o que não veio.
+
+    APLICA-SE TAMBÉM À AUDITORIA QUE JÁ EXISTIA. `abrir_auditoria` é idempotente
+    — repetir devolve a que está aberta em vez de duplicar o round —, e sem isto
+    quem preenchesse a gaveta para um par (modelo, checklist) já aberto veria o
+    responsável e as datas que acabou de digitar sumirem sem aviso. Abrir a
+    gaveta de novo é REPLANEJAR, e replanejar grava.
+
+    `exclude_unset`: campo ausente é "não mexa", diferente de `null`, que é
+    "apague". Sem isso um PATCH de prioridade limparia o responsável.
+    """
+    for campo, valor in plano.model_dump(
+        exclude_unset=True, include=set(PlanoAuditoria.model_fields)
+    ).items():
+        setattr(auditoria, campo, valor)
 
 
 def _areas_do_checklist(
@@ -193,6 +218,136 @@ def listar_auditorias_da_versao(
         .order_by(Auditoria.checklist, Auditoria.area.nulls_first())
     ).scalars()
     return [AuditoriaOut.model_validate(a) for a in auditorias]
+
+
+@router.post(
+    "/modelos/{modelo_id}/auditar",
+    response_model=list[AuditoriaOut],
+    status_code=status.HTTP_201_CREATED,
+)
+def auditar_modelo(
+    modelo_id: uuid.UUID,
+    payload: AbrirAuditoria,
+    db: Session = Depends(get_tenant_db),
+    user: CurrentUser = Depends(requer_permissao("executar")),
+) -> list[AuditoriaOut]:
+    """Audita a ÚLTIMA versão de um modelo.
+
+    A gaveta de nova auditoria escolhe um MODELO — é assim que a coordenação
+    pensa ("auditar o STRC") — mas a auditoria pertence a uma VERSÃO, porque é a
+    versão que muda e é contra ela que o round se compara. Resolver a última
+    versão aqui evita que a tela tenha de listar versões só para descartar todas
+    menos uma; `/versoes/{id}/auditar` continua existindo para quem precisa
+    apontar uma versão específica.
+
+    A ORDEM É `created_at` E NÃO O NOME DA VERSÃO. 'V10' vem antes de 'V9' em
+    ordem alfabética, e `versao` é Text — não há número a comparar.
+    """
+    exigir(db, Modelo, modelo_id, "modelo")
+    versao = db.execute(
+        select(VersaoModelo)
+        .where(VersaoModelo.modelo_id == modelo_id)
+        .order_by(VersaoModelo.created_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if versao is None:
+        raise conflito(
+            "este modelo ainda não tem versão; cadastre uma antes de abrir auditoria"
+        )
+    return auditar(versao.id, payload, db, user)
+
+
+@router.get("/projetos/{projeto_id}/auditorias", response_model=list[AuditoriaDaLista])
+def listar_auditorias_do_projeto(
+    projeto_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+) -> list[AuditoriaDaLista]:
+    """Todas as auditorias do projeto, com o modelo já resolvido.
+
+    É o que o painel da tela de auditoria consome para listar, dentro de cada
+    tipo, os modelos auditados. Devolve o projeto INTEIRO e sem filtro de busca:
+    são dezenas de linhas, e filtrar no navegador é instantâneo — a mesma razão
+    pela qual a busca global não tem endpoint próprio. Quando não couber mais na
+    memória do navegador, entra paginação aqui.
+    """
+    exigir(db, Projeto, projeto_id, "projeto")
+
+    linhas = db.execute(
+        select(
+            Auditoria,
+            Modelo.id,
+            Modelo.codigo,
+            VersaoModelo.versao,
+            Usuario.nome,
+            Disciplina.codigo,
+            Disciplina.nome,
+            Disciplina.macro,
+        )
+        .join(VersaoModelo, VersaoModelo.id == Auditoria.versao_id)
+        .join(Modelo, Modelo.id == VersaoModelo.modelo_id)
+        # `outerjoin`: auditoria sem responsável é normal — a que nasce junto com
+        # a versão pelo webhook do ACC não tem ninguém atribuído. E modelo sem
+        # disciplina também: ela é `SET NULL` e o modelo pode ser cadastrado antes
+        # de a disciplina existir.
+        .outerjoin(Usuario, Usuario.id == Auditoria.auditor_id)
+        .outerjoin(Disciplina, Disciplina.id == Modelo.disciplina_id)
+        # A ORDEM DA DISCIPLINA ENTRA AQUI, antes do código do modelo: o painel
+        # agrupa por disciplina dentro de cada recorte, e ordenar no servidor
+        # poupa a tela de reordenar o que já veio pronto. `nulls_last` para o
+        # modelo sem disciplina cair no fim, e não abrir a lista.
+        .where(Modelo.projeto_id == projeto_id)
+        .order_by(
+            Auditoria.checklist,
+            Disciplina.codigo.nulls_last(),
+            Modelo.codigo,
+            Auditoria.area.nulls_first(),
+        )
+    ).all()
+
+    saida: list[AuditoriaDaLista] = []
+    for (
+        auditoria,
+        modelo_id,
+        modelo_codigo,
+        versao_rotulo,
+        auditor_nome,
+        disc_codigo,
+        disc_nome,
+        disc_macro,
+    ) in linhas:
+        item = AuditoriaDaLista.model_validate(auditoria)
+        item.modelo_id = modelo_id
+        item.modelo_codigo = modelo_codigo
+        item.versao_rotulo = versao_rotulo
+        item.auditor_nome = auditor_nome
+        item.disciplina_codigo = disc_codigo
+        item.disciplina_nome = disc_nome
+        item.disciplina_macro = disc_macro
+        saida.append(item)
+    return saida
+
+
+@router.patch("/auditorias/{auditoria_id}", response_model=AuditoriaOut)
+def atualizar_auditoria(
+    auditoria_id: uuid.UUID,
+    payload: AuditoriaUpdate,
+    db: Session = Depends(get_tenant_db),
+    _: CurrentUser = Depends(requer_permissao("executar")),
+) -> AuditoriaOut:
+    """Replaneja: responsável, datas, andamento e prioridade.
+
+    Não toca em resultado nem em `estado` — quem publica é
+    `POST /auditorias/{id}/publicar`, e é ele que congela o round.
+
+    ROUND PUBLICADO NÃO ACEITA: é a mesma regra de `_exigir_round_aberto`, e
+    vale aqui porque o relatório em PDF já emitido nomeia o responsável e a
+    data. Trocá-los depois reescreveria, em silêncio, um documento que já saiu.
+    """
+    auditoria = _exigir_round_aberto(db, auditoria_id)
+    _aplicar_plano(auditoria, payload)
+    db.flush()
+    return AuditoriaOut.model_validate(auditoria)
 
 
 @router.get("/auditorias/{auditoria_id}", response_model=AuditoriaDetalhe)

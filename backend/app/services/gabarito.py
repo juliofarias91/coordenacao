@@ -192,6 +192,17 @@ CHECKLISTS_POR_DISCIPLINA: dict[ChecklistTipo, str] = {
 }
 
 
+def itens_de(checklist: ChecklistTipo, disciplina: str) -> tuple[ItemGabarito, ...]:
+    """As linhas do gabarito, SEM tocar no banco.
+
+    É o que `GET /gabaritos/{checklist}` serve: a estrutura de fábrica é padrão
+    da empresa e a tela precisa desenhá-la mesmo num projeto que ainda não a
+    adotou. `aplicar()` é outra coisa — ele transforma estas linhas em `Criterio`
+    e `ChecklistItem` DO projeto, que é o que as torna editáveis por ele.
+    """
+    return _lod_para(checklist, disciplina)
+
+
 def _lod_para(checklist: ChecklistTipo, disciplina: str) -> tuple[ItemGabarito, ...]:
     """Achata elemento × informação nas linhas de critério do LOD.
 

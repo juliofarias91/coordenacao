@@ -133,6 +133,27 @@ class ChecklistOut(BaseModel):
 
 
 # -------------------------------------------------------------------- gabarito
+class LinhaGabarito(BaseModel):
+    """Uma linha do gabarito DE FÁBRICA, antes de virar critério de um projeto.
+
+    Não é `CriterioOut`: aqui não há `id`, `projeto_id` nem `created_at`, porque
+    isto não é uma linha do banco — é a estrutura padrão, que mora em código
+    (`services/gabarito.py`). Devolver um `CriterioOut` com ids falsos faria a
+    tela achar que pode editá-la.
+
+    `codigo` vai junto porque é ele que casa esta linha com o `Criterio` do
+    projeto, quando o projeto adotar o gabarito.
+    """
+
+    codigo: str
+    nome_pt: str
+    nome_en: str
+    categoria: str
+    instrucao: str | None = None
+    criterio_aceitacao: str | None = None
+    parametro_esperado: str | None = None
+
+
 class GabaritoIn(BaseModel):
     model_config = ESCRITA
 

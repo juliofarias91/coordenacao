@@ -1,72 +1,84 @@
-/** O que cada recorte de auditoria mostra.
+/** O que cada recorte de auditoria mostra: A GRADE.
  *
  *  Uma tela só, parametrizada pela rota (`auditoria/:checklist`), dentro do
- *  esqueleto de `index.tsx`. O backend já servia assim desde a Fase 2 — a
- *  matriz sempre recebeu `?checklist=`.
+ *  esqueleto de `index.tsx`.
  *
- *  DOIS RECORTES NÃO SÃO MATRIZ POR ÁREA, e a razão é estrutural, não de gosto:
- *  a matriz pergunta "como está o modelo X na área Y", e `abrir_auditoria` só
- *  grava `area` nas auditorias de especificação. Auditoria com `area = NULL` não
- *  casa com coluna nenhuma (`services/painel.py`, a busca por
- *  `(versao_id, area)`), e a tela mostrava uma grade de travessões. A geral e a
- *  LOD 300 passaram a usar o CONTROLE por modelo — que é a aba
- *  `GENERAL AUDIT - CONTROL` das planilhas — e é de lá que se abre a planilha.
+ *  A ESTRUTURA É O PADRÃO, NÃO CONFIGURAÇÃO DE PROJETO (31/07/2026, a pedido).
+ *  Os 17 itens da auditoria geral são os mesmos nas oito disciplinas e em todo
+ *  projeto — é o que `services/gabarito.py` guarda, e é isso que a grade desenha,
+ *  via `GET /gabaritos/{checklist}`.
  *
- *  4D, LOD 350, 400 e 500 seguem na matriz. As três primeiras têm o MESMO
- *  problema e continuam vazias; corrigi-las exige decidir entre abrir uma
- *  auditoria por área da disciplina e a matriz passar a mostrar o que não tem
- *  área — as duas mudam a contagem de rounds. Está em `docs/CONTINUACAO.md`
- *  como decisão pendente, com as saídas. Enquanto isso o estado vazio DIZ o que
- *  falta, em vez de deixar a tela parecer quebrada.
+ *  Isto substituiu uma versão que lia o checklist COMPOSTO do projeto e, num
+ *  projeto novo, mostrava uma tela vazia com um botão "aplicar os itens de
+ *  fábrica". Aquilo era um passo que não correspondia a decisão nenhuma: a
+ *  resposta é sempre sim, e o padrão é padrão antes de qualquer clique. O POST
+ *  que semeia continua existindo em Biblioteca de critérios — ele serve a outra
+ *  coisa, que é o projeto ADOTAR o padrão como dado editável (renomear um item,
+ *  acrescentar o 18º).
+ *
+ *  ESTA TELA FOI ESVAZIADA ANTES, e o que saiu daqui continua fora: o parágrafo
+ *  de explicação de cada recorte, o `ControleGeral` e a `TabelaMatriz`. O texto
+ *  dos cinco parágrafos está em `git log -- frontend/src/pages/auditoria/`.
+ *  `TabelaMatriz` segue em uso em `pages/Painel.tsx`; `ControleGeral` ficou
+ *  órfão — o caminho para a planilha de um modelo passou a ser o dropdown do
+ *  painel à esquerda.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
-import ControleGeral from '@/components/ControleGeral'
-import TabelaMatriz from '@/components/Matriz'
+import GradePlanilha, { type Coluna } from '@/components/GradePlanilha'
 import { Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
-import { CHECKLISTS, checklistTemBanco, type Checklist } from '@/layout/nav'
+import { CHECKLISTS, type Checklist } from '@/layout/nav'
 import { ApiError, api } from '@/lib/api'
-import type { ChecklistTipo, Matriz, Painel } from '@/lib/types'
+import type { ChecklistTipo, LinhaGabarito } from '@/lib/types'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
-/** O que cada recorte responde — é a diferença entre seis telas iguais e seis
- *  telas com propósito. Sai do que os checklists significam no PEB. */
-const EXPLICACAO: Record<Checklist, [string, string]> = {
-  geral: [
-    'Conformidade de base do modelo: nomenclatura, coordenada compartilhada, worksets, fases, organização do navegador. São 17 itens, os mesmos em toda disciplina, e todo modelo os responde.',
-    'Baseline model compliance: naming, shared coordinates, worksets, phases, browser organization. 17 items, the same across every discipline, answered by every model.',
-  ],
-  '4d': [
-    'Parâmetros de planejamento nos elementos — fase, sequência, frente de trabalho. É a auditoria que o IfcOpenShell roda sozinho sobre o IFC.',
-    'Planning parameters on elements — phase, sequence, work front. This is the audit IfcOpenShell runs on its own over the IFC.',
-  ],
-  lod300: [
-    'Geometria com dimensão, forma e posição definidas, e a informação que acompanha cada categoria de elemento. Ainda é projeto, não fabricação.',
-    'Geometry with defined size, shape and location, plus the information required of each element category. Still design, not fabrication.',
-  ],
-  lod400: [
-    'Detalhe de fabricação e montagem — o modelo passa a valer como instrução de obra. Auditado POR ÁREA: cada modelo responde separadamente em ADMN, COLO1, SITE e nas demais áreas do escopo da disciplina.',
-    'Fabrication and assembly detail — the model becomes a construction instruction. Audited BY AREA: each model answers separately in ADMN, COLO1, SITE and the other areas in its discipline’s scope.',
-  ],
-  lod500: [
-    'As-built verificado em campo, o que alimenta a operação depois da entrega. Também por área.',
-    'Field-verified as-built, what feeds operations after handover. Also by area.',
-  ],
-}
-
-/** Os recortes que usam o CONTROLE por modelo em vez da matriz por área. É
- *  exatamente a lista dos que não têm área — ver o cabeçalho.
+/** AS COLUNAS DE CADA RECORTE, quando ele já as tem.
  *
- *  O tipo é estreito de propósito: `ControleGeral` decide para onde o botão
- *  leva a partir dele, e um recorte novo entrando aqui sem tela de planilha
- *  quebraria o build em vez de gerar um link para lugar nenhum. */
-type ComControle = 'geral' | 'lod300'
-const COM_CONTROLE = ['geral', 'lod300'] as const
-
-function usaControlePorModelo(c: Checklist): c is ComControle {
-  return (COM_CONTROLE as readonly string[]).includes(c)
+ *  Recorte que não está aqui cai nas letras (A, B, C…) — e isso é informação,
+ *  não falta de acabamento: diz que aquele recorte ainda não teve as colunas
+ *  definidas.
+ *
+ *  OS RÓTULOS SÃO BILÍNGUES, e o inglês é o da planilha COMO ELA O ESCREVE —
+ *  inclusive `COMENTARY`, que é a grafia do arquivo de referência. Não é erro de
+ *  digitação: é o rótulo que a coordenação lê há anos, e "corrigir" para
+ *  COMMENTARY faria a tela e a planilha divergirem na primeira conferência lado a
+ *  lado. A migration 0008 e `services/exports.py` já usam essa grafia.
+ *  O português existe porque uma fileira de cabeçalhos em inglês no meio de uma
+ *  tela traduzida é a única coisa da tela que não fala a língua de quem a lê.
+ *
+ *  AS LARGURAS SEPARAM PROSA DE DADO, e são PESOS: a tabela ocupa a largura toda
+ *  e o espaço que sobra se reparte em proporção a estes números. `COMENTARY` e
+ *  `DIRECTION` são as duas frases que a coordenação escreve por linha reprovada
+ *  (o diagnóstico e a orientação ao fornecedor — migration 0008), e `INFORMATION`
+ *  é o texto do item. As três precisam de largura; `IMAGE` e as duas curtas
+ *  cedem. */
+const COLUNAS: Partial<Record<Checklist, Coluna[]>> = {
+  geral: [
+    { pt: 'INFORMAÇÃO', en: 'INFORMATION', largura: 340 },
+    {
+      pt: 'VERIFICAÇÃO',
+      en: 'VERIFICATION',
+      largura: 132,
+      tipo: 'selecao',
+      // O VALOR é `aprovado`/`reprovado` — o `CheckStatus` que a coluna vai
+      // gravar quando a planilha passar a salvar. O rótulo é o da planilha em
+      // cada idioma. Guardar o rótulo faria a tradução virar dado, e comparar
+      // por ele reabriria a armadilha do "NOT APPROVED" que contém "APPROVED".
+      opcoes: [
+        { valor: 'aprovado', pt: 'APROVADO', en: 'APPROVED' },
+        { valor: 'reprovado', pt: 'NÃO APROVADO', en: 'NOT APPROVED' },
+      ],
+    },
+    { pt: 'COMENTÁRIO', en: 'COMENTARY', largura: 280, tipo: 'texto' },
+    { pt: 'IMAGEM', en: 'IMAGE', largura: 72, tipo: 'imagem' },
+    // DIRECTION é ORIENTAÇÃO, não "direção": é a frase que diz ao fornecedor o
+    // que fazer. A migration 0008 usa exatamente essa palavra ao descrever o
+    // campo, e "direção" em português levaria a pensar em sentido/rumo.
+    { pt: 'ORIENTAÇÃO', en: 'DIRECTION', largura: 280, tipo: 'texto' },
+    { pt: 'APROVAÇÃO (%)', en: 'APPROVED (%)', largura: 116, tipo: 'calculado' },
+  ],
 }
 
 function ehChecklist(v: string | undefined): v is Checklist {
@@ -74,38 +86,29 @@ function ehChecklist(v: string | undefined): v is Checklist {
 }
 
 export default function Recorte() {
-  const { L } = useI18n()
+  const { L, lang } = useI18n()
   const { projeto } = useProjeto()
   const { checklist } = useParams<{ checklist: string }>()
 
-  const [matriz, setMatriz] = useState<Matriz | null>(null)
-  const [controle, setControle] = useState<Painel | null>(null)
+  const [itens, setItens] = useState<LinhaGabarito[]>([])
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
 
   const valido = ehChecklist(checklist)
-  const temBanco = valido && checklistTemBanco(checklist)
-  const usaControle = valido && usaControlePorModelo(checklist)
 
   const carregar = useCallback(async () => {
-    if (!projeto || !valido || !temBanco) return
+    if (!valido) return
     setErro(null)
     setCarregando(true)
     try {
-      // O `as` é seguro porque `temBanco` já excluiu os que o enum do backend
-      // não conhece — é exatamente o que `CHECKLISTS_SEM_BANCO` guarda.
-      const tipo = checklist as ChecklistTipo
-      if (usaControle) {
-        setControle(await api.painel(projeto.id, tipo))
-      } else {
-        setMatriz(await api.matriz(projeto.id, tipo))
-      }
+      setItens(await api.gabaritos.obter(checklist as ChecklistTipo))
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : String(e))
+      setItens([])
     } finally {
       setCarregando(false)
     }
-  }, [projeto, checklist, valido, temBanco, usaControle])
+  }, [checklist, valido])
 
   useEffect(() => {
     carregar()
@@ -128,41 +131,40 @@ export default function Recorte() {
     )
   }
 
+  if (carregando) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
+
+  // Recorte SEM estrutura de fábrica — hoje 4D, LOD 400 e 500. Não é erro nem
+  // pendência do projeto: é o gabarito daquele recorte que ainda não foi
+  // desenhado, e o lugar de desenhá-lo é `services/gabarito.py`.
+  if (!erro && itens.length === 0) {
+    return (
+      <div className="pgvazio">
+        <Vazio
+          titulo={L('Este recorte não tem estrutura definida', 'This scope has no structure yet')}
+          texto={L(
+            'As linhas e colunas deste recorte ainda não foram definidas. A auditoria geral já tem as dela; as dos demais entram à medida que os arquivos de referência forem levantados.',
+            'The rows and columns of this scope have not been defined yet. The general audit already has its own; the others come as the reference files are gathered.',
+          )}
+        />
+      </div>
+    )
+  }
+
+  // A COLUNA INFORMATION é a primeira; as outras cinco se respondem na tela.
+  //
+  // `nome_en` no inglês e `nome_pt` no português: o rótulo da coluna INFORMATION
+  // na planilha é o inglês, mas quem está com a interface em português lê a
+  // linha em português no resto do sistema. As duas grafias vêm do mesmo item do
+  // gabarito, então não há como divergirem.
+  const celulas = itens.map((i) => [lang === 'en' ? i.nome_en : i.nome_pt])
+
   return (
     <>
-      <p className="sub" style={{ marginTop: 0, marginBottom: 18, maxWidth: 660 }}>
-        {L(...EXPLICACAO[checklist])}
-      </p>
-
       <Erro mensagem={erro} />
-
-      {!temBanco ? (
-        <Vazio
-          titulo={L('Ainda não disponível', 'Not available yet')}
-          texto={L(
-            `O checklist ${checklist.toUpperCase()} ainda não existe no banco.`,
-            `The ${checklist.toUpperCase()} checklist does not exist in the database yet.`,
-          )}
-        />
-      ) : carregando ? (
-        <p className="hint">{L('Carregando…', 'Loading…')}</p>
-      ) : usaControle ? (
-        <ControleGeral
-          projetoId={projeto.id}
-          checklist={checklist}
-          linhas={controle?.linhas ?? []}
-        />
-      ) : (
-        <TabelaMatriz
-          matriz={matriz}
-          projetoId={projeto.id}
-          vazioTitulo={L('Nada auditado neste recorte', 'Nothing audited in this scope')}
-          vazioTexto={L(
-            'A matriz mostra modelo × área. Se está vazia, nenhuma disciplina do projeto declara este recorte — ou as disciplinas que o declaram estão sem áreas no escopo. Os dois se definem em Configurações do projeto › Disciplinas.',
-            'The matrix shows model × area. If it is empty, no discipline in the project declares this scope — or the ones that do have no areas in scope. Both are set under Project setup › Disciplines.',
-          )}
-        />
-      )}
+      {/* `key` no recorte: trocar de recorte tem de devolver a grade ao começo,
+          e não manter a célula selecionada do recorte anterior — que passaria a
+          apontar para uma coluna que talvez não exista no próximo. */}
+      <GradePlanilha key={checklist} rotulos={COLUNAS[checklist]} celulas={celulas} />
     </>
   )
 }

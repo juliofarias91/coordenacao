@@ -5,14 +5,32 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.models.enums import AuditoriaEstado, ChecklistTipo, CheckStatus, OrigemResult
+from app.models.enums import (
+    AuditoriaEstado,
+    ChecklistTipo,
+    CheckStatus,
+    MacroDisc,
+    OrigemResult,
+)
 from app.schemas.comum import ESCRITA, Identificado
 from app.schemas.criterio import CriterioOut
 
 STATUS_NC = ("aberto", "em_analise", "resolvido")
+
+# O vocabulário de `auditoria.andamento` e `auditoria.prioridade` (migration
+# 0013). Tuplas e não enums do Postgres, pela razão que está na migration: são
+# vocabulário de PROCESSO, e o processo de auditoria em obra muda mais do que o
+# schema. Quem valida são estes `Literal`s — a validação vive na borda, que é
+# onde dá para afrouxá-la sem um `ALTER TYPE`.
+ANDAMENTOS = ("a_fazer", "em_andamento", "concluida", "bloqueada")
+PRIORIDADES = ("alta", "media", "baixa")
+
+Andamento = Literal["a_fazer", "em_andamento", "concluida", "bloqueada"]
+Prioridade = Literal["alta", "media", "baixa"]
 
 
 class OcorrenciaOut(Identificado):
@@ -99,7 +117,12 @@ class AuditoriaOut(Identificado):
     revisado_por: uuid.UUID | None
     data_inicio: datetime | None
     data_fim: datetime | None
+    # `entrega_estimada` existia na tabela desde a 0001 e NUNCA foi exposta: a
+    # data planejada estava no banco e não chegava a tela nenhuma.
+    entrega_estimada: date | None
     publicado_em: datetime | None
+    andamento: Andamento
+    prioridade: Prioridade | None
 
 
 class AuditoriaDetalhe(AuditoriaOut):
@@ -107,9 +130,61 @@ class AuditoriaDetalhe(AuditoriaOut):
     pendentes: int = Field(default=0, description="Itens ainda em `pendente`.")
 
 
-class AbrirAuditoria(BaseModel):
+class AuditoriaDaLista(AuditoriaOut):
+    """Uma auditoria com o MODELO resolvido, para a lista de um projeto.
+
+    O painel da tela de auditoria agrupa por checklist e mostra, dentro de cada
+    tipo, os modelos auditados. Com só `versao_id` ele teria de buscar cada
+    versão e cada modelo para escrever um nome na tela — N+1 requisições para
+    montar uma barra lateral.
+    """
+
+    modelo_id: uuid.UUID | None = None
+    modelo_codigo: str | None = None
+    versao_rotulo: str | None = Field(
+        default=None, description="A versão auditada, como o modelo a nomeia ('V3')."
+    )
+    auditor_nome: str | None = None
+    # A DISCIPLINA DO MODELO, para o painel agrupar por ela dentro de cada
+    # recorte. Nula quando o modelo ainda não tem disciplina — `disciplina_id` é
+    # `SET NULL` e o modelo pode ser cadastrado antes de ela existir.
+    disciplina_codigo: str | None = None
+    disciplina_nome: str | None = None
+    # A macro vem junto porque é dela que sai a COR do grupo, e a paleta é por
+    # macrodisciplina — não por disciplina. Sem ela a tela teria de buscar a
+    # disciplina só para descobrir a cor.
+    disciplina_macro: MacroDisc | None = None
+
+
+class PlanoAuditoria(BaseModel):
+    """O que se PLANEJA numa auditoria, separado do que se executa nela.
+
+    Estes campos são o conteúdo da gaveta de nova auditoria: quem faz, para
+    quando, em que ordem de urgência. Nenhum deles altera resultado — quem
+    altera é `PATCH /resultados/{id}` — e é por isso que são um schema à parte,
+    reusado pela criação e pela edição.
+
+    `estado` NÃO está aqui, de propósito: ele é de publicação e quem o move é o
+    fluxo de round. Ver a migration 0013.
+    """
+
     model_config = ESCRITA
 
+    auditor_id: uuid.UUID | None = Field(
+        default=None, description="O responsável. `auditor_id` é o nome da coluna desde a 0001."
+    )
+    data_inicio: datetime | None = None
+    data_fim: datetime | None = None
+    entrega_estimada: date | None = Field(default=None, description="A data planejada.")
+    andamento: Andamento | None = None
+    prioridade: Prioridade | None = None
+
+
+class AuditoriaUpdate(PlanoAuditoria):
+    """PATCH do plano. Todos os campos opcionais: a tela grava campo por campo."""
+
+
+class AbrirAuditoria(PlanoAuditoria):
     checklist: ChecklistTipo | None = Field(
         default=None,
         description="Omita para abrir todos os checklists definidos na disciplina.",

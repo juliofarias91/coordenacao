@@ -29,8 +29,9 @@ from app.schemas.criterio import (
     GabaritoAplicado,
     GabaritoIn,
     ItemChecklistOut,
+    LinhaGabarito,
 )
-from app.services import gabarito, lixeira
+from app.services import gabarito, gabarito_lod, lixeira
 from app.services.escopo import conflito, exigir, exigir_projeto, ja_existe
 
 router = APIRouter(tags=["criterios"])
@@ -242,6 +243,72 @@ def definir_itens(
             for i in _itens_do_checklist(db, payload.projeto_id, checklist)
         ],
     )
+
+
+@router.get("/gabaritos/{checklist}", response_model=list[LinhaGabarito])
+def obter_gabarito(
+    checklist: ChecklistTipo,
+    disciplina: str | None = Query(default=None),
+    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+) -> list[LinhaGabarito]:
+    """O gabarito de fábrica do checklist — SEM projeto e SEM tocar no banco.
+
+    A ESTRUTURA DA AUDITORIA GERAL É PADRÃO DA EMPRESA, não configuração de
+    projeto: são os mesmos 17 itens nas oito disciplinas e em todo projeto, e é
+    isso que `services/gabarito.py` guarda. A tela da planilha precisa desenhar
+    essas linhas SEMPRE — inclusive num projeto recém-criado, que ainda não
+    compôs checklist nenhum.
+
+    Antes só existia o POST que SEMEIA o gabarito no projeto. Com ele como único
+    caminho, a planilha de um projeto novo aparecia vazia e pedia que alguém
+    "aplicasse o padrão" antes de ver o padrão — um passo que não corresponde a
+    decisão nenhuma, já que a resposta é sempre sim.
+
+    O POST continua existindo e é outra coisa: ele cria `Criterio` e
+    `ChecklistItem` DO PROJETO, que é o que permite ao projeto depois renomear um
+    item ou acrescentar o 18º. Este GET é a leitura do padrão; aquele é a adoção
+    dele como dado editável.
+    """
+    if checklist in gabarito.CHECKLISTS_POR_DISCIPLINA:
+        if not disciplina:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"o gabarito de '{checklist.value}' é por disciplina — informe qual. "
+                    "Com gabarito hoje: " + ", ".join(sorted(gabarito_lod.GABARITOS_LOD))
+                ),
+            )
+        try:
+            itens = gabarito.itens_de(checklist, disciplina)
+        except gabarito.DisciplinaSemGabarito as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"não há arquivo de referência de {checklist.value} para a "
+                    f"disciplina '{e.disciplina}'. Com gabarito hoje: "
+                    + ", ".join(e.disponiveis)
+                ),
+            ) from None
+    else:
+        itens = gabarito.GABARITOS.get(checklist)
+        if itens is None:
+            # LISTA VAZIA e não 422: "este recorte não tem estrutura de fábrica"
+            # é uma resposta, não um erro. A tela desenha a grade sem linhas e
+            # segue; um 422 a faria mostrar uma falha onde não houve nenhuma.
+            return []
+
+    return [
+        LinhaGabarito(
+            codigo=i.codigo,
+            nome_pt=i.nome_pt,
+            nome_en=i.nome_en,
+            categoria=i.categoria,
+            instrucao=i.instrucao or None,
+            criterio_aceitacao=i.criterio_aceitacao,
+            parametro_esperado=i.parametro_esperado,
+        )
+        for i in itens
+    ]
 
 
 @router.post("/checklists/{checklist}/gabarito", response_model=GabaritoAplicado)

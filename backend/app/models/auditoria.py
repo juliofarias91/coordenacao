@@ -59,6 +59,15 @@ class Auditoria(OrgMixin, TimestampMixin, Base):
     data_fim: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     entrega_estimada: Mapped[date | None] = mapped_column(Date)
     publicado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # ANDAMENTO NÃO É `estado` (migration 0013). `estado` é publicação e quem o
+    # move é o fluxo de round; este é o trabalho de quem audita, e é escolhido à
+    # mão. Text e não enum nativo, como `apontamento.prioridade`: vocabulário de
+    # processo muda mais do que schema, e tirar valor de enum no Postgres exige
+    # recriar o tipo. Valores em `ANDAMENTOS`.
+    andamento: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=text("'a_fazer'")
+    )
+    prioridade: Mapped[str | None] = mapped_column(Text)  # alta | media | baixa
 
     resultados: Mapped[list[ResultadoCheck]] = relationship(
         back_populates="auditoria", cascade="all, delete-orphan"
