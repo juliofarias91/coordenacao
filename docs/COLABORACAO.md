@@ -213,6 +213,105 @@ os dois*.
 
 ---
 
+## Trabalhar com IA no repositório compartilhado
+
+O Claude Code faz parte do fluxo aqui. Esta seção é sobre o que muda quando duas
+pessoas e uma IA mexem no mesmo código.
+
+### O repositório é a memória da IA
+
+Cada sessão dela começa do zero. O que a faz continuar de onde alguém parou não
+é histórico de conversa — é **o que está escrito no repositório**: o
+[`CLAUDE.md`](../CLAUDE.md) (as decisões e o porquê de cada uma), o
+[`CONTINUACAO.md`](CONTINUACAO.md) (onde paramos) e as mensagens de commit.
+
+Disso sai a regra prática: **decisão que não foi escrita será desfeita.** Em
+01/08/2026 a IA reverteu a organização do menu de auditoria a pedido — e só soube
+que estava revertendo algo DELIBERADO, e não consertando um descuido, porque a
+decisão de 29/07 estava registrada com o motivo. Sem o registro, a mesma discussão
+volta a cada duas semanas.
+
+Por isso o template de pull request pede: **quem muda uma decisão registrada
+atualiza o `CLAUDE.md` no mesmo commit.** Com duas pessoas e IA, isso deixa de ser
+capricho e vira o que impede o projeto de andar em círculo.
+
+### Um assunto por pessoa, por vez
+
+Não é sobre gosto: a IA edita rápido e toca muitos arquivos — um único commit de
+01/08 mexeu em catorze. Duas sessões trabalhando na mesma área ao mesmo tempo
+produzem conflitos que **nenhuma das duas pessoas escreveu**, e que nenhuma das
+duas sabe resolver com segurança.
+
+Divisões que funcionam: um no backend e outro no frontend; telas diferentes; um
+em correção e outro em tela nova. A que não funciona: "eu mexo na auditoria e
+você também".
+
+### Quatro hábitos dentro do ciclo
+
+**Ramo por tarefa, inclusive para a IA.** Com o `main` protegido, ninguém —
+pessoa ou IA — empurra direto nele, e o CI vira o primeiro leitor de tudo.
+
+**Commits por etapa, não por dia.** Peça que a IA commite a cada bloco que fecha.
+Este repositório passou quatro dias com 77 arquivos modificados e seis migrations
+fora do git; se algo tivesse dado errado no meio, não havia para onde voltar.
+Commit pequeno é o botão de desfazer.
+
+**Rodar os checks antes de abrir o PR** — `npm run lint`, `npm run build`,
+`npm run test:api`. A IA os roda quando se pede; confirme que rodou.
+
+**Quem lê o PR é quem NÃO rodou a IA.** Com conta compartilhada o GitHub não
+consegue exigir revisão, então essa leitura é a única barreira que sobra — e é a
+mais importante. Um diff de IA parece sempre bem-acabado; o que ele não garante é
+que faz o que você queria.
+
+### O que delegar, e o que continua sendo de vocês
+
+| Delegue | Não delegue |
+|---|---|
+| A varredura mecânica — a mesma mudança em vinte arquivos | **Decidir o que o produto deve fazer** |
+| Ler código que ninguém lembra, e explicar | **Conferir a tela no navegador** |
+| Escrever o *porquê* junto do código | Julgar se o dado real bate com a planilha |
+| Achar a armadilha antes de ela custar uma tarde | Aprovar o que vai para o cliente |
+
+O segundo item da direita é literal: **não há automação de navegador nas máquinas
+deste projeto.** Todo commit de 01/08 registra "não foi visto em navegador" — não
+é formalidade, é o buraco real do arranjo. A conferência visual é de vocês, e é a
+etapa que mais pega defeito que passou por todos os testes.
+
+### Três armadilhas específicas de IA + repositório compartilhado
+
+1. **Duas sessões, o mesmo arquivo.** A IA não sabe que a outra pessoa está
+   editando. O git só reclama no merge — e aí alguém pede à IA para "resolver o
+   conflito", que é o pior momento para ela decidir sozinha o que preservar.
+   Resolva você, e diga qual lado vale.
+2. **Migration criada em paralelo.** Já está na lista de armadilhas abaixo, mas
+   com IA a chance aumenta: ela cria uma `0016` sem saber que existe outra `0016`
+   no ramo do colega. **Avise antes.**
+3. **Teste contra o banco errado.** Está trancado no código desde 01/08, e veio de
+   um caso real — a IA rodou a suíte contra o Supabase do piloto. Ela roda testes
+   com muito mais frequência do que uma pessoa, e é isso que torna a trava
+   necessária.
+
+### A cadência sugerida
+
+- **Começo do dia:** `git pull`, e vocês combinam em uma frase quem pega o quê.
+- **Durante:** cada um no seu ramo, pedindo commits por etapa.
+- **Ao fechar a tarefa:** checks, PR pequeno, o outro lê.
+- **Fim do dia:** peça à IA para atualizar o `CONTINUACAO.md` com o que ficou
+  pela metade. É o que faz a manhã seguinte — e a próxima sessão de IA, e o outro
+  colega — começarem sabendo do que se trata.
+
+### Uma decisão em aberto
+
+O `.claude/` está no `.gitignore`, então as permissões e preferências da IA são de
+cada máquina. Se vocês quiserem padronizar como ela se comporta no projeto
+(comandos pré-aprovados, ganchos), dá para versionar um `.claude/settings.json`
+com o que é DO PROJETO e manter o `settings.local.json` fora — foi ignorado
+inteiro porque o que havia nele era caminho absoluto e lista de comandos
+aprovados por uma pessoa só.
+
+---
+
 ## As armadilhas deste projeto
 
 ### 1. O banco do piloto não é lugar de rodar teste
