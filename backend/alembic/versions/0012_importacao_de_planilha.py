@@ -105,6 +105,23 @@ def upgrade() -> None:
     # planilhas: o índice é sobre o que ele agrupa.
     op.create_index("ix_importacao_item_item", "importacao_item", ["item", "aprovado"])
 
+    # O GRANT é CONDICIONAL, como em 0001/0003/0004/0005/0010: o papel da
+    # aplicação é criado pelo provisionamento, não pela migration, e há bancos
+    # legítimos sem ele — o `alembic upgrade head` que o CI roda a partir da
+    # IMAGEM é um deles, e um `docker compose up` num Postgres recém-criado é
+    # outro. Sem esta guarda a 0012 morria com `role "spbim_app" does not
+    # exist` e derrubava o job "A imagem sobe e responde": o schema inteiro
+    # aplicava e a migração parava na décima segunda.
+    app_user = settings.app_db_user
+    if op.get_context().as_sql:
+        role_exists = True  # geração offline (--sql): emite os GRANTs sem consultar
+    else:
+        role_exists = bool(
+            op.get_bind()
+            .execute(sa.text("SELECT 1 FROM pg_roles WHERE rolname = :r"), {"r": app_user})
+            .scalar()
+        )
+
     guc = settings.tenant_guc
     do_tenant = f"(org_id)::text = current_setting('{guc}', true)"
     for tabela in TABELAS:
@@ -117,10 +134,9 @@ def upgrade() -> None:
         )
         op.execute(f"CREATE POLICY tenant_del ON {tabela} FOR DELETE USING ({do_tenant})")
         # O papel da aplicação não é dono da tabela, então precisa do GRANT —
-        # é o mesmo que a 0001 faz para as demais.
-        op.execute(
-            f"GRANT SELECT, INSERT, UPDATE, DELETE ON {tabela} TO {settings.app_db_user}"
-        )
+        # é o mesmo que a 0001 faz para as demais, guarda inclusive.
+        if role_exists:
+            op.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {tabela} TO {app_user}")
 
 
 def downgrade() -> None:
