@@ -8,9 +8,10 @@ e áreas.
 from __future__ import annotations
 
 import uuid
+from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import ForeignKey, Integer, Text, UniqueConstraint, text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -65,7 +66,15 @@ class Cliente(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     projetos: Mapped[list[Projeto]] = relationship(back_populates="cliente")
 
 
-class Projeto(OrgMixin, TimestampMixin, Base):
+class Projeto(OrgMixin, TimestampMixin, RemovivelMixin, Base):
+    """A obra. Pai de disciplina, modelo, auditoria e não-conformidade.
+
+    REMOVÍVEL desde a migration 0011, e é a nona entidade a entrar na lixeira.
+    Justamente por ser o pai de tudo: numa plataforma cujo produto é o histórico
+    de auditoria, apagar um projeto de verdade é a operação mais cara que existe
+    para errar.
+    """
+
     __tablename__ = "projeto"
     __table_args__ = (UniqueConstraint("org_id", "codigo", name="uq_projeto_org_codigo"),)
 
@@ -80,6 +89,18 @@ class Projeto(OrgMixin, TimestampMixin, Base):
     coordenacao: Mapped[str | None] = mapped_column(Text)
     bep_ref: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'config'"))
+
+    # --- ficha cadastral (migration 0011) ---------------------------------
+    descricao: Mapped[str | None] = mapped_column(Text)
+    # UM campo, e não os sete do modelo de referência: sem busca por CEP e sem
+    # mapa embutido, seis colunas extras só seriam concatenadas para exibir.
+    endereco: Mapped[str | None] = mapped_column(Text)
+    data_inicio: Mapped[date | None] = mapped_column(Date)
+    # SEPARADAS de propósito: a previsão muda ao longo do contrato, a conclusão
+    # acontece uma vez. No mesmo campo, o atraso — que é o que se quer ver —
+    # seria apagado pela própria atualização.
+    data_prevista: Mapped[date | None] = mapped_column(Date)
+    data_conclusao: Mapped[date | None] = mapped_column(Date)
 
     organizacao: Mapped[Organizacao] = relationship(back_populates="projetos")
     cliente: Mapped[Cliente | None] = relationship(back_populates="projetos")
@@ -161,8 +182,62 @@ class Usuario(OrgMixin, TimestampMixin, Base):
         ARRAY(Text), nullable=False, server_default=text("'{}'")
     )
     idioma: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pt'"))
+    # O CORTE DE SESSÃO (migration 0010). Refresh token emitido antes deste
+    # instante deixa de ser aceito — é o que torna "Sair" e "redefinir senha"
+    # atos com efeito, em vez de limpeza de `localStorage`.
+    #
+    # Nulo = nunca houve corte, e todo refresh vale até expirar. Só o
+    # `/auth/refresh` consulta isto: pôr a checagem no caminho de toda
+    # requisição custaria uma leitura por chamada para encurtar em minutos uma
+    # janela que `ACCESS_TOKEN_MINUTES` já limita.
+    sessoes_validas_apos: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     empresa: Mapped[Empresa | None] = relationship()
+
+
+class TokenAcesso(OrgMixin, TimestampMixin, Base):
+    """Token de uso único que autoriza DEFINIR uma senha (migration 0010).
+
+    UMA TABELA PARA OS DOIS PEDIDOS, porque são o mesmo objeto: convidar alguém
+    e redefinir a senha de alguém acabam ambos em "esta pessoa vai escolher uma
+    senha agora, e não precisa da antiga para isso". O que difere é o texto da
+    tela e se a conta já era usada — `tipo` guarda essa diferença.
+
+    O TOKEN NÃO É GUARDADO, só o SHA-256 dele. Diferente de
+    `ConviteCliente.token`, que fica em claro de propósito: aquele é credencial
+    de LEITURA e de vida longa, que a tela relista para o coordenador copiar de
+    novo. Este troca-se por uma senha. Um dump do banco com tokens de
+    redefinição em claro é tomada de conta em toda solicitação pendente; com o
+    hash, não é nada — e o preço é que o link só existe no instante em que se
+    cria, o que é exatamente o comportamento que se quer.
+
+    SHA-256 e não Argon2: um `token_urlsafe(32)` tem 256 bits de entropia de
+    CSPRNG, e não há dicionário a percorrer. Argon2 existe para encarecer o
+    palpite de segredo de baixa entropia — aqui só encareceria a validação.
+    """
+
+    __tablename__ = "token_acesso"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("usuario.id", ondelete="CASCADE"), nullable=False
+    )
+    # 'convite' | 'redefinicao'. Texto e não enum nativo: o conjunto é da
+    # aplicação e ainda pode crescer, e acrescentar valor a enum do Postgres
+    # obriga a migration para uma decisão que não é do banco.
+    tipo: Mapped[str] = mapped_column(Text, nullable=False)
+    token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    expira_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Preenchido no uso. A linha FICA: "quando esta senha foi definida, e a
+    # partir de que convite" é a pergunta que a trilha faz depois.
+    usado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Quem gerou. Nulo quando nasceu de um pedido do próprio usuário na tela de
+    # login — que é público e não tem autor.
+    criado_por: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("usuario.id", ondelete="SET NULL")
+    )
+
+    usuario: Mapped[Usuario] = relationship(foreign_keys=[usuario_id])
 
 
 class Standard(OrgMixin, TimestampMixin, RemovivelMixin, Base):
@@ -216,6 +291,16 @@ class Disciplina(OrgMixin, TimestampMixin, Base):
         PgUUID(as_uuid=True), ForeignKey("projeto.id", ondelete="CASCADE"), nullable=False
     )
     codigo: Mapped[str] = mapped_column(Text, nullable=False)        # 'STRC-STEEL'
+    # O nome por extenso: 'Estrutura metálica' (migration 0015). OPCIONAL de
+    # propósito — a IDENTIDADE é o `codigo`, que é o que entra na nomenclatura do
+    # arquivo e o que o UNIQUE guarda. Este é rótulo de leitura: onde existir, a
+    # tela mostra "Estrutura metálica (STRC-STEEL)"; onde não, mostra a sigla e
+    # não inventa nada.
+    nome: Mapped[str | None] = mapped_column(Text)
+    # A COR SAI DAQUI, e não de uma coluna própria: é a paleta categórica por
+    # macrodisciplina, validada para daltonismo e para os dois temas. Uma cor por
+    # disciplina daria duas fontes para a mesma informação e deixaria escolher um
+    # tom que falha no escuro. Ver "Ao criar gráfico" no CLAUDE.md.
     macro: Mapped[MacroDisc] = mapped_column(pg_enum(MacroDisc, "macro_disc"), nullable=False)
     disc: Mapped[str] = mapped_column(Text, nullable=False)          # 'STRC'
     sub: Mapped[str] = mapped_column(Text, nullable=False)           # 'STEEL' | 'NONE'
@@ -283,6 +368,13 @@ class ProjetoMembro(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     # Por que esta pessoa está no projeto: 'coordenação de estruturas',
     # 'auditoria 4D'. Texto livre porque é combinado de contrato, não enum.
     funcao: Mapped[str | None] = mapped_column(Text)
+    # A que GRUPO ela pertence: COORDENAÇÃO, INOVAÇÃO, COMERCIAL (migration
+    # 0014). Não é `funcao` — aquilo é o que a pessoa FAZ, isto é com quem ela
+    # anda, e um modelador e um auditor podem estar na mesma equipe. Fica aqui e
+    # não em `usuario` porque a mesma pessoa é COORDENAÇÃO num projeto e
+    # COMERCIAL noutro. Text livre: as equipes vão aparecendo conforme a
+    # coordenação as nomeia, e uma tabela exigiria cadastrá-las antes de existir.
+    equipe: Mapped[str | None] = mapped_column(Text)
 
     projeto: Mapped[Projeto] = relationship()
     usuario: Mapped[Usuario] = relationship()

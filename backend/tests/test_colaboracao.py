@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Notificacao, TrilhaAuditoria
+from app.core.security import hash_password
+from app.models import Notificacao, TrilhaAuditoria, Usuario
 from app.models.enums import PapelUsuario
 from tests.conftest import API, Cenario, CenarioAuditavel, requer_banco
 
@@ -427,15 +430,37 @@ def test_trilha_registra_remocao(
 def test_trilha_nunca_guarda_senha(
     autenticado: TestClient, auditavel: CenarioAuditavel, db: Session
 ) -> None:
-    """A trilha não pode virar um lugar onde credencial vaza."""
-    autenticado.post(
+    """A trilha não pode virar um lugar onde credencial vaza.
+
+    O QUE NÃO VAZA É O VALOR. O nome do campo pode aparecer — e aparece, como
+    `(oculto)`, quando `senha_hash` muda junto de outro campo: é assim que o log
+    consegue dizer "esta alteração de cadastro também tocou a credencial". O ato
+    tem de ser legível; o segredo, não. Enquanto a mudança inteira era
+    descartada, redefinir senha não deixava rastro nenhum — ver
+    `tests/test_autenticacao.py`.
+    """
+    # `.com.br`, e não `.test`: `UsuarioCreate.login` é `EmailStr`, e o
+    # `email-validator` recusa TLD reservado. Com `@spbim.test` este POST
+    # respondia 422 desde que o teste foi escrito, e ninguém via — a asserção
+    # `assert linhas` já era satisfeita pelo admin que o fixture cria.
+    resposta = autenticado.post(
         f"{API}/usuarios",
         json={
-            "login": "rastreado@spbim.test",
+            "login": "rastreado@spbim.com.br",
             "senha": "uma-senha-bem-longa-mesmo",
             "papel": "auditor",
         },
     )
+    assert resposta.status_code == 201, resposta.text
+    criado = resposta.json()
+    # Segundo caminho: UPDATE que toca a senha junto de outro campo, que é o
+    # único em que o nome do campo entra no diff.
+    usuario = db.get(Usuario, uuid.UUID(criado["id"]))
+    assert usuario is not None
+    usuario.senha_hash = hash_password("uma-segunda-senha-longa")
+    usuario.nome = "Renomeado"
+    db.commit()
+
     linhas = db.execute(
         select(TrilhaAuditoria).where(
             TrilhaAuditoria.org_id == auditavel.org.id, TrilhaAuditoria.entidade == "usuario"
@@ -445,9 +470,16 @@ def test_trilha_nunca_guarda_senha(
     assert linhas, "a criação de usuário tem de estar na trilha"
     for linha in linhas:
         texto = str(linha.diff)
-        assert "senha_hash" not in texto
         assert "uma-senha-bem-longa-mesmo" not in texto
+        assert "uma-segunda-senha-longa" not in texto
         assert "$argon2" not in texto
+
+    # E o UPDATE está lá, dizendo que a credencial foi tocada sem mostrá-la.
+    alteracoes = [linha for linha in linhas if linha.acao == "alterou"]
+    assert len(alteracoes) == 1
+    diff = alteracoes[0].diff
+    assert diff is not None
+    assert diff["senha_hash"] == {"de": "(oculto)", "para": "(oculto)"}
 
 
 def test_notificacao_nao_polui_a_trilha(

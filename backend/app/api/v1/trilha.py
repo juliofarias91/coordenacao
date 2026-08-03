@@ -30,9 +30,16 @@ class TrilhaOut(BaseModel):
 
     - `criou` / `removeu` → estado inteiro: `{"titulo": "Antes", ...}`
     - `alterou` → só o que mudou: `{"titulo": {"de": "Antes", "para": "Depois"}}`
+    - `trocou_senha` / `encerrou_sessoes` → **sem diff**: a ação diz o ato e
+      `entidade_id` diz de quem era a conta. Não há terceira informação que se
+      possa dar sem revelar credencial.
 
     Um formato único obrigaria a inventar um "de" que não existe na criação,
     ou a perder o contexto do que mais havia no registro removido.
+
+    Campo sensível que mude junto de outros aparece como
+    `{"senha_hash": {"de": "(oculto)", "para": "(oculto)"}}` — o nome do campo
+    conta que a credencial foi tocada, o valor nunca sai daqui.
     """
 
     id: uuid.UUID
@@ -51,10 +58,14 @@ def listar(
     entidade: str | None = Query(default=None, description="Nome da tabela (ex.: 'auditoria')"),
     entidade_id: uuid.UUID | None = Query(default=None),
     usuario_id: uuid.UUID | None = Query(default=None),
-    # `restaurou` entrou com a lixeira: sem ele a ação seria gravada e não
-    # consultável, que é o pior dos dois mundos — o log teria o registro e o
+    # `restaurou` entrou com a lixeira; `trocou_senha` e `encerrou_sessoes` com
+    # a redefinição de senha (migration 0010). Sem eles a ação seria gravada e
+    # não consultável, que é o pior dos dois mundos — o log teria o registro e o
     # filtro devolveria 422 para quem o procurasse.
-    acao: str | None = Query(default=None, pattern=r"^(criou|alterou|removeu|restaurou)$"),
+    acao: str | None = Query(
+        default=None,
+        pattern=r"^(criou|alterou|removeu|restaurou|trocou_senha|encerrou_sessoes)$",
+    ),
     params: ParamsPagina = Depends(),
     db: Session = Depends(get_tenant_db),
     _: CurrentUser = Depends(requer_permissao("admin_cadastro")),

@@ -31,6 +31,8 @@ from app.models import (
     Disciplina,
     Empresa,
     Evidencia,
+    ImportacaoItem,
+    ImportacaoPlanilha,
     Modelo,
     NaoConformidade,
     NomenclaturaPadrao,
@@ -41,6 +43,7 @@ from app.models import (
     Projeto,
     ResultadoCheck,
     Standard,
+    TokenAcesso,
     TrilhaAuditoria,
     Usuario,
     VersaoModelo,
@@ -134,6 +137,12 @@ class Cenario:
 
 # Ordem de remoção: filhos antes dos pais.
 _TABELAS_LIMPEZA = (
+    # Importação de planilha (0012, provisória). Precisa estar aqui mesmo
+    # tendo CASCADE do projeto: uma planilha pode ter `projeto_id` nulo, e aí
+    # nada a leva embora — o `org_id` é `ON DELETE RESTRICT` e o teardown
+    # morreria ao apagar a organização.
+    ImportacaoItem,
+    ImportacaoPlanilha,
     ComentarioFornecedor,
     NaoConformidade,
     Ocorrencia,
@@ -151,7 +160,10 @@ _TABELAS_LIMPEZA = (
     Apontamento,
     ConviteCliente,
     # Antes de usuario/empresa: notificação e trilha referenciam usuário,
-    # penalidade referencia empresa.
+    # penalidade referencia empresa. `token_acesso` referencia usuário DUAS
+    # vezes (`usuario_id` e `criado_por`), e sem esta linha o teardown morre com
+    # IntegrityError num teste que já tinha passado.
+    TokenAcesso,
     TrilhaAuditoria,
     Notificacao,
     Penalidade,

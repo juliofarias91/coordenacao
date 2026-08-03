@@ -7,6 +7,7 @@ ativo/inativo respeitado no login.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -17,6 +18,7 @@ from app.core.pagination import Page, ParamsPagina, aplicar_cursor, montar_pagin
 from app.core.security import hash_password
 from app.models import Empresa, Usuario
 from app.models.enums import PERMISSOES, PERMISSOES_POR_PAPEL, PapelUsuario
+from app.schemas.auth import ConviteCriadoOut
 from app.schemas.usuario import (
     PermissaoOut,
     SenhaUpdate,
@@ -24,6 +26,7 @@ from app.schemas.usuario import (
     UsuarioOut,
     UsuarioUpdate,
 )
+from app.services import acesso
 from app.services.escopo import conflito, exigir, ja_existe
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -137,6 +140,12 @@ def definir_senha(
 
     Quem administra cadastros troca a de qualquer um; os demais só a própria
     — daí a checagem ficar aqui e não numa guarda de rota.
+
+    ESTA ROTA CONTINUA EXISTINDO, mas o caminho recomendado para dar acesso a
+    outra pessoa é `POST /usuarios/{id}/convite`: ali o admin não fica sabendo a
+    senha de ninguém. Aqui ele fica — e é por isso que trocar a senha DE OUTRO
+    corta as sessões dele: se a razão da troca foi conta comprometida, deixar a
+    sessão anterior de pé não resolve nada.
     """
     if usuario_id != user.id and not user.pode("admin_cadastro"):
         raise HTTPException(
@@ -144,4 +153,47 @@ def definir_senha(
         )
     usuario = exigir(db, Usuario, usuario_id, "usuário")
     usuario.senha_hash = hash_password(payload.senha)
+    if usuario_id != user.id:
+        usuario.sessoes_validas_apos = datetime.now(UTC)
     db.flush()
+
+
+@router.post(
+    "/{usuario_id}/convite",
+    response_model=ConviteCriadoOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def gerar_convite(
+    usuario_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+) -> ConviteCriadoOut:
+    """Gera o link de definição de senha. **O token só aparece nesta resposta.**
+
+    É o que o admin manda para a pessoa — por e-mail, WhatsApp, o que houver.
+    Copiar o link é o mesmo gesto do convite do portal, e por ora é a entrega:
+    a plataforma não tem SMTP, e a decisão foi entregar assim agora e ligar o
+    e-mail quando houver servidor.
+
+    O QUE ISSO RESOLVE que digitar uma senha no formulário não resolvia: o admin
+    não conhece a senha de ninguém, ela não trafega em mensagem, e o primeiro
+    acesso passa a existir.
+
+    O `tipo` sai de quem a conta é, não de um parâmetro: usuário que nunca teve
+    senha está sendo CONVIDADO (e o convite dura uma semana, porque onboarding
+    espera a pessoa achar tempo); usuário que já tinha está REDEFININDO (duas
+    horas, porque é resposta a um pedido de agora).
+    """
+    usuario = exigir(db, Usuario, usuario_id, "usuário")
+    tipo = acesso.REDEFINICAO if usuario.senha_hash else acesso.CONVITE
+    linha, token = acesso.criar(db, usuario=usuario, tipo=tipo, criado_por=user.id)
+    return ConviteCriadoOut(
+        token=token,
+        # Caminho e não URL: a origem é a do navegador de quem copia, e o
+        # servidor não tem como saber por qual domínio a plataforma é acessada.
+        # É o mesmo raciocínio do `urlDoPortal` em `components/Convidar.tsx`.
+        caminho=f"/definir-senha/{token}",
+        tipo=tipo,
+        expira_em=linha.expira_em,
+        usuario_id=usuario.id,
+    )

@@ -58,7 +58,15 @@ class Settings(BaseSettings):
     # --- Segurança ---------------------------------------------------------
     jwt_secret: str = "troque-este-valor-em-producao"
     jwt_algorithm: str = "HS256"
-    access_token_minutes: int = 30
+    # 15 minutos, e não 30, porque este número É A JANELA DE REVOGAÇÃO. Nada no
+    # caminho da requisição consulta o banco — `get_current_user` só decodifica
+    # o JWT —, então desativar um usuário, rebaixar o papel dele ou tirar uma
+    # permissão só passa a valer quando o access token expira e o `/refresh`
+    # relê a linha. Enquanto ele vale, vale o que estava escrito nele.
+    #
+    # O custo de encurtar é uma chamada a `/refresh` a mais por hora, que o
+    # cliente já faz sozinho em qualquer 401 (`frontend/src/lib/api.ts`).
+    access_token_minutes: int = 15
     refresh_token_days: int = 14
 
     # --- OIDC / SSO --------------------------------------------------------

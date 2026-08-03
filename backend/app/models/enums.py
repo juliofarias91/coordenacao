@@ -97,6 +97,10 @@ class NotifTipo(enum.StrEnum):
     AUDITORIA = "auditoria"
     ERRO = "erro"
     PENALIDADE = "penalidade"
+    # Pedido de redefinição de senha (migration 0010). Categoria própria porque
+    # é a única notificação que pede AÇÃO DE QUEM ADMINISTRA — as outras três
+    # informam. Enfiá-la em `erro` a esconderia atrás do filtro errado.
+    ACESSO = "acesso"
 
 
 def pg_enum(py_enum: type[enum.Enum], name: str) -> SAEnum:

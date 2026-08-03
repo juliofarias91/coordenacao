@@ -55,7 +55,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(sessao.usuario)
   }, [])
 
+  /** Sai daqui E no servidor.
+   *
+   *  Antes isto era só `gravarTokens(null)` — e como o refresh token é um JWT
+   *  que ninguém revogava, sair num computador emprestado não tirava a sessão
+   *  de lugar nenhum: o token seguia válido por 14 dias. `POST /auth/sair` põe
+   *  o corte em `usuario.sessoes_validas_apos`, e o refresh passa a recusá-lo.
+   *
+   *  A chamada é DISPARADA E ESQUECIDA de propósito: o estado local é limpo em
+   *  seguida sem esperar resposta. Se a rede estiver fora, sair da máquina em
+   *  que se está é o que mais importa, e travar a interface esperando um 204
+   *  deixaria a pessoa presa numa sessão que ela pediu para encerrar.
+   */
   const sair = useCallback(() => {
+    // A ORDEM DESTAS DUAS LINHAS IMPORTA. `requisitar` lê o token do
+    // `localStorage` de forma síncrona, antes do primeiro `await` — então
+    // chamar `api.sair()` primeiro garante que ele ainda esteja lá. Limpar
+    // antes deixaria a requisição sair sem `Authorization`, tomar 401, e o
+    // corte de sessão nunca seria gravado.
+    api.sair().catch(() => {
+      /* offline, ou token já expirado: o corte não foi gravado, mas sair
+         daqui não pode depender disso */
+    })
     gravarTokens(null)
     setUsuario(null)
   }, [])

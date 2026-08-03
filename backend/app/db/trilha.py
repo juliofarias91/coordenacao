@@ -9,8 +9,8 @@ chamá-lo é um registro que vai faltar exatamente no dia em que importa.
 O que **não** é registrado, de propósito:
 
 - `trilha_auditoria` (recursão) e `notificacao` (ruído — são efeito, não ato).
-- Campos de senha e token, mesmo no diff. A trilha não pode virar um lugar
-  onde credencial vaza.
+- O VALOR de campo de senha e token. A trilha não pode virar um lugar onde
+  credencial vaza. **O ato, porém, é registrado** — ver `CAMPOS_SENSIVEIS`.
 """
 
 from __future__ import annotations
@@ -27,8 +27,16 @@ from app.models import TrilhaAuditoria
 # Efeito, não ato: registrar isto encheria a trilha sem contar nada.
 NAO_RASTREADAS = {"trilha_auditoria", "notificacao"}
 
-# Nunca entram no diff, em nenhuma circunstância.
-CAMPOS_SENSIVEIS = {"senha_hash", "token", "oidc_sub", "aps_client_secret"}
+# O VALOR destes nunca entra no diff, em nenhuma circunstância. O NOME entra:
+# esconder a mudança inteira fazia o registro desaparecer quando ela era a
+# única do flush — era o caso de `PUT /usuarios/{id}/senha`, e um admin
+# redefinindo a senha de outra pessoa não deixava rastro nenhum. Mascarar o
+# valor é proteger a credencial; mascarar o ato é perder o log justamente na
+# operação em que ele mais importa.
+CAMPOS_SENSIVEIS = {"senha_hash", "token", "token_hash", "oidc_sub", "aps_client_secret"}
+
+# O que aparece no lugar do valor de um campo sensível.
+OCULTO = "(oculto)"
 
 # Colunas que mudam em toda escrita e não dizem nada sobre a intenção.
 CAMPOS_RUIDO = {"updated_at", "created_at"}
@@ -51,8 +59,6 @@ def _diff(obj: Any) -> dict[str, Any]:
     estado = inspect(obj)
     for atributo in estado.attrs:
         nome = atributo.key
-        if nome in CAMPOS_SENSIVEIS:
-            continue
         if nome in CAMPOS_RUIDO:
             continue
         historico = atributo.history
@@ -61,6 +67,12 @@ def _diff(obj: Any) -> dict[str, Any]:
         antes = historico.deleted[0] if historico.deleted else None
         depois = historico.added[0] if historico.added else None
         if antes == depois:
+            continue
+        if nome in CAMPOS_SENSIVEIS:
+            # `de` nulo quando o campo estava vazio: distingue "vinculou uma
+            # identidade SSO" de "trocou a que já havia", que é a única coisa
+            # que se pode dizer sobre um valor que não se pode mostrar.
+            mudancas[nome] = {"de": OCULTO if antes is not None else None, "para": OCULTO}
             continue
         mudancas[nome] = {"de": _serializar(antes), "para": _serializar(depois)}
     return mudancas
@@ -101,6 +113,43 @@ def _acao_da_lixeira(mudancas: dict[str, Any]) -> str | None:
         return "removeu"
     if antes is not None and depois is None:
         return "restaurou"
+    return None
+
+
+# Colunas que SÃO um ato, e não uma alteração de cadastro. Da mais específica
+# para a menos: trocar a senha grava `sessoes_validas_apos` no mesmo UPDATE, e o
+# ato ali é a troca de senha — o corte de sessão é consequência dela.
+#
+# Sem essa ordem, redefinir senha por link e reset feito por admin — os dois
+# casos que mais importam registrar — voltavam a cair em `alterou`, porque o
+# diff tinha dois campos em vez de um.
+ATOS: tuple[tuple[str, str], ...] = (
+    ("senha_hash", "trocou_senha"),
+    ("sessoes_validas_apos", "encerrou_sessoes"),
+)
+
+_COLUNAS_DE_ATO = {coluna for coluna, _ in ATOS}
+
+
+def _ato(mudancas: dict[str, Any]) -> str | None:
+    """Traduz o UPDATE no ato que ele realmente é, quando ele é um.
+
+    Mesma ideia de `_acao_da_lixeira`: quem procura no log procura pelo ATO
+    ("quem redefiniu senha de quem"), e um `alterou` com o diff de um campo
+    oculto não responde essa pergunta nem é filtrável. `entidade_id` já diz de
+    quem era a senha, então a ação sozinha basta e o diff vai vazio.
+
+    Só quando NADA MAIS mudou além das colunas do próprio ato. Junto de papel ou
+    status, o que houve é uma alteração de cadastro que por acaso tocou a
+    credencial, e o diff dos outros campos é o que interessa ler — a senha
+    aparece nele como `(oculto)`.
+    """
+    campos = set(mudancas)
+    if not campos or campos - _COLUNAS_DE_ATO:
+        return None
+    for coluna, acao in ATOS:
+        if coluna in campos:
+            return acao
     return None
 
 
@@ -176,8 +225,13 @@ def _antes_do_flush(session: Session, _contexto, _instancias) -> None:
         # é a informação que se procura no log — o mesmo motivo pelo qual o
         # DELETE definitivo, logo abaixo, também guarda o estado inteiro.
         da_lixeira = _acao_da_lixeira(mudancas)
+        ato = _ato(mudancas)
         if da_lixeira:
             _registrar(session, obj, da_lixeira, _snapshot(obj))
+        elif ato:
+            # Sem diff: o valor não pode sair, e o instante do corte de sessão
+            # não conta nada que `created_at` da própria linha não conte.
+            _registrar(session, obj, ato, {})
         else:
             _registrar(session, obj, "alterou", mudancas)
 
