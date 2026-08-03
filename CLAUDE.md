@@ -473,31 +473,43 @@ Ao continuar:
   dela não recebe `projeto_id`, na de projeto se recebe. Errar isso foi o que
   deixou Apontamentos e Integrações no menu de projeto sendo que nenhuma das
   duas APIs é por projeto.
-- **A auditoria é UMA entrada na barra**, com os seis recortes num painel de
-  DENTRO da página (`pages/auditoria/`), recolhível, no formato dos canais do
-  VDCity: painel de 300px, dois cabeçalhos de 48px alinhados, recolher
-  **desmonta** o painel. As seis entradas de antes deixavam o grupo Auditoria
-  com nove linhas — mais do que os outros dois somados. Recorte novo entra
-  primeiro em `CHECKLISTS_SEM_BANCO` (hoje vazio), que faz a tela dizer o que
-  falta em vez de tomar um 422.
-- **Cada recorte é um DROPDOWN dos modelos auditados nele** (31/07/2026, a
-  pedido), e o cabeçalho do painel virou **busca + "+"**. A lista de tipos
-  respondia "que recortes existem", pergunta que se faz uma vez; a de todo dia é
-  "o que já foi auditado e falta o quê", e para respondê-la era preciso entrar em
-  cada recorte. O rótulo `RECORTES` saiu: em 300px não cabem título, campo e
-  botão, e o placeholder da busca faz o mesmo trabalho.
-  **A linha do tipo tem DUAS áreas de clique** — o chevron abre, o rótulo
-  navega. Um clique só que fizesse as duas tiraria da tela quem só queria espiar
-  a lista; é por isso que `.pgpai` é contêiner e não botão. A busca casa com os
-  **dois** níveis (nome do recorte e código do modelo), porque quem procura não
-  sabe em qual deles está o que quer, e um recorte fora do filtro **some** em vez
-  de mostrar "0" — o zero passaria por "nada auditado" quando o que houve foi
-  filtro. **Prioridade é PONTO, não pílula com texto**: a cor é estado semântico
-  e pode entrar (regra 2), mas vinte pílulas coloridas em 300px viram o elemento
-  mais pesado do painel e afundam o código do modelo, que é o que se lê.
+- **CADA RECORTE É UMA ENTRADA DA BARRA, com ícone próprio** (01/08/2026, a
+  pedido): `Geral · 4D · LOD 300 · LOD 400 · LOD 500 · Relatórios · RNC`, no
+  grupo Auditoria. **Isto reverte a decisão de 29/07** — e a volta não é um
+  círculo, porque as duas queixas que motivaram juntá-los foram resolvidas de
+  outro jeito: as nove linhas eram nove porque cada rótulo repetia a palavra
+  *Auditoria* que já nomeia o grupo (agora são `ROTULO_CURTO`, em `nav.ts`), e
+  "ler até o fim para escolher" acabou com o **ícone por recorte**. A metáfora de
+  cada um é o que ele PERGUNTA — lista, relógio (4D é tempo), cubo, camadas,
+  prédio (as-built) —, e não o número em algarismos: "300", "400" e "500"
+  desenhados a 15px viram três borrões iguais.
+  Recorte novo entra primeiro em `CHECKLISTS_SEM_BANCO` (hoje vazio), que faz a
+  tela dizer o que falta em vez de tomar um 422.
+- **O painel de dentro da página CONTINUA, e perdeu o nível de cima.** Ele lista
+  **disciplina › modelo** do recorte aberto (`pages/auditoria/index.tsx`), no
+  formato dos canais do VDCity: 300px, dois cabeçalhos de 48px alinhados,
+  recolher **desmonta**. Com os recortes na barra, o primeiro nível existiria em
+  dois lugares ao mesmo tempo — e dois lugares que precisam concordar divergem.
+  O cabeçalho do painel é **busca + "+"**: em 300px não cabem título, campo e
+  botão, e o placeholder da busca faz o trabalho do rótulo.
+  **O grupo de disciplina guarda os FECHADOS**, não os abertos: quem entrou num
+  recorte quer ver o que há nele, e um padrão fechado exigiria um clique por
+  disciplina só para chegar ao modelo, que é o destino. A busca casa com os
+  **dois** níveis (nome da disciplina e código do modelo), porque quem procura
+  não sabe em qual deles está o que quer. **Prioridade é PONTO, não pílula com
+  texto**: a cor é estado semântico e pode entrar (regra 2), mas vinte pílulas
+  coloridas em 300px viram o elemento mais pesado do painel e afundam o código do
+  modelo, que é o que se lê. **E não há barra colorida de macrodisciplina** — ela
+  repetia o que o nome por extenso da disciplina, uma linha acima, já dizia.
   A quem consome: `GET /projetos/{id}/auditorias` devolve o projeto inteiro com
   o modelo resolvido — sem isso a barra faria uma requisição por linha só para
   escrever um nome.
+- **Trocar de projeto passou a manter o recorte.** `TELAS`, em
+  `ProjetoContext`, é montada a partir das rotas do menu; com `auditoria` sendo
+  uma entrada só, `auditoria/lod300` não estava lá e a troca caía na tela
+  inicial. Agora cada recorte é uma rota do menu e sobrevive à troca — o que
+  **não** sobrevive é `auditoria/<recorte>/<modeloId>`, e é o certo: o id do
+  modelo pertence ao projeto de origem.
 
 ## O PLANO da auditoria: andamento e prioridade (0013)
 
@@ -684,8 +696,12 @@ ordem. O que varia entre os arquivos é a resposta, nunca a pergunta.
   e abrir os seis encheria o painel de rounds que ninguém abriu.
 - **Cada recorte usa a tela que a sua PERGUNTA pede**, e a divisão é
   `CHECKLISTS_POR_AREA` em `services/auditoria.py`:
-  - **geral e LOD 300** não têm área: um modelo por linha (`ControleGeral`, a
-    aba `... - CONTROL` das planilhas), e a linha abre a planilha editável.
+  - **geral e LOD 300** não têm área: um modelo por linha, que é o que o painel
+    da esquerda lista sob a disciplina, e clicar nele abre a planilha. O
+    componente `ControleGeral` — a aba `... - CONTROL` desenhada como tabela —
+    saiu em 01/08/2026 junto das duas telas de planilha antigas: ele respondia
+    "que modelos há", e o painel passou a responder isso em 300px, ao lado da
+    planilha em vez de antes dela.
   - **LOD 400 e LOD 500** são POR ÁREA, e a matriz modelo × área é literalmente
     a aba `LOD 500 - OVERVIEW` deles. Desde 30/07/2026 `POST /auditar` abre
     **uma auditoria por área da disciplina** nesses dois; antes `area` só era
@@ -696,10 +712,50 @@ ordem. O que varia entre os arquivos é a resposta, nunca a pergunta.
     referência dele em projeto nenhum. O valor continua no enum do banco —
     tirar valor de enum no Postgres exige recriar o tipo e trava se houver
     linha usando.
-- **A planilha salva no BLUR, campo por campo.** Não há botão "salvar
-  planilha", porque não há rascunho: cada célula é um PATCH e a aprovação volta
-  recalculada do servidor. A tela **nunca** calcula percentual — duas contas de
+- **A CÉLULA SALVA SOZINHA** (01/08/2026, a pedido): 600ms depois da última
+  tecla, e também no `blur` e AO DESMONTAR. Não há botão "salvar planilha",
+  porque não há rascunho — cada célula é um PATCH e a aprovação volta
+  recalculada do servidor. A tela **nunca** calcula percentual: duas contas de
   aprovação divergem no primeiro arredondamento.
+  Antes gravava só no `blur`, e quem digitasse e trocasse de tela pelo menu
+  perdia o que escreveu — trocar de rota desmonta o campo sem passar por `blur`.
+  Daí a gravação no desmonte, que é a que fecha o buraco.
+  **Três coisas precisam ser verdade ao mesmo tempo** em `CampoTexto`
+  (`components/GradePlanilha.tsx`), e cada uma tem uma linha lá: o texto é estado
+  LOCAL enquanto se digita (senão a resposta do PATCH reescreve o campo e o
+  cursor salta para o fim); o valor do servidor é sincronizado, mas **só com o
+  campo fora de foco** (senão a resposta sobrescreve o que se está digitando); e
+  nada se perde. **`selecao` grava NA HORA**, sem espera: escolher numa lista é
+  um ato terminado, não há "ainda estou escrevendo".
+- **A GRADE É A ÚNICA SUPERFÍCIE DE AUDITORIA**, e tem dois modos. Com modelo
+  (`auditoria/<recorte>/<modeloId>`) cada linha é um `resultado_check` e grava;
+  sem modelo é a **prévia do gabarito**, com as células TRAVADAS — auditoria
+  pertence a um modelo, e um campo que aceita o que digitam e perde no refresh é
+  pior do que um campo desabilitado.
+  Isto substituiu `pages/PlanilhaGeral.tsx` e `pages/PlanilhaLod.tsx`
+  (01/08/2026): eram duas telas com tabela própria, e os outros três recortes não
+  tinham nenhuma — clicar num modelo de LOD 400 caía numa rota inexistente e o
+  conteúdo abria **vazio**. Uma tela por recorte multiplicaria por cinco a
+  próxima coluna que a planilha ganhar. O que cada recorte tem de próprio são as
+  COLUNAS, em `pages/auditoria/Recorte.tsx`; o comportamento (carregar, gravar,
+  publicar) segue em `components/planilha.tsx`.
+- **A IMAGEM DA LINHA SE COLA COM Ctrl+V** (`components/ImagemDaLinha.tsx`).
+  Recorte de tela nasce na ÁREA DE TRANSFERÊNCIA — quem apertou Print Screen não
+  tem arquivo para escolher num seletor, e só havia o seletor. O `paste` é ouvido
+  NO DOCUMENTO e não numa caixa com foco: exigir que se clicasse antes tornaria o
+  gesto duas ações. **O arquivo colado é batizado** (`colado.png`) porque o
+  servidor decide o formato pela EXTENSÃO do nome, e o `File` da área de
+  transferência vem sem nome em vários navegadores — sem isso, imagem válida
+  responde "formato não aceito". É **gaveta**, não modal centrado: modal seria uma
+  quarta família de superfície, com regras próprias, para fazer o que a gaveta já
+  faz — e ela não tapa a planilha, então a linha de onde se veio continua à
+  vista.
+- **O NOME DO MODELO VAI NO CABEÇALHO PRINCIPAL** — o breadcrumb, via
+  `layout/migalha.tsx`. Página não tem `h1` desde 30/07, e "Auditoria LOD 300"
+  não diz o que se está auditando; sem isso a planilha seria a única tela que não
+  diz sobre o que ela é. A página PUBLICA a migalha e a topbar a consome, porque
+  o modelo vem de uma requisição que só a página faz — o Shell buscá-lo pelo
+  `:modeloId` custaria uma segunda requisição do mesmo recurso a cada navegação.
 
 ## LOD 300: a planilha de espec
 
@@ -729,9 +785,12 @@ categorias de elemento**, para STRC.
   abrir uma NC com prazo e responsável para cada linha esclarecida.
 - **A auditoria de LOD NÃO nasce com a versão** — só a geral. LOD é trabalho
   dirigido, e abrir os seis recortes encheria o painel de rounds vazios.
-- O comportamento das duas planilhas (carregar, gravar no blur, publicar) é
-  compartilhado em `components/planilha.tsx`; o que cada tela tem de próprio são
-  as COLUNAS.
+- **A tela é a MESMA dos outros recortes** desde 01/08/2026 — o que o LOD 300 tem
+  de próprio são as colunas (`LOD`, em `pages/auditoria/Recorte.tsx`) e a coluna
+  ELEMENT, que não é coluna: ela agrupa, e vira a **faixa** que atravessa a
+  tabela (`grupo`, em `LinhaGrade`). A faixa sai da comparação com a linha
+  ANTERIOR, e não de um agrupamento montado antes: os resultados já vêm do
+  servidor na ordem da planilha impressa, e reagrupá-los arriscaria reordená-los.
 - **`projeto_membro` registra participação e NÃO autoriza** (migration 0004).
   Quem decide continua sendo `requer_permissao` sobre as permissões de
   organização. `tests/test_membros.py::test_participacao_nao_e_permissao`

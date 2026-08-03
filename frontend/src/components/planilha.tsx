@@ -1,13 +1,14 @@
-/** As peças comuns das planilhas de auditoria.
+/** O COMPORTAMENTO da planilha de auditoria: carregar, gravar, publicar.
  *
- *  Há DUAS planilhas — a geral (17 itens chapados) e a de LOD (elemento ×
- *  informação, com as colunas de parâmetro) — e elas diferem no que mostram, não
- *  em como funcionam. Carregar o modelo, achar a auditoria da versão vigente,
- *  gravar uma célula no blur, subir evidência, publicar o round: tudo igual.
+ *  Um hook, e não uma tela — a tela é `pages/auditoria/Recorte.tsx`, uma só para
+ *  os cinco recortes. Este arquivo nasceu quando eram DUAS telas (a geral e a de
+ *  LOD) e existia para elas não divergirem; hoje o corte é outro e continua
+ *  valendo: aqui mora o que se FAZ com a auditoria, lá mora como ela se DESENHA.
  *
- *  Sem este arquivo seriam dois arquivos de 500 linhas quase idênticos, e a
- *  primeira correção entraria em um só. O corte é este: o COMPORTAMENTO mora
- *  aqui, as COLUNAS moram em cada tela.
+ *  As células, o cabeçalho de status e a coluna de imagens moravam aqui e saíram
+ *  em 01/08/2026 com as duas telas antigas. O que as substituiu está em
+ *  `components/GradePlanilha.tsx` (a grade) e `components/ImagemDaLinha.tsx` (o
+ *  painel de colar imagem).
  */
 import { useCallback, useEffect, useState } from 'react'
 
@@ -17,33 +18,11 @@ import type {
   Auditoria,
   AuditoriaDetalhe,
   AuditoriaEstado,
-  CheckStatus,
   ChecklistTipo,
   ModeloDetalhe,
   Resultado,
   Versao,
 } from '@/lib/types'
-
-/** A ordem do ciclo é a da planilha, não a alfabética: o caminho normal é
- *  pendente → aprovado, e reprovado é o desvio. Quem responde 60 linhas clica
- *  uma vez na maioria delas. */
-export const CICLO: CheckStatus[] = ['pendente', 'aprovado', 'reprovado', 'na']
-
-export const CLASSE_STATUS: Record<CheckStatus, string> = {
-  aprovado: 'setp ok',
-  reprovado: 'setp bad',
-  pendente: 'setp wait',
-  na: 'setp na',
-}
-
-/** O rótulo é o da planilha em inglês e o equivalente em português — a
- *  coordenação lê "APPROVED / NOT APPROVED" nos arquivos de hoje. */
-export const ROTULO_STATUS: Record<CheckStatus, [string, string]> = {
-  aprovado: ['Aprovado', 'Approved'],
-  reprovado: ['Não aprovado', 'Not approved'],
-  pendente: ['Pendente', 'Pending'],
-  na: ['N/A', 'N/A'],
-}
 
 export const CLASSE_ESTADO: Record<AuditoriaEstado, string> = {
   publicado: 'pill ok',
@@ -140,14 +119,6 @@ export function usePlanilha(modeloId: string | undefined, checklist: ChecklistTi
     [publicada, comErro, carregarDetalhe],
   )
 
-  const ciclar = useCallback(
-    async (resultado: Resultado) => {
-      const proximo = CICLO[(CICLO.indexOf(resultado.status) + 1) % CICLO.length]!
-      await salvar(resultado, { status: proximo })
-    },
-    [salvar],
-  )
-
   const enviarEvidencia = useCallback(
     async (resultado: Resultado, arquivo: File) => {
       if (publicada) return
@@ -167,6 +138,20 @@ export function usePlanilha(modeloId: string | undefined, checklist: ChecklistTi
       })
     },
     [comErro],
+  )
+
+  /** Remove uma evidência. Vai para a LIXEIRA como todo o resto — colar a
+   *  imagem errada é o erro mais barato desta tela, e ele não devia custar uma
+   *  perda definitiva. */
+  const removerEvidencia = useCallback(
+    async (evidenciaId: string) => {
+      if (publicada) return
+      await comErro(async () => {
+        await api.evidencias.remover(evidenciaId)
+        await carregarDetalhe()
+      })
+    },
+    [publicada, comErro, carregarDetalhe],
   )
 
   const publicar = useCallback(async () => {
@@ -199,166 +184,12 @@ export function usePlanilha(modeloId: string | undefined, checklist: ChecklistTi
     carregando,
     publicada,
     salvar,
-    ciclar,
     enviarEvidencia,
     abrirEvidencia,
+    removerEvidencia,
     publicar,
     gerarNc,
   }
-}
-
-/** Uma célula de texto que salva ao SAIR dela.
- *
- *  O texto é estado LOCAL enquanto se digita. Sem isso cada tecla seria um
- *  PATCH — e, como o PATCH devolve a auditoria recalculada e a tela recarrega,
- *  o cursor saltaria para o fim do campo a cada letra.
- *
- *  O `useEffect` de sincronia existe para o caso oposto: quando o valor muda no
- *  SERVIDOR (a automação preencheu, outra aba editou), o campo acompanha.
- */
-export function CelulaTexto({
-  valor,
-  travada,
-  dica,
-  linhas = 2,
-  onSalvar,
-}: {
-  valor: string | null
-  travada: boolean
-  dica?: string
-  linhas?: number
-  onSalvar: (novo: string) => void
-}) {
-  const original = valor ?? ''
-  const [texto, setTexto] = useState(original)
-
-  useEffect(() => setTexto(original), [original])
-
-  return (
-    <textarea
-      className="cel"
-      rows={linhas}
-      value={texto}
-      readOnly={travada}
-      placeholder={travada ? '' : dica}
-      onChange={(e) => setTexto(e.target.value)}
-      onBlur={() => {
-        if (texto !== original) onSalvar(texto)
-      }}
-    />
-  )
-}
-
-/** Uma célula de número inteiro não-negativo, ou vazia. */
-export function CelulaNumero({
-  valor,
-  travada,
-  rotulo,
-  onSalvar,
-}: {
-  valor: number | null
-  travada: boolean
-  rotulo: string
-  onSalvar: (novo: number | null) => void
-}) {
-  const original = valor?.toString() ?? ''
-  const [texto, setTexto] = useState(original)
-
-  useEffect(() => setTexto(original), [original])
-
-  return (
-    <input
-      className="cel"
-      inputMode="numeric"
-      value={texto}
-      readOnly={travada}
-      aria-label={rotulo}
-      onChange={(e) => setTexto(e.target.value)}
-      onBlur={() => {
-        const limpo = texto.trim()
-        if (limpo === '') {
-          if (valor !== null) onSalvar(null)
-          return
-        }
-        const n = Number(limpo)
-        const valido = Number.isFinite(n) && n >= 0 ? Math.round(n) : null
-        if (valido !== valor) onSalvar(valido)
-      }}
-    />
-  )
-}
-
-/** A pílula de VERIFICATION: clica e cicla. */
-export function BotaoStatus({
-  status,
-  travada,
-  ocupado,
-  onCiclar,
-}: {
-  status: CheckStatus
-  travada: boolean
-  ocupado: boolean
-  onCiclar: () => void
-}) {
-  const { L } = useI18n()
-  return (
-    <button
-      className={CLASSE_STATUS[status]}
-      onClick={onCiclar}
-      disabled={travada || ocupado}
-      title={
-        travada ? L('Round publicado', 'Published round') : L('Clique para trocar', 'Click to change')
-      }
-    >
-      {L(...ROTULO_STATUS[status])}
-    </button>
-  )
-}
-
-/** A coluna IMAGE: o que já subiu, e o botão de subir mais. */
-export function Imagens({
-  resultado,
-  travada,
-  onEnviar,
-  onAbrir,
-}: {
-  resultado: Resultado
-  travada: boolean
-  onEnviar: (arquivo: File) => void
-  onAbrir: (evidenciaId: string) => void
-}) {
-  const { L } = useI18n()
-  return (
-    <div className="plan-imagens">
-      {resultado.evidencias.map((ev) => (
-        <button
-          key={ev.id}
-          className="btn sm"
-          onClick={() => onAbrir(ev.id)}
-          title={ev.legenda ?? ev.arquivo_url}
-        >
-          {ev.legenda || L('ver imagem', 'view image')}
-        </button>
-      ))}
-      {!travada && (
-        <label className="btn sm" style={{ cursor: 'pointer' }}>
-          {L('+ imagem', '+ image')}
-          <input
-            type="file"
-            accept="image/*,.pdf"
-            hidden
-            onChange={(e) => {
-              const arquivo = e.target.files?.[0]
-              if (arquivo) onEnviar(arquivo)
-              // Zera o input: sem isto, reenviar o MESMO arquivo depois de um
-              // erro não dispara `change` e nada acontece.
-              e.target.value = ''
-            }}
-          />
-        </label>
-      )}
-    </div>
-  )
 }
 
 /** O cabeçalho de números da planilha, igual nas duas.

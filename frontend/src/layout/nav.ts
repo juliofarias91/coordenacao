@@ -99,6 +99,22 @@ const IC = {
   pessoa: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
   cadeado: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4',
   sino: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
+
+  // OS CINCO RECORTES DE AUDITORIA (01/08/2026, a pedido). Eles voltaram a ser
+  // entradas da barra, e o ícone é o que torna isso possível: os rótulos são
+  // curtos e parecidos, e é pelo desenho que se acha o recorte sem ler.
+  //
+  // A metáfora de cada um é o que ele PERGUNTA, e não um número em algarismos —
+  // "300", "400" e "500" desenhados a 15px viram três borrões iguais:
+  //   geral   lista com marcas  — item a item, é a conferência de base
+  //   4d      relógio           — 4D é tempo: fase, cronograma
+  //   lod300  cubo              — o elemento genérico da espec
+  //   lod400  camadas           — o detalhamento, a informação empilhada
+  //   lod500  prédio            — o as-built, o que existe em obra
+  checklist: 'M9 6h12M9 12h12M9 18h12M3 6l1.5 1.5L7 4M3 12l1.5 1.5L7 10M3 18l1.5 1.5L7 16',
+  relogio: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2',
+  camadas: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+  predio: 'M3 21h18M6 21V7l6-4 6 4v14M10 12h4M10 16h4M10 8h4',
 } as const
 
 /** Os seis recortes de auditoria.
@@ -134,12 +150,36 @@ export function checklistTemBanco(c: Checklist): boolean {
   return !CHECKLISTS_SEM_BANCO.includes(c)
 }
 
+/** O nome INTEIRO do recorte — o que a tela usa como título, onde ele aparece
+ *  sozinho e precisa dizer de que assunto se trata. */
 export const ROTULO_CHECKLIST: Record<Checklist, [string, string]> = {
   geral: ['Auditoria geral', 'General audit'],
   '4d': ['Auditoria 4D', '4D audit'],
-  lod300: ['Auditoria LOD300', 'LOD300 audit'],
-  lod400: ['Auditoria LOD400', 'LOD400 audit'],
-  lod500: ['Auditoria LOD500', 'LOD500 audit'],
+  lod300: ['Auditoria LOD 300', 'LOD 300 audit'],
+  lod400: ['Auditoria LOD 400', 'LOD 400 audit'],
+  lod500: ['Auditoria LOD 500', 'LOD 500 audit'],
+}
+
+/** O nome CURTO — o do menu, onde o grupo já se chama Auditoria.
+ *
+ *  Repetir a palavra em cada linha é o que fazia seis rótulos começarem iguais e
+ *  obrigava a ler até o fim de cada um. Aqui ela sai: quem lê "Geral" logo abaixo
+ *  do cabeçalho "Auditoria" não tem dúvida do que é. */
+export const ROTULO_CURTO: Record<Checklist, [string, string]> = {
+  geral: ['Geral', 'General'],
+  '4d': ['4D', '4D'],
+  lod300: ['LOD 300', 'LOD 300'],
+  lod400: ['LOD 400', 'LOD 400'],
+  lod500: ['LOD 500', 'LOD 500'],
+}
+
+/** O ícone de cada recorte. A metáfora de cada um está na tabela `IC`. */
+const IC_CHECKLIST: Record<Checklist, string> = {
+  geral: IC.checklist,
+  '4d': IC.relogio,
+  lod300: IC.cubo,
+  lod400: IC.camadas,
+  lod500: IC.predio,
 }
 
 /** O menu de fora de um projeto: o que vale para a organização inteira.
@@ -342,27 +382,36 @@ export const ITENS_PROJETO: ItemNav[] = [
     fase: 1,
   },
 
-  // AUDITORIA: UMA ENTRADA, não seis.
+  // AUDITORIA: UM ITEM POR RECORTE (01/08/2026, a pedido).
   //
-  // Os seis recortes já foram seis itens aqui, e a barra ficou com nove linhas
-  // num grupo só — mais do que os outros dois grupos juntos, empurrando para
-  // fora da vista o que se configura ANTES de auditar. Pior: seis rótulos que
-  // começam com a mesma palavra ("Auditoria geral", "Auditoria 4D"…) obrigam a
-  // ler até o fim de cada um para escolher.
+  // Eles já foram seis itens aqui, viraram UM com um painel dentro da página em
+  // 29/07, e voltaram. As duas queixas que motivaram juntá-los estão resolvidas
+  // de outro jeito, e é por isso que a volta não é um círculo:
   //
-  // Os recortes passaram para um painel DENTRO da página de auditoria
-  // (`pages/auditoria/`), recolhível, no formato dos canais do VDCity. É a
-  // troca certa: escolher entre recortes é navegação de segundo nível, e
-  // segundo nível não pertence à barra que também tem KPIs e PEB.
-  {
-    rota: 'auditoria',
-    pt: 'Auditoria',
-    en: 'Audit',
-    path: IC.selo,
-    grupo: 'auditoria',
-    escopo: 'projeto',
+  //   1. "Nove linhas num grupo só." Eram nove porque cada rótulo repetia a
+  //      palavra Auditoria e o grupo TAMBÉM se chama Auditoria. Agora são
+  //      `Geral`, `4D`, `LOD 300` — o grupo diz do que se trata, e a linha diz
+  //      qual. Seis linhas curtas ocupam menos que seis longas com a mesma
+  //      primeira palavra.
+  //   2. "Rótulos que obrigam a ler até o fim." Cada um tem ÍCONE PRÓPRIO, e é
+  //      pelo desenho que se acha o recorte sem ler. Ver `IC`.
+  //
+  // O painel de dentro da página continua existindo e perdeu o nível de cima:
+  // ele agora lista DISCIPLINA › MODELO do recorte aberto. Ver
+  // `pages/auditoria/index.tsx`.
+  //
+  // A ROTA DE CADA UM É `auditoria/<recorte>`, que é a mesma de antes: o painel
+  // já navegava para lá, então nenhum link existente quebra. E `auditoria` sem
+  // recorte segue caindo na geral.
+  ...CHECKLISTS.map((c) => ({
+    rota: `auditoria/${c}`,
+    pt: ROTULO_CURTO[c][0],
+    en: ROTULO_CURTO[c][1],
+    path: IC_CHECKLIST[c],
+    grupo: 'auditoria' as const,
+    escopo: 'projeto' as const,
     fase: 2,
-  },
+  })),
   {
     rota: 'relatorios',
     pt: 'Relatórios · RNC',

@@ -1,103 +1,425 @@
-/** O que cada recorte de auditoria mostra: A GRADE.
+/** O RECORTE DE AUDITORIA — a planilha, com modelo ou sem ele.
  *
- *  Uma tela só, parametrizada pela rota (`auditoria/:checklist`), dentro do
- *  esqueleto de `index.tsx`.
+ *  Uma tela só, parametrizada pela rota (`auditoria/:checklist/:modeloId?`),
+ *  dentro do esqueleto de `index.tsx`. É a MESMA para os cinco recortes: o que
+ *  muda entre eles são as COLUNAS, e elas estão na tabela `COLUNAS` abaixo.
+ *
+ *  **Com modelo** (`auditoria/lod300/<id>`) ela é a planilha de verdade: cada
+ *  linha é um `resultado_check` e cada célula grava sozinha. **Sem modelo** ela é
+ *  a prévia do gabarito — a estrutura do recorte, travada, porque auditoria
+ *  pertence a um modelo e não há linha no banco em que gravar.
  *
  *  A ESTRUTURA É O PADRÃO, NÃO CONFIGURAÇÃO DE PROJETO (31/07/2026, a pedido).
  *  Os 17 itens da auditoria geral são os mesmos nas oito disciplinas e em todo
- *  projeto — é o que `services/gabarito.py` guarda, e é isso que a grade desenha,
- *  via `GET /gabaritos/{checklist}`.
+ *  projeto — é o que `services/gabarito.py` guarda, e é isso que a prévia
+ *  desenha, via `GET /gabaritos/{checklist}`.
  *
- *  Isto substituiu uma versão que lia o checklist COMPOSTO do projeto e, num
- *  projeto novo, mostrava uma tela vazia com um botão "aplicar os itens de
- *  fábrica". Aquilo era um passo que não correspondia a decisão nenhuma: a
- *  resposta é sempre sim, e o padrão é padrão antes de qualquer clique. O POST
- *  que semeia continua existindo em Biblioteca de critérios — ele serve a outra
- *  coisa, que é o projeto ADOTAR o padrão como dado editável (renomear um item,
- *  acrescentar o 18º).
- *
- *  ESTA TELA FOI ESVAZIADA ANTES, e o que saiu daqui continua fora: o parágrafo
- *  de explicação de cada recorte, o `ControleGeral` e a `TabelaMatriz`. O texto
- *  dos cinco parágrafos está em `git log -- frontend/src/pages/auditoria/`.
- *  `TabelaMatriz` segue em uso em `pages/Painel.tsx`; `ControleGeral` ficou
- *  órfão — o caminho para a planilha de um modelo passou a ser o dropdown do
- *  painel à esquerda.
+ *  ISTO SUBSTITUIU `pages/PlanilhaGeral.tsx` E `pages/PlanilhaLod.tsx`
+ *  (01/08/2026, a pedido: "todas as páginas terão a mesma cara"). Eram duas
+ *  telas com tabela própria, e o recorte sem tela própria — 4D, LOD 400 e LOD
+ *  500 — não tinha nenhuma: clicar num modelo daqueles caía numa rota que não
+ *  existia e o conteúdo abria VAZIO. Uma tela por recorte multiplicaria por
+ *  cinco a próxima coluna que a planilha ganhar; o comportamento comum continua
+ *  em `components/planilha.tsx`, que era de onde as duas já saíam.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 
-import GradePlanilha, { type Coluna } from '@/components/GradePlanilha'
+import GradePlanilha, { type Coluna, type LinhaGrade } from '@/components/GradePlanilha'
+import ImagemDaLinha from '@/components/ImagemDaLinha'
+import { CabecalhoPlanilha, usePlanilha } from '@/components/planilha'
 import { Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
-import { CHECKLISTS, type Checklist } from '@/layout/nav'
+import { useMigalha } from '@/layout/migalha'
+import { CHECKLISTS, ROTULO_CHECKLIST, type Checklist } from '@/layout/nav'
 import { ApiError, api } from '@/lib/api'
-import type { ChecklistTipo, LinhaGabarito } from '@/lib/types'
-import { useProjeto } from '@/projeto/ProjetoContext'
+import type { ChecklistTipo, LinhaGabarito, Resultado } from '@/lib/types'
+import { rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 
-/** AS COLUNAS DE CADA RECORTE, quando ele já as tem.
+/** O campo de `resultado_check` que a coluna grava. Sem `campo`, a coluna é de
+ *  leitura (ou calculada, ou de ação) e não grava nada. */
+type Campo = 'status' | 'comentario' | 'direcao' | 'parametro_encontrado' | 'comentario_fornecedor'
+
+type ColunaAud = Coluna & {
+  campo?: Campo
+  /** De onde sai o texto de leitura da célula. Recebe o resultado e o idioma
+   *  para não haver um `if (lang)` espalhado por seis lugares. */
+  le?: (r: Resultado, en: boolean) => string | null
+}
+
+/** As duas opções da coluna VERIFICATION.
  *
- *  Recorte que não está aqui cai nas letras (A, B, C…) — e isso é informação,
- *  não falta de acabamento: diz que aquele recorte ainda não teve as colunas
- *  definidas.
+ *  O VALOR é o `CheckStatus` do banco; o rótulo é o da planilha em cada idioma.
+ *  Guardar o rótulo faria a tradução virar dado, e comparar por ele reabriria a
+ *  armadilha do "NOT APPROVED" que contém "APPROVED". O vazio é `pendente` —
+ *  ver `paraOServidor`. */
+const VERIFICACAO = [
+  { valor: 'aprovado', pt: 'APROVADO', en: 'APPROVED' },
+  { valor: 'reprovado', pt: 'NÃO APROVADO', en: 'NOT APPROVED' },
+  { valor: 'na', pt: 'N/A', en: 'N/A' },
+]
+
+const NOME = (r: Resultado, en: boolean) => (en ? r.criterio.nome_en : r.criterio.nome_pt)
+
+/** AS COLUNAS DE CADA RECORTE.
  *
  *  OS RÓTULOS SÃO BILÍNGUES, e o inglês é o da planilha COMO ELA O ESCREVE —
  *  inclusive `COMENTARY`, que é a grafia do arquivo de referência. Não é erro de
  *  digitação: é o rótulo que a coordenação lê há anos, e "corrigir" para
- *  COMMENTARY faria a tela e a planilha divergirem na primeira conferência lado a
- *  lado. A migration 0008 e `services/exports.py` já usam essa grafia.
- *  O português existe porque uma fileira de cabeçalhos em inglês no meio de uma
- *  tela traduzida é a única coisa da tela que não fala a língua de quem a lê.
+ *  COMMENTARY faria a tela e a planilha divergirem na primeira conferência lado
+ *  a lado. A migration 0008 e `services/exports.py` já usam essa grafia.
  *
  *  AS LARGURAS SEPARAM PROSA DE DADO, e são PESOS: a tabela ocupa a largura toda
  *  e o espaço que sobra se reparte em proporção a estes números. `COMENTARY` e
  *  `DIRECTION` são as duas frases que a coordenação escreve por linha reprovada
  *  (o diagnóstico e a orientação ao fornecedor — migration 0008), e `INFORMATION`
- *  é o texto do item. As três precisam de largura; `IMAGE` e as duas curtas
- *  cedem. */
-const COLUNAS: Partial<Record<Checklist, Coluna[]>> = {
-  geral: [
-    { pt: 'INFORMAÇÃO', en: 'INFORMATION', largura: 340 },
-    {
-      pt: 'VERIFICAÇÃO',
-      en: 'VERIFICATION',
-      largura: 132,
-      tipo: 'selecao',
-      // O VALOR é `aprovado`/`reprovado` — o `CheckStatus` que a coluna vai
-      // gravar quando a planilha passar a salvar. O rótulo é o da planilha em
-      // cada idioma. Guardar o rótulo faria a tradução virar dado, e comparar
-      // por ele reabriria a armadilha do "NOT APPROVED" que contém "APPROVED".
-      opcoes: [
-        { valor: 'aprovado', pt: 'APROVADO', en: 'APPROVED' },
-        { valor: 'reprovado', pt: 'NÃO APROVADO', en: 'NOT APPROVED' },
-      ],
-    },
-    { pt: 'COMENTÁRIO', en: 'COMENTARY', largura: 280, tipo: 'texto' },
-    { pt: 'IMAGEM', en: 'IMAGE', largura: 72, tipo: 'imagem' },
-    // DIRECTION é ORIENTAÇÃO, não "direção": é a frase que diz ao fornecedor o
-    // que fazer. A migration 0008 usa exatamente essa palavra ao descrever o
-    // campo, e "direção" em português levaria a pensar em sentido/rumo.
-    { pt: 'ORIENTAÇÃO', en: 'DIRECTION', largura: 280, tipo: 'texto' },
-    { pt: 'APROVAÇÃO (%)', en: 'APPROVED (%)', largura: 116, tipo: 'calculado' },
-  ],
+ *  é o texto do item. As três precisam de largura; `IMAGE` e as curtas cedem. */
+const BASE: ColunaAud[] = [
+  { pt: 'INFORMAÇÃO', en: 'INFORMATION', largura: 340, le: NOME },
+  {
+    pt: 'VERIFICAÇÃO',
+    en: 'VERIFICATION',
+    largura: 132,
+    tipo: 'selecao',
+    opcoes: VERIFICACAO,
+    campo: 'status',
+  },
+  { pt: 'COMENTÁRIO', en: 'COMENTARY', largura: 280, tipo: 'texto', campo: 'comentario' },
+  { pt: 'IMAGEM', en: 'IMAGE', largura: 72, tipo: 'imagem' },
+  // DIRECTION é ORIENTAÇÃO, não "direção": é a frase que diz ao fornecedor o que
+  // fazer. A migration 0008 usa exatamente essa palavra ao descrever o campo, e
+  // "direção" em português levaria a pensar em sentido/rumo.
+  { pt: 'ORIENTAÇÃO', en: 'DIRECTION', largura: 280, tipo: 'texto', campo: 'direcao' },
+  { pt: 'APROVAÇÃO (%)', en: 'APPROVED (%)', largura: 116, tipo: 'calculado' },
+  {
+    pt: 'NC',
+    en: 'NC',
+    largura: 64,
+    tipo: 'acao',
+    dica: [
+      'Cria a não-conformidade com estas duas frases: comentário → descrição, orientação → recomendação.',
+      'Creates the non-conformity from these two sentences: comment → description, direction → recommendation.',
+    ],
+  },
+]
+
+/** O LOD 300 é ELEMENTO × INFORMAÇÃO, e por isso tem três colunas a mais.
+ *
+ *  `parametro_esperado` é onde a informação DEVERIA estar (vem do critério, e
+ *  não se digita); `parametro_encontrado` é onde ela FOI achada (migration
+ *  0009). A comparação entre os dois é a única pergunta que a planilha faz — por
+ *  isso ficam lado a lado. `comentario_fornecedor` tem outro AUTOR: o guia do
+ *  arquivo diz "SUPPLIERS COMMENTS — permissão de edição: FORNECEDORES".
+ *
+ *  A coluna ELEMENT não é coluna: ela agrupa, e vira a faixa que atravessa a
+ *  tabela (`grupo`, em `LinhaGrade`). */
+const LOD: ColunaAud[] = [
+  { pt: 'INFORMAÇÃO', en: 'INFORMATION', largura: 300, le: NOME },
+  {
+    pt: 'PARÂMETRO ESPERADO',
+    en: 'EXPECTED PARAMETER',
+    largura: 170,
+    le: (r) => r.criterio.parametro_esperado,
+  },
+  {
+    pt: 'PARÂMETRO ENCONTRADO',
+    en: 'FOUND PARAMETER',
+    largura: 170,
+    tipo: 'texto',
+    campo: 'parametro_encontrado',
+  },
+  {
+    pt: 'VERIFICAÇÃO',
+    en: 'VERIFICATION',
+    largura: 132,
+    tipo: 'selecao',
+    opcoes: VERIFICACAO,
+    campo: 'status',
+  },
+  { pt: 'COMENTÁRIO', en: 'COMENTARY', largura: 240, tipo: 'texto', campo: 'comentario' },
+  {
+    pt: 'DO FORNECEDOR',
+    en: 'SUPPLIER’S',
+    largura: 220,
+    tipo: 'texto',
+    campo: 'comentario_fornecedor',
+  },
+  { pt: 'IMAGEM', en: 'IMAGE', largura: 72, tipo: 'imagem' },
+  { pt: 'ORIENTAÇÃO', en: 'DIRECTION', largura: 240, tipo: 'texto', campo: 'direcao' },
+  { pt: 'APROVAÇÃO (%)', en: 'APPROVED (%)', largura: 116, tipo: 'calculado' },
+  {
+    pt: 'NC',
+    en: 'NC',
+    largura: 64,
+    tipo: 'acao',
+    dica: [
+      'Cria a não-conformidade com estas duas frases: comentário → descrição, orientação → recomendação.',
+      'Creates the non-conformity from these two sentences: comment → description, direction → recommendation.',
+    ],
+  },
+]
+
+/** Recorte sem entrada aqui usa as colunas BASE. Não é falta de acabamento: as
+ *  seis colunas da base são as que TODA planilha de auditoria tem, e um recorte
+ *  que precise de mais ganha a própria lista no dia em que o arquivo de
+ *  referência dele aparecer. */
+const COLUNAS: Partial<Record<Checklist, ColunaAud[]>> = { lod300: LOD }
+
+function colunasDe(c: Checklist): ColunaAud[] {
+  return COLUNAS[c] ?? BASE
 }
 
 function ehChecklist(v: string | undefined): v is Checklist {
   return !!v && (CHECKLISTS as readonly string[]).includes(v)
 }
 
+/** O que o `select` mostra a partir do que está no banco.
+ *
+ *  `pendente` vira VAZIO na tela: "ainda não olhei" não é uma resposta, e um
+ *  select que já vem com valor faria a planilha nascer inteira respondida. */
+function paraATela(r: Resultado, campo: Campo): string {
+  if (campo === 'status') return r.status === 'pendente' ? '' : r.status
+  return r[campo] ?? ''
+}
+
+/** E o caminho de volta. Vazio no status é `pendente` — apagar a resposta é
+ *  desfazer a verificação, não gravar um estado novo; nos textos, vazio é
+ *  `null`, para o banco não guardar string de zero caracteres onde o resto do
+ *  sistema espera "não preenchido". */
+function paraOServidor(campo: Campo, valor: string): Record<string, unknown> {
+  if (campo === 'status') return { status: valor === '' ? 'pendente' : valor }
+  return { [campo]: valor.trim() === '' ? null : valor }
+}
+
 export default function Recorte() {
+  const { L } = useI18n()
+  const { projeto } = useProjeto()
+  const { checklist, modeloId } = useParams<{ checklist: string; modeloId: string }>()
+
+  if (!projeto) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
+
+  // Recorte que não existe: a URL foi digitada à mão ou o link é de uma versão
+  // que tinha outro. Dizer qual é o problema custa uma linha e evita uma tela em
+  // branco sem explicação.
+  if (!ehChecklist(checklist)) {
+    return (
+      <Vazio
+        titulo={L('Recorte desconhecido', 'Unknown scope')}
+        texto={L(
+          `"${checklist}" não é um checklist desta plataforma. Os disponíveis estão no menu, em Auditoria.`,
+          `"${checklist}" is not a checklist on this platform. The available ones are in the Audit menu.`,
+        )}
+      />
+    )
+  }
+
+  return modeloId ? (
+    <Planilha key={`${checklist}:${modeloId}`} checklist={checklist} modeloId={modeloId} />
+  ) : (
+    <Previa key={checklist} checklist={checklist} />
+  )
+}
+
+/** A PLANILHA DE UM MODELO — o que se preenche. */
+function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: string }) {
   const { L, lang } = useI18n()
   const { projeto } = useProjeto()
-  const { checklist } = useParams<{ checklist: string }>()
+  const p = usePlanilha(modeloId, checklist as ChecklistTipo)
+  const [linhaDaImagem, setLinhaDaImagem] = useState<string | null>(null)
+
+  // O NOME DO MODELO VAI PARA O CABEÇALHO PRINCIPAL. Página não tem `h1` desde
+  // 30/07 — quem nomeia a tela é o breadcrumb —, e "Auditoria LOD300" não diz o
+  // que se está auditando. Ver `layout/migalha.tsx`.
+  useMigalha(p.modelo?.codigo)
+
+  const colunas = colunasDe(checklist)
+
+  const salvarCelula = useCallback(
+    (chave: string, coluna: number, valor: string) => {
+      const campo = colunas[coluna]?.campo
+      const resultado = p.detalhe?.resultados.find((r) => r.id === chave)
+      if (!campo || !resultado) return
+      p.salvar(resultado, paraOServidor(campo, valor))
+    },
+    [colunas, p],
+  )
+
+  const gerarNc = useCallback(
+    (chave: string) => {
+      const resultado = p.detalhe?.resultados.find((r) => r.id === chave)
+      if (resultado) p.gerarNc(resultado)
+    },
+    [p],
+  )
+
+  if (p.carregando) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
+
+  const voltar = rotaProjeto(projeto?.id ?? '', `auditoria/${checklist}`)
+
+  if (!p.modelo) {
+    return (
+      <>
+        <Erro mensagem={p.erro} />
+        <Vazio
+          titulo={L('Modelo não encontrado', 'Model not found')}
+          texto={L(
+            'O modelo pode ter sido removido. O painel à esquerda lista os que existem.',
+            'The model may have been removed. The panel on the left lists the existing ones.',
+          )}
+        />
+      </>
+    )
+  }
+
+  if (!p.versao) {
+    return (
+      <>
+        <Erro mensagem={p.erro} />
+        <Vazio
+          titulo={L('Sem versão para auditar', 'No version to audit')}
+          texto={L(
+            'Este modelo não tem versão registrada. A planilha nasce com a versão — registre a primeira na tela do modelo.',
+            'This model has no registered version. The sheet is created with the version — register the first one on the model screen.',
+          )}
+        />
+      </>
+    )
+  }
+
+  if (!p.detalhe) {
+    return (
+      <>
+        <Erro mensagem={p.erro} />
+        <Vazio
+          titulo={L('Esta auditoria não está aberta', 'This audit is not open')}
+          texto={L(
+            'Não há round deste recorte para a versão vigente. Abra pelo "+" do painel à esquerda, que também deixa registrar responsável, datas e prioridade.',
+            'There is no round of this scope for the current version. Open it with the "+" in the left panel, which also records the owner, dates and priority.',
+          )}
+        />
+      </>
+    )
+  }
+
+  if (p.detalhe.resultados.length === 0) {
+    return (
+      <>
+        <Erro mensagem={p.erro} />
+        <Vazio
+          titulo={L('A planilha está sem linhas', 'The sheet has no rows')}
+          texto={L(
+            'A auditoria existe, mas o projeto não tem itens neste checklist. Aplique os itens de fábrica em Biblioteca de critérios › Compor checklist.',
+            'The audit exists, but the project has no items in this checklist. Apply the factory items under Criteria library › Compose checklist.',
+          )}
+        />
+      </>
+    )
+  }
+
+  const en = lang === 'en'
+  const linhas: LinhaGrade[] = p.detalhe.resultados.map((r) => ({
+    chave: r.id,
+    // A coluna ELEMENT da planilha de LOD. Nos recortes sem categoria isto é
+    // nulo e nenhuma faixa aparece.
+    grupo: r.criterio.categoria,
+    leitura: colunas.map((col) => col.le?.(r, en) ?? null),
+    // A INSTRUÇÃO é a coluna OCULTA da planilha — diz COMO conferir o item, e
+    // nunca foi para o fornecedor. Aqui ela é o `title` da célula do nome: uma
+    // coluna própria a poria na frente de quem lê o portal, e uma linha abaixo
+    // do nome dobraria a altura das 17 linhas por um texto que se consulta uma
+    // vez.
+    titulos: colunas.map((col) => (col.le === NOME ? r.criterio.instrucao : null)),
+    valores: colunas.map((col) => (col.campo ? paraATela(r, col.campo) : '')),
+    anexos: r.evidencias.length,
+  }))
+
+  const daImagem = p.detalhe.resultados.find((r) => r.id === linhaDaImagem)
+
+  return (
+    <div className="plan-tela">
+      <CabecalhoPlanilha versao={p.versao} detalhe={p.detalhe} />
+
+      <div className="acoes">
+        <span className="hint" style={{ margin: 0 }}>
+          {p.publicada
+            ? L(
+                'Round publicado — a planilha ficou somente leitura. Uma versão nova reabre a auditoria em outro round.',
+                'Round published — the sheet is read-only. A new version reopens the audit in another round.',
+              )
+            : L(
+                'Cada célula salva sozinha — não há botão de salvar.',
+                'Every cell saves on its own — there is no save button.',
+              )}
+        </span>
+        <div style={{ flex: 1 }} />
+        {p.ocupado && <span className="plan-salvando">{L('salvando…', 'saving…')}</span>}
+        <Link className="btn" to={rotaProjeto(projeto?.id ?? '', `modelos/${p.modelo.id}`)}>
+          {L('Ver o modelo', 'Open the model')}
+        </Link>
+        {!p.publicada && (
+          <button
+            className="btn pri"
+            onClick={p.publicar}
+            disabled={p.ocupado || p.detalhe.pendentes > 0}
+            title={
+              p.detalhe.pendentes > 0
+                ? L(
+                    `Ainda há ${p.detalhe.pendentes} item(ns) pendente(s)`,
+                    `${p.detalhe.pendentes} item(s) still pending`,
+                  )
+                : undefined
+            }
+          >
+            {L('Publicar round', 'Publish round')}
+          </button>
+        )}
+      </div>
+
+      <Erro mensagem={p.erro} />
+
+      <GradePlanilha
+        rotulos={colunas}
+        dados={linhas}
+        travada={p.publicada}
+        onSalvar={salvarCelula}
+        onImagem={setLinhaDaImagem}
+        onAcao={gerarNc}
+      />
+
+      <ImagemDaLinha
+        aberta={!!daImagem}
+        titulo={daImagem ? (en ? daImagem.criterio.nome_en : daImagem.criterio.nome_pt) : ''}
+        evidencias={daImagem?.evidencias ?? []}
+        travada={p.publicada}
+        ocupado={p.ocupado}
+        erro={p.erro}
+        onFechar={() => setLinhaDaImagem(null)}
+        onEnviar={(arquivo) => daImagem && p.enviarEvidencia(daImagem, arquivo)}
+        onAbrir={p.abrirEvidencia}
+        onRemover={p.removerEvidencia}
+      />
+
+      {/* O caminho de volta ao recorte sem modelo. Discreto e no fim: quem está
+          aqui veio para preencher, e a lista de modelos continua no painel da
+          esquerda — este link é para quem quer ver a ESTRUTURA do recorte. */}
+      <div className="crumb">
+        <Link to={voltar}>
+          {L(`← Estrutura de ${L(...ROTULO_CHECKLIST[checklist])}`, '← Scope structure')}
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+/** A PRÉVIA DO RECORTE — a estrutura, sem modelo. */
+function Previa({ checklist }: { checklist: Checklist }) {
+  const { L, lang } = useI18n()
 
   const [itens, setItens] = useState<LinhaGabarito[]>([])
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
 
-  const valido = ehChecklist(checklist)
-
   const carregar = useCallback(async () => {
-    if (!valido) return
     setErro(null)
     setCarregando(true)
     try {
@@ -108,28 +430,11 @@ export default function Recorte() {
     } finally {
       setCarregando(false)
     }
-  }, [checklist, valido])
+  }, [checklist])
 
   useEffect(() => {
     carregar()
   }, [carregar])
-
-  if (!projeto) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
-
-  // Recorte que não existe: a URL foi digitada à mão ou o link é de uma versão
-  // que tinha outro. Dizer qual é o problema custa uma linha e evita uma tela
-  // em branco sem explicação.
-  if (!valido) {
-    return (
-      <Vazio
-        titulo={L('Recorte desconhecido', 'Unknown scope')}
-        texto={L(
-          `"${checklist}" não é um checklist desta plataforma. Os disponíveis estão no painel à esquerda.`,
-          `"${checklist}" is not a checklist on this platform. The available ones are in the panel on the left.`,
-        )}
-      />
-    )
-  }
 
   if (carregando) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
 
@@ -150,21 +455,22 @@ export default function Recorte() {
     )
   }
 
-  // A COLUNA INFORMATION é a primeira; as outras cinco se respondem na tela.
-  //
-  // `nome_en` no inglês e `nome_pt` no português: o rótulo da coluna INFORMATION
-  // na planilha é o inglês, mas quem está com a interface em português lê a
-  // linha em português no resto do sistema. As duas grafias vêm do mesmo item do
-  // gabarito, então não há como divergirem.
+  // A COLUNA INFORMATION é a primeira; as outras se respondem na planilha de um
+  // modelo. `nome_en` no inglês e `nome_pt` no português: o rótulo da coluna é o
+  // inglês, mas quem está com a interface em português lê a linha em português
+  // no resto do sistema.
   const celulas = itens.map((i) => [lang === 'en' ? i.nome_en : i.nome_pt])
 
   return (
-    <>
+    <div className="plan-tela">
       <Erro mensagem={erro} />
-      {/* `key` no recorte: trocar de recorte tem de devolver a grade ao começo,
-          e não manter a célula selecionada do recorte anterior — que passaria a
-          apontar para uma coluna que talvez não exista no próximo. */}
-      <GradePlanilha key={checklist} rotulos={COLUNAS[checklist]} celulas={celulas} />
-    </>
+      <p className="hint">
+        {L(
+          'Esta é a ESTRUTURA do recorte — os itens de fábrica, iguais em todo projeto. Para preencher, escolha um modelo no painel à esquerda: a auditoria pertence a um modelo, e é lá que as respostas são gravadas.',
+          'This is the scope STRUCTURE — the factory items, the same in every project. To fill it in, pick a model in the left panel: an audit belongs to a model, and that is where answers are stored.',
+        )}
+      </p>
+      <GradePlanilha rotulos={colunasDe(checklist)} celulas={celulas} />
+    </div>
   )
 }

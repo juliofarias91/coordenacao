@@ -25,6 +25,7 @@ import Convidar from '@/components/Convidar'
 import Sino from '@/components/Sino'
 import UsuarioMenu from '@/components/UsuarioMenu'
 import { useI18n } from '@/i18n'
+import { ProvedorMigalha } from '@/layout/migalha'
 import {
   GRUPOS,
   ITENS_ADMIN,
@@ -177,6 +178,9 @@ export default function Shell() {
    *  continua sendo página com abas. */
   const emConta = casa('/configuracoes', pathname)
 
+  /** O último pedaço do breadcrumb, publicado pela página — hoje, o código do
+   *  modelo em auditoria. Ver `layout/migalha.tsx`. */
+  const [migalha, setMigalha] = useState<string | null>(null)
   const [recolhida, setRecolhida] = useState(leRecolhida)
   const [gruposOff, setGruposOff] = useState<Record<string, boolean>>({})
   const [ordem, setOrdem] = useState<GrupoNav[] | null>(() => leOrdem(usuario?.login))
@@ -438,7 +442,18 @@ export default function Shell() {
                 <span className="tb-crumb">{projeto.codigo}</span>
               ))}
             {projeto && atual && <span className="sep">/</span>}
-            {atual && <span className="tb-crumb atual">{L(atual.pt, atual.en)}</span>}
+            {/* Com o modelo à frente, o nome da TELA deixa de ser o último e
+                perde o peso: quem está na planilha do CPQ11-ARCH-R22 está nele,
+                e "Auditoria geral" vira o caminho até ali. */}
+            {atual && (
+              <span className={`tb-crumb${migalha ? '' : ' atual'}`}>{L(atual.pt, atual.en)}</span>
+            )}
+            {migalha && (
+              <>
+                <span className="sep">/</span>
+                <span className="tb-crumb atual">{migalha}</span>
+              </>
+            )}
           </div>
 
           <div className="tb-acoes">
@@ -468,7 +483,11 @@ export default function Shell() {
         </header>
 
         <main>
-          <Outlet />
+          {/* O provedor envolve só o `Outlet`: quem publica a migalha são as
+              telas, e a topbar acima é quem a consome. */}
+          <ProvedorMigalha value={setMigalha}>
+            <Outlet />
+          </ProvedorMigalha>
         </main>
       </div>
 

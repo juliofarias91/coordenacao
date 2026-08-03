@@ -37,8 +37,6 @@ import ModeloView from '@/pages/Modelo'
 import Notificacoes from '@/pages/Notificacoes'
 import Painel from '@/pages/Painel'
 import Peb from '@/pages/Peb'
-import PlanilhaGeral from '@/pages/PlanilhaGeral'
-import PlanilhaLod from '@/pages/PlanilhaLod'
 import Portal from '@/pages/Portal'
 import Relatorios from '@/pages/Relatorios'
 import EscopoProjeto, { RotaLegada } from '@/projeto/EscopoProjeto'
@@ -194,16 +192,20 @@ export default function App() {
                   aba `configuracao/projeto`, que editava os mesmos campos; o
                   endereço antigo redireciona logo abaixo. */}
               <Route path="ficha" element={<Ficha />} />
-              {/* AUDITORIA — uma entrada na barra, seis recortes num painel
-                  DENTRO da página. `Auditoria` é o esqueleto (painel + os dois
-                  cabeçalhos alinhados) e tudo abaixo é filho dele, para que o
-                  painel não seja desmontado e remontado a cada navegação.
-                  As planilhas vêm ANTES do `:checklist` genérico: escrever na
-                  ordem da especificidade deixa a intenção legível, mesmo o
-                  roteador já escolhendo a mais específica. */}
+              {/* AUDITORIA — um item de menu por recorte, e o painel de dentro
+                  da página listando disciplina › modelo. `Auditoria` é o
+                  esqueleto (painel + os dois cabeçalhos alinhados) e tudo abaixo
+                  é filho dele, para que o painel não seja desmontado e remontado
+                  a cada navegação.
+
+                  UMA ROTA SÓ PARA OS CINCO RECORTES, com e sem modelo
+                  (01/08/2026). Antes `geral` e `lod300` tinham telas próprias e
+                  os outros três não tinham nenhuma: clicar num modelo de LOD 400
+                  batia numa rota inexistente e o conteúdo abria VAZIO. `Recorte`
+                  é a mesma tela nos dois casos — com modelo ela é a planilha que
+                  grava, sem modelo é a estrutura do recorte. */}
               <Route path="auditoria" element={<Auditoria />}>
-                <Route path="geral/:modeloId" element={<PlanilhaGeral />} />
-                <Route path="lod300/:modeloId" element={<PlanilhaLod />} />
+                <Route path=":checklist/:modeloId" element={<Recorte />} />
                 <Route path=":checklist" element={<Recorte />} />
                 {/* Sem recorte, quem redireciona é o próprio `Auditoria` — o
                     padrão é conhecimento dele, não da tabela de rotas. */}

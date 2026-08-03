@@ -3224,6 +3224,77 @@ td.num {
   font-size: 13.5px;
 }
 
+/* --- COLAR IMAGEM: a área de Ctrl+V, dentro da gaveta -------------------- */
+/* BORDA TRACEJADA, e é a única do sistema. Ela não é enfeite: diz "aqui cabe
+   algo que ainda não está aqui" — a mesma convenção de toda área de soltar
+   arquivo —, e é o que faz a região parecer alvo sem precisar de fundo colorido
+   (regra 2: a cor fica para o que tem significado). */
+.colar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 22px 16px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-xl);
+  text-align: center;
+}
+.colar b {
+  font-size: 13.5px;
+}
+.colar .hint {
+  margin: 0;
+}
+/* A prévia é LOCAL — a imagem que acabou de sair da área de transferência,
+   antes de o S3 devolver a URL assinada. `max-height` para uma captura de tela
+   inteira não empurrar a lista de anexos para fora da gaveta. */
+.colar-previa {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.colar-previa img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--panel-2);
+}
+.colar-lista {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+}
+.colar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+/* O nome do arquivo é o LINK — clicar nele abre a imagem assinada. Tinta no
+   hover, sem sublinhado permanente: é item de lista, não prosa (regra 6). */
+.colar-nome {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--dur-fast);
+}
+.colar-nome:hover {
+  color: var(--ink);
+}
+
 /* ==========================================================================
    IMPORTAÇÃO DE PLANILHA — a ponte provisória (migration 0012).
 
@@ -3908,59 +3979,49 @@ td.num {
 }
 
 /* ============================================================================
-   PLANILHA DA AUDITORIA GERAL — a aba BASE GERAL, editável.
+   A PLANILHA — a tela de um recorte de auditoria.
 
-   É a tabela mais densa do sistema: 17 linhas × 7 colunas, e duas delas são
-   campos de texto livre. As decisões abaixo existem por causa dessa densidade.
+   A tabela em si é `.grade`, mais abaixo. Aqui ficam só as peças em volta dela:
+   a tela e o aviso de gravação.
 
-   `table-layout: fixed` E `width: 100%`: sem os dois, a largura das colunas
-   passa a depender do que foi digitado — escrever uma frase longa em DIRECTION
-   reflowaria a grade inteira e a linha que se está preenchendo mudaria de lugar
-   embaixo do cursor.
-
-   Realce de linha é TINTA (regra 6), como no resto do sistema. Não há fundo de
-   hover aqui, e o motivo é mais forte do que na tabela comum: numa grade em que
-   o cursor está SEMPRE sobre uma linha (é onde se digita), o retângulo que
-   segue o mouse seria o elemento com mais movimento na tela.
+   ESTE BLOCO ERA A TABELA `.plan`, de `PlanilhaGeral`/`PlanilhaLod` (01/08/2026).
+   As duas telas viraram uma — a grade — e o CSS delas foi junto. O que
+   sobreviveu é `.cel`, porque a decisão que ela carrega vale para qualquer campo
+   dentro de tabela: sem borda em repouso, borda no hover e no foco. Recuperável
+   em `git log -- frontend/src/styles/app.css`.
    ============================================================================ */
-.plan {
-  table-layout: fixed;
-  width: 100%;
-}
-.plan th,
-.plan td {
-  /* `top`: as células têm alturas diferentes (o nome do item tem três linhas, a
-     contagem tem uma). Alinhadas ao centro, nada se lê como uma linha. */
-  vertical-align: top;
-}
-.plan-num {
-  font-variant-numeric: tabular-nums;
-  padding-top: 14px;
-}
-.plan-nome {
-  font-size: 13.5px;
-  font-weight: 650;
-  line-height: 1.35;
-}
-/* A instrução — a coluna oculta do arquivo. QUEBRA em várias linhas, ao
-   contrário de `.irow .in`, que corta com ellipsis: aqui ela é o texto que diz
-   COMO conferir o item, e uma instrução truncada não instrui. */
-.plan-instrucao {
-  font-size: 11.5px;
-  color: var(--ink-2);
-  line-height: 1.5;
-  margin-top: 4px;
-}
-.plan-codigo {
+/* A tela ocupa a ALTURA TODA e não rola: quem rola é a grade dentro dela. Numa
+   planilha, o cabeçalho de números e a fileira de ações têm de ficar parados —
+   são eles que dizem quanto falta e onde publicar. */
+.plan-tela {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--ink-3, var(--ink-2));
-  opacity: 0.75;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  padding: 16px var(--pad-x) 8px;
+}
+/* A grade DESFAZ o respiro lateral da tela — ver `.pgbody:has(> .plan-tela)`. */
+.plan-tela .grade-rolagem {
+  flex: 1;
+  min-height: 0;
+  margin: 0 calc(-1 * var(--pad-x));
+}
+/* O caminho de volta, depois da grade: sem margem própria, porque o `gap` da
+   coluna já o separa. */
+.plan-tela .crumb {
+  margin: 0;
+}
+/* "salvando…" em tinta apagada, ao lado das ações. Não é pílula nem barra de
+   progresso: uma célula grava em ~200ms, e um elemento com cor piscando a cada
+   palavra digitada seria a coisa com mais movimento na tela (regra 2). Ele
+   existe porque não há botão de salvar — sem nenhum sinal, "salvou?" vira uma
+   pergunta sem resposta. */
+.plan-salvando {
+  flex: none;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-style: italic;
 }
 
 /* A CÉLULA EDITÁVEL. Sem borda em repouso — a grade da tabela já delimita o
@@ -3992,35 +4053,6 @@ td.num {
 .cel::placeholder {
   color: var(--ink-2);
   opacity: 0.55;
-}
-
-.plan-contagem {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.plan-contagem .cel {
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-.plan-nc {
-  margin-top: 6px;
-  display: block;
-}
-.plan-imagens {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-}
-
-/* Abaixo de 1100px a grade não cabe em sete colunas sem esmagar os dois campos
-   de texto. Rola na horizontal DENTRO do card — o corpo da página nunca rola
-   de lado. */
-@media (max-width: 1100px) {
-  .plan {
-    min-width: 980px;
-  }
 }
 
 /* ============================================================================
@@ -4565,8 +4597,14 @@ td.num {
    `pages/auditoria/index.tsx` e quem decide desenhar grade é o `Recorte`, duas
    camadas abaixo — passar um booleano por elas só para zerar um padding seria
    acoplar as duas por causa de CSS. Navegador sem `:has()` mostra a grade com
-   respiro, que é degradação e não quebra. */
-.pgbody:has(> .grade-rolagem) {
+   respiro, que é degradação e não quebra.
+
+   O ALVO É `.plan-tela` E NÃO `.grade-rolagem`: a grade deixou de ser filha
+   direta quando ganhou o cabeçalho de números e a fileira de ações em cima. O
+   respiro lateral passou para dentro da `.plan-tela`, e é a grade que o desfaz
+   com margem negativa — assim o cabeçalho continua alinhado com o resto do
+   sistema e só a planilha encosta nas bordas. */
+.pgbody:has(> .plan-tela) {
   padding: 0;
   overflow: hidden;
 }
@@ -4789,10 +4827,40 @@ td.num {
 .cel-anexo:hover {
   color: var(--ink);
 }
-/* Com anexo, o clipe fica em tinta cheia — é estado, e é a única coisa que
-   distingue uma célula de imagem preenchida de uma vazia. */
+/* Com anexo, o NÚMERO fica em tinta cheia e negrito — é estado, e é a única
+   coisa que distingue uma célula de imagem preenchida de uma vazia. O número, e
+   não um clipe: "tem quantas" é a pergunta de quem revisa, e um clipe mudo
+   obrigaria a abrir a linha para saber. */
 .cel-anexo.on {
   color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.cel-anexo:disabled {
+  color: var(--ink-3);
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* A COLUNA DE AÇÃO — hoje, gerar a NC da linha reprovada.
+   Contorno e não preenchimento: ela aparece em poucas linhas e some nas outras,
+   e um botão sólido repetido a cada reprovação viraria o elemento mais pesado da
+   grade. O vermelho fica de fora de propósito — a NC não é destrutiva, é o que
+   se FAZ com a reprovação. */
+.cel-acao {
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--ink-2);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.cel-acao:hover {
+  color: var(--ink);
+  border-color: var(--ink-3);
 }
 
 /* --- ABAS de página (configuração do projeto) ---------------------------- */
@@ -4994,31 +5062,21 @@ td.num {
   font-size: 12px;
 }
 
-/* --- planilha de LOD: agrupamento por elemento -------------------------- */
-/* A linha do grupo é a coluna ELEMENT da planilha. Atravessa a tabela porque
-   não é dado de uma coluna — é o ASSUNTO das linhas abaixo dela.
-   Fundo em `--panel-2` e não em cor: é superfície, não estado semântico
-   (regra 2). É a mesma exceção que `.expand` já usava. */
-.plan-grupo th {
+/* --- a faixa de GRUPO da grade ------------------------------------------- */
+/* A coluna ELEMENT da planilha de LOD. Atravessa a tabela porque não é dado de
+   uma coluna — é o ASSUNTO das linhas abaixo dela. Fundo em `--panel-2` e não em
+   cor: é superfície, não estado semântico (regra 2). */
+.grade-grupo th {
+  position: sticky;
+  left: 0;
   background: var(--panel-2);
   border-top: 1px solid var(--line);
-  padding: 9px var(--pad-x);
+  border-bottom: 1px solid var(--line);
+  padding: 8px 10px;
   font-size: 11.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--ink);
   text-align: left;
-}
-/* Onde a informação DEVERIA estar, contra as duas colunas de onde ela FOI
-   encontrada. Em `--accent` porque é a referência que se compara — a única
-   cor da linha, e ela carrega significado (regra 2). */
-.plan-esperado {
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--ink-2);
-}
-.plan-esperado b {
-  color: var(--accent);
-  font-weight: 650;
 }
