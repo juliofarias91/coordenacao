@@ -300,6 +300,12 @@ export type Resultado = Base & {
   comentario_fornecedor: string | null
   itens_analisados: number | null
   itens_ok: number | null
+  /** A coluna LOD da planilha de espec. VEM DE `checklist_item.min_lod`, não do
+   *  resultado nem do critério: o mesmo critério pode ser exigido em LOD
+   *  diferente conforme o checklist. Só o DETALHE da auditoria a traz — a
+   *  resposta do PATCH de uma célula devolve `null`, e não faz falta, porque a
+   *  tela recarrega o detalhe inteiro depois de gravar. */
+  min_lod: string | null
   criterio: Criterio
   ocorrencias: Ocorrencia[]
   evidencias: Evidencia[]
