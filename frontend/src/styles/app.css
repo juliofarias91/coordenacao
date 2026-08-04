@@ -4472,15 +4472,64 @@ td.num {
   line-height: 1.4;
 }
 
-/* MOCK — APAGAR ESTA REGRA junto com `pages/auditoria/mockLod300.ts`.
+/* AS ABAS DE ÁREA — a fileira do Excel, sob a planilha (LOD 400 e 500).
+
+   EMBAIXO, e não no topo: é onde a planilha de origem as põe, e quem passou
+   anos naqueles arquivos procura as áreas no rodapé. Mesmo argumento que fez a
+   grade ser grade e não tabela espaçada.
+
+   `flex: none` porque a `.plan-tela` é coluna flex e a grade cresce: sem isto a
+   fileira seria espremida junto com ela ao rolar.
+
+   Rola na horizontal em vez de quebrar em duas linhas — oito áreas cabem em
+   quase toda tela, mas o dia em que não couberem, uma fileira de altura variável
+   moveria a borda inferior da grade. */
+.abas {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  overflow-x: auto;
+  padding: 5px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+/* ATIVA É TINTA, PESO E BORDA — nunca fundo (regras 1 e 6). O contorno é o que
+   dá forma de aba a um texto; um retângulo colorido faria a aba pesar mais que
+   o dado da planilha, e estar numa aba não é estado do domínio (regra 2). */
+.aba {
+  flex: none;
+  padding: 4px 11px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.aba:hover {
+  color: var(--ink);
+}
+
+.aba.on {
+  border-color: var(--line-2);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+
+/* MOCK — APAGAR ESTA REGRA junto com `pages/auditoria/mockLodArea.ts`.
+   As ABAS acima não são do mock e ficam: elas servem ao dado real.
 
    A tarja de "dados de exemplo". É o único lugar do sistema onde a cor NÃO
-   está marcando um estado do domínio (regra 2), e a exceção se justifica pelo
-   mesmo motivo da tela de login: o que ela precisa dizer é que NADA ali é
-   dado — se passar despercebida, alguém lê números inventados como se fossem
-   a auditoria. Por isso ela é translúcida como todo estado semântico, e não
-   sólida: a regra 2 permanece valendo na forma, ainda que o conteúdo aqui não
-   seja do domínio. */
+   marca um estado do domínio (regra 2), e a exceção se justifica pelo mesmo
+   motivo da tela de login: o que ela precisa dizer é que NADA ali é dado — se
+   passar despercebida, alguém lê números inventados como se fossem a auditoria.
+   Translúcida como todo estado semântico, nunca sólida. */
 .plan-mock {
   padding: 8px 12px;
   border: 1px solid color-mix(in srgb, var(--wait) 32%, transparent);

@@ -21,7 +21,7 @@
  *  cinco a próxima coluna que a planilha ganhar; o comportamento comum continua
  *  em `components/planilha.tsx`, que era de onde as duas já saíam.
  */
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import GradePlanilha, { type Coluna, type LinhaGrade } from '@/components/GradePlanilha'
@@ -34,8 +34,8 @@ import { CHECKLISTS, type Checklist } from '@/layout/nav'
 import type { ChecklistTipo, Resultado } from '@/lib/types'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
-// MOCK — apagar este import junto com `mockLod300.ts`. Ver o cabeçalho do arquivo.
-import { MOCK_LOD300_LIGADO, resultadosDeMentira } from './mockLod300'
+// MOCK — apagar este import junto com `mockLodArea.ts`. Ver o cabeçalho do arquivo.
+import { MOCK_LOD_AREA_LIGADO, areasDeMentira, resultadosDeMentira } from './mockLodArea'
 
 /** O campo de `resultado_check` que a coluna grava. Sem `campo`, a coluna é de
  *  leitura (ou calculada, ou de ação) e não grava nada. */
@@ -192,8 +192,38 @@ const LOD: ColunaAud[] = [
 /** Recorte sem entrada aqui usa as colunas BASE. Não é falta de acabamento: as
  *  seis colunas da base são as que TODA planilha de auditoria tem, e um recorte
  *  que precise de mais ganha a própria lista no dia em que o arquivo de
- *  referência dele aparecer. */
-const COLUNAS: Partial<Record<Checklist, ColunaAud[]>> = { lod300: LOD }
+ *  referência dele aparecer.
+ *
+ *  400 E 500 APONTAM PARA A MESMA LISTA DO 300, e é referência e não cópia: a
+ *  pergunta que os três fazem é a de uma auditoria de ESPEC — o parâmetro está
+ *  onde deveria? —, e a lista duplicada divergiria na primeira coluna que um
+ *  deles ganhasse.
+ *
+ *  ELES NÃO TÊM ARQUIVO DE ESPEC PRÓPRIO (04/08/2026). Os controles em `Bases/`
+ *  — `LOD400_SPECIFIC AUDIT_CONTROL.xlsx` e o do 500 — trazem uma aba por ÁREA,
+ *  mas cada uma é matriz de CONTROLE: uma linha por modelo, com round, status e
+ *  aprovação. Isso é outra coisa, e quem a desenha é a matriz do painel. A
+ *  planilha de item destes dois herda a do 300 até a espec deles aparecer; no dia
+ *  em que aparecer, é aqui que cada um ganha a própria lista. */
+const COLUNAS: Partial<Record<Checklist, ColunaAud[]>> = {
+  lod300: LOD,
+  lod400: LOD,
+  lod500: LOD,
+}
+
+/** OS RECORTES QUE SÃO POR ÁREA, e por isso ganham as abas.
+ *
+ *  Espelha `CHECKLISTS_POR_AREA` de `services/auditoria.py`, que é quem faz
+ *  `POST /auditar` abrir UMA AUDITORIA POR ÁREA da disciplina nestes dois. É
+ *  duplicação de vocabulário entre back e front, como `SENHA_MINIMA` — e pelo
+ *  mesmo motivo: a tela precisa saber, antes de qualquer requisição, se desenha
+ *  uma tabela ou várias.
+ *
+ *  A ORIGEM DAS ABAS SÃO OS ARQUIVOS: o controle de LOD 400 tem sete abas
+ *  (ADMN, COLO1..COLO4, SITE, UTLS) e o de LOD 500 tem oito (com GUAR e WASTE
+ *  SHED, sem COLO4). Os conjuntos são DIFERENTES entre os dois, e é por isso que
+ *  a lista de abas não é constante aqui: ela sai das auditorias que existem. */
+const POR_AREA: ReadonlySet<Checklist> = new Set<Checklist>(['lod400', 'lod500'])
 
 /** ONDE A FAIXA DE GRUPO EXISTE — hoje em NENHUM recorte, e isso é decisão, não
  *  esquecimento.
@@ -224,33 +254,6 @@ function colunasDe(c: Checklist): ColunaAud[] {
   return COLUNAS[c] ?? BASE
 }
 
-/** Os resultados do servidor viram linhas da grade.
- *
- *  Está aqui fora, e não dentro do componente, para que o MOCK use exatamente
- *  esta montagem. Duas montagens divergiriam na primeira coluna nova — e um mock
- *  que desenha uma tabela diferente da de verdade é pior do que mock nenhum,
- *  porque quem o olha conclui coisas erradas sobre a tela real. */
-function montarLinhas(
-  resultados: Resultado[],
-  colunas: ColunaAud[],
-  checklist: Checklist,
-  en: boolean,
-): LinhaGrade[] {
-  return resultados.map((r) => ({
-    chave: r.id,
-    grupo: AGRUPA_POR_ELEMENTO.has(checklist) ? r.criterio.categoria : null,
-    leitura: colunas.map((col) => col.le?.(r, en) ?? null),
-    // A INSTRUÇÃO é a coluna OCULTA da planilha — diz COMO conferir o item, e
-    // nunca foi para o fornecedor. Aqui ela é o `title` da célula do nome: uma
-    // coluna própria a poria na frente de quem lê o portal, e uma linha abaixo
-    // do nome dobraria a altura de todas as linhas por um texto que se consulta
-    // uma vez.
-    titulos: colunas.map((col) => (col.le === NOME ? r.criterio.instrucao : null)),
-    valores: colunas.map((col) => (col.campo ? paraATela(r, col.campo) : '')),
-    anexos: r.evidencias.length,
-  }))
-}
-
 function ehChecklist(v: string | undefined): v is Checklist {
   return !!v && (CHECKLISTS as readonly string[]).includes(v)
 }
@@ -274,42 +277,50 @@ function paraOServidor(campo: Campo, valor: string): Record<string, unknown> {
 }
 
 /* ========================================================================== *
- *  MOCK — APAGAR ESTE BLOCO INTEIRO, junto com `mockLod300.ts`.
+ *  MOCK — APAGAR ESTE BLOCO INTEIRO, junto com `mockLodArea.ts`.
  *
- *  Ele desenha a tabela do LOD 300 com linhas inventadas, para o formato poder
- *  ser visto enquanto o projeto não tem critérios semeados neste recorte. Entra
- *  SÓ onde não haveria grade nenhuma — nunca no lugar de dado real —, e entra
- *  TRAVADO: célula que não aceita digitação não convida a preencher o que não se
- *  grava, que é a objeção pela qual o antigo modo de prévia foi removido em
- *  01/08/2026.
+ *  Desenha as abas e a tabela de LOD 400 / LOD 500 com áreas e linhas
+ *  inventadas, enquanto esses recortes não têm gabarito em `gabarito.py` e uma
+ *  auditoria deles nasce sem uma linha sequer. Entra SÓ onde não haveria grade
+ *  nenhuma, e entra TRAVADO.
  *
- *  Os usos estão marcados com `MOCK` e têm a forma `mock ?? <tela de verdade>`:
- *  apagar a chamada devolve exatamente a tela que existia antes.
+ *  As abas em si (`<Abas>`, `.abas`/`.aba`) NÃO são do mock — elas servem ao
+ *  dado real e ficam. O que sai daqui é só o conteúdo inventado.
  * ========================================================================== */
-function MockLod300({ colunas }: { colunas: ColunaAud[] }) {
+function MockLodArea({ checklist }: { checklist: Checklist }) {
   const { L, lang } = useI18n()
+  const areas = areasDeMentira(checklist)
+  const [area, setArea] = useState(areas[0] ?? '')
+  const colunas = colunasDe(checklist)
+  const en = lang === 'en'
+
+  const linhas: LinhaGrade[] = resultadosDeMentira(checklist, area).map((r) => ({
+    chave: r.id,
+    grupo: AGRUPA_POR_ELEMENTO.has(checklist) ? r.criterio.categoria : null,
+    leitura: colunas.map((col) => col.le?.(r, en) ?? null),
+    titulos: colunas.map((col) => (col.le === NOME ? r.criterio.instrucao : null)),
+    valores: colunas.map((col) => (col.campo ? paraATela(r, col.campo) : '')),
+    anexos: r.evidencias.length,
+  }))
+
   return (
     <div className="plan-tela">
       <p className="plan-aviso plan-mock">
         {L(
-          'DADOS DE EXEMPLO — esta tabela existe só para mostrar o formato do LOD 300. Nada aqui vem do banco, nada aqui é gravado.',
-          'SAMPLE DATA — this table only shows the LOD 300 layout. Nothing here comes from the database, nothing here is saved.',
+          `DADOS DE EXEMPLO — as abas e a tabela existem só para mostrar o formato. Nada aqui vem do banco, nada aqui é gravado. As áreas são as do arquivo de controle; a área aberta é ${area}.`,
+          `SAMPLE DATA — the tabs and table only show the layout. Nothing here comes from the database, nothing here is saved. The areas are the ones in the control file; the open area is ${area}.`,
         )}
       </p>
-      <GradePlanilha
-        colunas={colunas}
-        dados={montarLinhas(resultadosDeMentira(), colunas, 'lod300', lang === 'en')}
-        travada
-        onSalvar={() => undefined}
-      />
+      <GradePlanilha colunas={colunas} dados={linhas} travada onSalvar={() => undefined} />
+      <Abas areas={areas} atual={area} onTrocar={setArea} />
     </div>
   )
 }
 
-/** O mock, quando ele cabe: só no LOD 300 e só com a chave ligada. */
-function mockDoLod300(checklist: Checklist) {
-  if (!MOCK_LOD300_LIGADO || checklist !== 'lod300') return null
-  return <MockLod300 colunas={colunasDe(checklist)} />
+/** O mock, quando ele cabe: só em 400/500 e só com a chave ligada. */
+function mockDeArea(checklist: Checklist) {
+  if (!MOCK_LOD_AREA_LIGADO || !POR_AREA.has(checklist)) return null
+  return <MockLodArea checklist={checklist} />
 }
 /* ===================== fim do bloco a apagar ============================== */
 
@@ -341,8 +352,8 @@ export default function Recorte() {
   // antes de escolher um mostra uma tabela que não é de nada — e a versão
   // anterior disto, a prévia do gabarito, era pior: parecia preenchível.
   if (!modeloId) {
-    // MOCK — apagar esta linha devolve o `<Vazio>` de sempre.
-    const mock = mockDoLod300(checklist)
+    // MOCK — apagar estas duas linhas devolve o `<Vazio>` de sempre.
+    const mock = mockDeArea(checklist)
     if (mock) return mock
 
     return (
@@ -359,11 +370,72 @@ export default function Recorte() {
   return <Planilha key={`${checklist}:${modeloId}`} checklist={checklist} modeloId={modeloId} />
 }
 
+/** AS ABAS DE ÁREA — a fileira de abas do Excel, embaixo da planilha.
+ *
+ *  EMBAIXO, e não no topo, porque é onde a planilha de origem as põe: quem passou
+ *  anos naqueles arquivos procura as áreas no rodapé. É o mesmo argumento que fez
+ *  a grade ser grade e não tabela espaçada (ver `GradePlanilha`).
+ *
+ *  A ABA ATIVA É TINTA E PESO, com BORDA — não fundo colorido (regras 1 e 6). O
+ *  contorno é o que dá forma de aba a um texto; a cor cheia diria "estado", e
+ *  estar numa aba não é estado do domínio. Hover escurece a tinta e só.
+ *
+ *  ELA NÃO APARECE COM UMA ÁREA SÓ: uma aba sozinha não é navegação, é rótulo —
+ *  e o nome da área já está na planilha. Some sem deixar espaço em branco. */
+function Abas({
+  areas,
+  atual,
+  onTrocar,
+}: {
+  areas: string[]
+  atual: string | null
+  onTrocar: (area: string) => void
+}) {
+  if (areas.length < 2) return null
+  return (
+    <div className="abas thin-scroll" role="tablist">
+      {areas.map((a) => (
+        <button
+          key={a}
+          type="button"
+          role="tab"
+          aria-selected={a === atual}
+          className={`aba${a === atual ? ' on' : ''}`}
+          onClick={() => onTrocar(a)}
+        >
+          {a}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 /** A PLANILHA DE UM MODELO — o que se preenche. */
 function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: string }) {
   const { L, lang } = useI18n()
-  const p = usePlanilha(modeloId, checklist as ChecklistTipo)
+  /** A ÁREA ABERTA, nos recortes que têm uma auditoria por área.
+   *
+   *  `null` = "a primeira que houver", e é o estado inicial: a lista de áreas só
+   *  se conhece depois de carregar as auditorias, então escolher aqui exigiria
+   *  adivinhar. Quem resolve é o efeito abaixo.
+   *
+   *  MORA NO COMPONENTE, não na URL. A rota já carrega recorte e modelo; pôr a
+   *  área nela obrigaria a mexer no roteador e no `TELAS` do `ProjetoContext`,
+   *  e o que se ganharia — um link para uma aba — ainda não foi pedido. Se for,
+   *  é aqui que passa a sair de `useParams`. */
+  const [area, setArea] = useState<string | null>(null)
+  const p = usePlanilha(modeloId, checklist as ChecklistTipo, POR_AREA.has(checklist) ? area : null)
   const [linhaDaImagem, setLinhaDaImagem] = useState<string | null>(null)
+
+  /** A PRIMEIRA ÁREA, assim que elas aparecem — e a volta ao chão quando a área
+   *  aberta deixa de existir (trocou-se de modelo, e o novo tem outras áreas).
+   *  Sem a segunda metade, a planilha ficaria vazia apontando para uma aba que
+   *  não está mais na fileira. */
+  useEffect(() => {
+    const primeira = p.areas[0]
+    if (primeira === undefined) return
+    if (area === null || !p.areas.includes(area)) setArea(primeira)
+  }, [p.areas, area])
 
   // O NOME DO MODELO VAI PARA O CABEÇALHO PRINCIPAL. Página não tem `h1` desde
   // 30/07 — quem nomeia a tela é o breadcrumb —, e "Auditoria LOD300" não diz o
@@ -427,7 +499,7 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
 
   if (!p.detalhe) {
     // MOCK — apagar estas duas linhas devolve a tela de sempre.
-    const mock = mockDoLod300(checklist)
+    const mock = mockDeArea(checklist)
     if (mock) return mock
 
     return (
@@ -445,10 +517,9 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
   }
 
   if (p.detalhe.resultados.length === 0) {
-    // MOCK — apagar estas duas linhas devolve a tela de sempre. Este é o caso de
-    // uma auditoria RECÉM-CRIADA num projeto sem critérios de LOD 300 semeados;
-    // é aqui que o exemplo mais aparece.
-    const mock = mockDoLod300(checklist)
+    // MOCK — apagar estas duas linhas devolve a tela de sempre. É o caso mais
+    // provável em 400/500: não há gabarito, então a auditoria nasce sem linhas.
+    const mock = mockDeArea(checklist)
     if (mock) return mock
 
     return (
@@ -466,7 +537,21 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
   }
 
   const en = lang === 'en'
-  const linhas = montarLinhas(p.detalhe.resultados, colunas, checklist, en)
+  const linhas: LinhaGrade[] = p.detalhe.resultados.map((r) => ({
+    chave: r.id,
+    // A faixa de grupo é a coluna ELEMENT, e ela só existe onde a planilha de
+    // origem agrupa sem ter coluna para o grupo — ver `AGRUPA_POR_ELEMENTO`.
+    grupo: AGRUPA_POR_ELEMENTO.has(checklist) ? r.criterio.categoria : null,
+    leitura: colunas.map((col) => col.le?.(r, en) ?? null),
+    // A INSTRUÇÃO é a coluna OCULTA da planilha — diz COMO conferir o item, e
+    // nunca foi para o fornecedor. Aqui ela é o `title` da célula do nome: uma
+    // coluna própria a poria na frente de quem lê o portal, e uma linha abaixo
+    // do nome dobraria a altura de todas as linhas por um texto que se consulta
+    // uma vez.
+    titulos: colunas.map((col) => (col.le === NOME ? r.criterio.instrucao : null)),
+    valores: colunas.map((col) => (col.campo ? paraATela(r, col.campo) : '')),
+    anexos: r.evidencias.length,
+  }))
 
   const daImagem = p.detalhe.resultados.find((r) => r.id === linhaDaImagem)
 
@@ -509,6 +594,10 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
         onImagem={setLinhaDaImagem}
         onAcao={gerarNc}
       />
+
+      {/* DEPOIS DA GRADE, como no Excel. Só aparece nos recortes por área e só
+          com mais de uma — ver `Abas`. */}
+      <Abas areas={p.areas} atual={area} onTrocar={setArea} />
 
       <ImagemDaLinha
         aberta={!!daImagem}
