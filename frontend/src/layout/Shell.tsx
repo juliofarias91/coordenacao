@@ -209,9 +209,9 @@ export default function Shell() {
    *  continua sendo página com abas. */
   const emConta = casa('/configuracoes', pathname)
 
-  /** O último pedaço do breadcrumb, publicado pela página — hoje, o código do
-   *  modelo em auditoria. Ver `layout/migalha.tsx`. */
-  const [migalha, setMigalha] = useState<string | null>(null)
+  /** Os últimos pedaços do breadcrumb, publicados pela página — hoje,
+   *  `disciplina › modelo` na auditoria. Ver `layout/migalha.tsx`. */
+  const [migalha, setMigalha] = useState<string[] | null>(null)
   const [recolhida, setRecolhida] = useState(leRecolhida)
   const [gruposOff, setGruposOff] = useState<Record<string, boolean>>({})
   const [ordem, setOrdem] = useState<GrupoNav[] | null>(() => leOrdem(usuario?.login))
@@ -477,14 +477,21 @@ export default function Shell() {
                 perde o peso: quem está na planilha do CPQ11-ARCH-R22 está nele,
                 e "Auditoria geral" vira o caminho até ali. */}
             {atual && (
-              <span className={`tb-crumb${migalha ? '' : ' atual'}`}>{L(atual.pt, atual.en)}</span>
+              <span className={`tb-crumb${migalha?.length ? '' : ' atual'}`}>
+                {L(atual.pt, atual.en)}
+              </span>
             )}
-            {migalha && (
-              <>
+            {/* SÓ O ÚLTIMO É `atual`. Os do meio (a disciplina) são caminho, não
+                destino — dar-lhes a tinta cheia faria a barra ter dois "onde eu
+                estou", que é o que a regra 1 do sistema visual evita. */}
+            {migalha?.map((trecho, i) => (
+              <span key={trecho}>
                 <span className="sep">/</span>
-                <span className="tb-crumb atual">{migalha}</span>
-              </>
-            )}
+                <span className={`tb-crumb${i === migalha.length - 1 ? ' atual' : ''}`}>
+                  {trecho}
+                </span>
+              </span>
+            ))}
           </div>
 
           <div className="tb-acoes">

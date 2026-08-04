@@ -29,7 +29,6 @@ import ImagemDaLinha from '@/components/ImagemDaLinha'
 import { usePlanilha } from '@/components/planilha'
 import { Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
-import { useMigalha } from '@/layout/migalha'
 import { CHECKLISTS, type Checklist } from '@/layout/nav'
 import type { ChecklistTipo, Resultado } from '@/lib/types'
 import { useProjeto } from '@/projeto/ProjetoContext'
@@ -365,10 +364,13 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
   const p = usePlanilha(modeloId, checklist as ChecklistTipo)
   const [linhaDaImagem, setLinhaDaImagem] = useState<string | null>(null)
 
-  // O NOME DO MODELO VAI PARA O CABEÇALHO PRINCIPAL. Página não tem `h1` desde
-  // 30/07 — quem nomeia a tela é o breadcrumb —, e "Auditoria LOD300" não diz o
-  // que se está auditando. Ver `layout/migalha.tsx`.
-  useMigalha(p.modelo?.codigo)
+  // O NOME DO MODELO CONTINUA INDO PARA O BREADCRUMB — página não tem `h1`
+  // desde 30/07 e "Auditoria LOD300" não diz o que se está auditando —, mas
+  // QUEM O PUBLICA PASSOU A SER `auditoria/index.tsx` (04/08/2026), junto com a
+  // disciplina. O motivo é que a disciplina não existe aqui: `p.modelo` vem de
+  // `GET /modelos/{id}`, que devolve `disciplina_id` e não o nome. Publicar dos
+  // dois lugares faria o último a renderizar vencer, e o vencedor mudaria
+  // conforme a ordem de chegada das duas requisições.
 
   const colunas = colunasDe(checklist)
 
@@ -485,19 +487,37 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
           planilha. O percentual, que era a métrica útil, está na coluna
           APROVAÇÃO (%) linha a linha.
 
-          O que fica é o que a tela não consegue dizer sozinha: que ninguém
-          precisa salvar, ou que este round já foi publicado e por isso nada
-          aceita edição. Sem essa segunda frase, a planilha travada seria uma
-          tela que ignora o que se digita sem explicar por quê. */}
-      <p className="plan-aviso">
-        {p.publicada
-          ? L(
+          O que fica é o que a tela não consegue dizer sozinha: que este round
+          já foi publicado e por isso nada aceita edição. Sem essa frase, a
+          planilha travada seria uma tela que ignora o que se digita sem
+          explicar por quê.
+
+          A FRASE "cada célula salva sozinha" SAIU (04/08/2026, a pedido). Ela
+          era permanente e ocupava uma faixa de largura cheia acima da linha 1
+          para ensinar, uma vez, algo que a própria planilha demonstra na
+          primeira célula preenchida — e depois disso seguia lá, todo dia, na
+          tela em que mais se rola. O "salvando…" FICA e passa a ser o único
+          ocupante da faixa: ele responde "salvou?" no instante em que a
+          pergunta existe, que é o trabalho que a frase fazia mal por
+          antecipação.
+
+          A FAIXA SÓ EXISTE QUANDO TEM O QUE DIZER. Renderizá-la vazia deixaria
+          o buraco que a remoção veio tirar. */}
+      {(p.publicada || p.ocupado) && (
+        <p className="plan-aviso">
+          {p.publicada &&
+            L(
               'Round publicado — a planilha ficou somente leitura. Uma versão nova reabre a auditoria em outro round.',
               'Round published — the sheet is read-only. A new version reopens the audit in another round.',
-            )
-          : L('Cada célula salva sozinha — não há botão de salvar.', 'Every cell saves on its own — there is no save button.')}
-        {p.ocupado && <span className="plan-salvando"> · {L('salvando…', 'saving…')}</span>}
-      </p>
+            )}
+          {p.ocupado && (
+            <span className="plan-salvando">
+              {p.publicada ? ' · ' : ''}
+              {L('salvando…', 'saving…')}
+            </span>
+          )}
+        </p>
+      )}
 
       <Erro mensagem={p.erro} />
 
