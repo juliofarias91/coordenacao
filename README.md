@@ -137,6 +137,11 @@ código.
 - **PostgreSQL 16** — via Docker Desktop (recomendado) ou instalado localmente.
 - Redis e um storage S3-compatível (MinIO) — necessários a partir da Fase 2; o compose já os sobe.
 
+> **Máquina Windows sem direito de administrador?** Docker Desktop e o
+> instalador do Postgres exigem elevação. O caminho com binários portáteis, e a
+> armadilha do **caminho com acento** que quebra o `initdb` em qualquer máquina
+> brasileira, estão em [`docs/SETUP_WINDOWS.md`](docs/SETUP_WINDOWS.md).
+
 ---
 
 ## Como rodar
