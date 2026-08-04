@@ -34,6 +34,9 @@ import { CHECKLISTS, type Checklist } from '@/layout/nav'
 import type { ChecklistTipo, Resultado } from '@/lib/types'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
+// MOCK — apagar este import junto com `mockLod300.ts`. Ver o cabeçalho do arquivo.
+import { MOCK_LOD300_LIGADO, resultadosDeMentira } from './mockLod300'
+
 /** O campo de `resultado_check` que a coluna grava. Sem `campo`, a coluna é de
  *  leitura (ou calculada, ou de ação) e não grava nada. */
 type Campo = 'status' | 'comentario' | 'direcao' | 'parametro_encontrado' | 'comentario_fornecedor'
@@ -101,27 +104,67 @@ const BASE: ColunaAud[] = [
   },
 ]
 
-/** O LOD 300 é ELEMENTO × INFORMAÇÃO, e por isso tem três colunas a mais.
+/** O LOD 300 — AS DEZ COLUNAS DA PLANILHA DE ESPEC, nesta ordem (04/08/2026, a
+ *  pedido).
  *
- *  `parametro_esperado` é onde a informação DEVERIA estar (vem do critério, e
- *  não se digita); `parametro_encontrado` é onde ela FOI achada (migration
- *  0009). A comparação entre os dois é a única pergunta que a planilha faz — por
- *  isso ficam lado a lado. `comentario_fornecedor` tem outro AUTOR: o guia do
- *  arquivo diz "SUPPLIERS COMMENTS — permissão de edição: FORNECEDORES".
+ *  A ordem é a do arquivo `Spec Audit LOD300_<DISC>`: começa pela IMAGEM, depois
+ *  diz de QUE elemento se fala, em que LOD, e só então a informação. As três
+ *  primeiras são o endereço da linha; o resto é a auditoria dela.
  *
- *  A coluna ELEMENT não é coluna: ela agrupa, e vira a faixa que atravessa a
- *  tabela (`grupo`, em `LinhaGrade`). */
+ *  DE ONDE SAI CADA UMA — e note que metade não é do resultado:
+ *
+ *    IMAGE                 evidências da linha (a grade conta e abre o painel)
+ *    ELEMENT               `criterio.categoria`
+ *    LOD                   `resultado.min_lod`, que vem de `checklist_item`
+ *    INFORMATION           `criterio.nome_pt/_en`
+ *    BIM FORUM DESCRIPTION `criterio.criterio_aceitacao`
+ *    REVIT PARAMETER       `criterio.parametro_esperado` — onde DEVERIA estar
+ *    PARAMETER             `resultado.parametro_encontrado` — onde FOI achada
+ *    VERIFICATION          `resultado.status`
+ *    COMMENTS              `resultado.comentario`
+ *    SUPPLIERS COMMENTS    `resultado.comentario_fornecedor`
+ *
+ *  As seis primeiras são LEITURA: vêm do gabarito e não se respondem. As quatro
+ *  últimas são o que se preenche. A comparação entre REVIT PARAMETER e PARAMETER
+ *  é a pergunta que a planilha faz, e por isso elas ficam vizinhas.
+ *
+ *  `SUPPLIERS COMMENTS` tem outro AUTOR: o guia do arquivo diz "permissão de
+ *  edição: FORNECEDORES". Aqui ela é editável porque ainda não há tela de
+ *  fornecedor — quando houver, é esta coluna que muda de dono.
+ *
+ *  SAÍRAM TRÊS COLUNAS que o recorte tinha, e a perda não é só visual:
+ *
+ *    - `DIRECTION` — a orientação ao fornecedor. Ela continua no banco
+ *      (migration 0008) e o campo segue existindo; o que sumiu foi o lugar de
+ *      escrevê-la NESTE recorte.
+ *    - `APPROVED (%)` — era conta, não resposta. A aprovação continua sendo
+ *      calculada no servidor e aparece no painel e nos KPIs.
+ *    - `NC` — o botão que abria a não-conformidade a partir da linha reprovada.
+ *      Sem ele, a NC de um item de LOD 300 passa a nascer pela tela de
+ *      não-conformidades, não daqui. Como a NC herdava `direcao` como
+ *      recomendação e `direcao` também saiu, as duas perdas são a mesma.
+ *
+ *  Os outros recortes seguem com as dez colunas de `BASE`, incluindo as três. */
 const LOD: ColunaAud[] = [
-  { pt: 'INFORMAÇÃO', en: 'INFORMATION', largura: 300, le: NOME },
+  { pt: 'IMAGEM', en: 'IMAGE', largura: 72, tipo: 'imagem' },
+  { pt: 'ELEMENTO', en: 'ELEMENT', largura: 160, le: (r) => r.criterio.categoria },
+  { pt: 'LOD', en: 'LOD', largura: 64, le: (r) => r.min_lod },
+  { pt: 'INFORMAÇÃO', en: 'INFORMATION', largura: 240, le: NOME },
   {
-    pt: 'PARÂMETRO ESPERADO',
-    en: 'EXPECTED PARAMETER',
+    pt: 'DESCRIÇÃO BIM FORUM',
+    en: 'BIM FORUM DESCRIPTION',
+    largura: 340,
+    le: (r) => r.criterio.criterio_aceitacao,
+  },
+  {
+    pt: 'PARÂMETRO REVIT',
+    en: 'REVIT PARAMETER',
     largura: 170,
     le: (r) => r.criterio.parametro_esperado,
   },
   {
-    pt: 'PARÂMETRO ENCONTRADO',
-    en: 'FOUND PARAMETER',
+    pt: 'PARÂMETRO',
+    en: 'PARAMETER',
     largura: 170,
     tipo: 'texto',
     campo: 'parametro_encontrado',
@@ -134,26 +177,15 @@ const LOD: ColunaAud[] = [
     opcoes: VERIFICACAO,
     campo: 'status',
   },
-  { pt: 'COMENTÁRIO', en: 'COMENTARY', largura: 240, tipo: 'texto', campo: 'comentario' },
+  // COMMENTS, e não COMENTARY: aquela grafia é a do arquivo da auditoria GERAL,
+  // que `BASE` continua usando. Aqui o rótulo é o que foi pedido para o LOD 300.
+  { pt: 'COMENTÁRIOS', en: 'COMMENTS', largura: 260, tipo: 'texto', campo: 'comentario' },
   {
     pt: 'DO FORNECEDOR',
-    en: 'SUPPLIER’S',
-    largura: 220,
+    en: 'SUPPLIERS COMMENTS',
+    largura: 240,
     tipo: 'texto',
     campo: 'comentario_fornecedor',
-  },
-  { pt: 'IMAGEM', en: 'IMAGE', largura: 72, tipo: 'imagem' },
-  { pt: 'ORIENTAÇÃO', en: 'DIRECTION', largura: 240, tipo: 'texto', campo: 'direcao' },
-  { pt: 'APROVAÇÃO (%)', en: 'APPROVED (%)', largura: 116, tipo: 'calculado' },
-  {
-    pt: 'NC',
-    en: 'NC',
-    largura: 64,
-    tipo: 'acao',
-    dica: [
-      'Cria a não-conformidade com estas duas frases: comentário → descrição, orientação → recomendação.',
-      'Creates the non-conformity from these two sentences: comment → description, direction → recommendation.',
-    ],
   },
 ]
 
@@ -163,23 +195,60 @@ const LOD: ColunaAud[] = [
  *  referência dele aparecer. */
 const COLUNAS: Partial<Record<Checklist, ColunaAud[]>> = { lod300: LOD }
 
-/** ONDE A FAIXA DE GRUPO EXISTE — e ela existe onde a PLANILHA DE ORIGEM tem a
- *  coluna ELEMENT.
+/** ONDE A FAIXA DE GRUPO EXISTE — hoje em NENHUM recorte, e isso é decisão, não
+ *  esquecimento.
  *
- *  No LOD 300 o agrupamento é a estrutura do arquivo: 60 linhas em 4 categorias
- *  de elemento, e "Level" na laje não é o mesmo critério que "Level" no pilar.
- *  Sem a faixa, a planilha vira uma lista de nomes repetidos sem dizer de que
- *  elemento se fala.
+ *  A faixa é a coluna ELEMENT desenhada como cabeçalho que atravessa a tabela.
+ *  Ela existia no LOD 300 porque lá o elemento era a estrutura do arquivo e não
+ *  havia coluna para ele — "Level" na laje não é o mesmo critério que "Level" no
+ *  pilar, e sem a faixa a planilha virava uma lista de nomes repetidos sem dizer
+ *  de que elemento se falava.
  *
- *  NA AUDITORIA GERAL NÃO (01/08/2026, a pedido). Lá `criterio.categoria` é
- *  seção do checklist ("ASPECTOS GERAIS", "PARÂMETROS"), não elemento — e o
- *  arquivo de referência tem os 17 itens CHAPADOS, sem seção nenhuma. A faixa
- *  acrescentava três linhas de cabeçalho a uma planilha de dezessete, dividindo
- *  em três o que se lê de uma vez. */
-const AGRUPA_POR_ELEMENTO: ReadonlySet<Checklist> = new Set<Checklist>(['lod300'])
+ *  EM 04/08/2026 ELEMENT VIROU COLUNA, a pedido, e as duas coisas passaram a
+ *  mostrar o mesmo dado: a faixa escrevendo "Floor" acima de seis linhas que já
+ *  trazem "Floor" na segunda coluna. Repetir o dado é o de menos; o problema é
+ *  que são duas fontes para a mesma informação, e no dia em que uma mudar de
+ *  origem a outra continua desenhando a antiga.
+ *
+ *  Na auditoria geral nunca houve faixa (01/08/2026): lá `criterio.categoria` é
+ *  seção do checklist ("ASPECTOS GERAIS", "PARÂMETROS"), não elemento, e o
+ *  arquivo de referência tem os 17 itens chapados.
+ *
+ *  O MECANISMO CONTINUA EM `GradePlanilha` e este conjunto continua aqui, vazio,
+ *  pelo mesmo motivo de `CHECKLISTS_SEM_BANCO` em `nav.ts`: o recorte cuja
+ *  planilha de origem AGRUPE e não tenha coluna própria para o grupo entra aqui,
+ *  numa linha. */
+const AGRUPA_POR_ELEMENTO: ReadonlySet<Checklist> = new Set<Checklist>()
 
 function colunasDe(c: Checklist): ColunaAud[] {
   return COLUNAS[c] ?? BASE
+}
+
+/** Os resultados do servidor viram linhas da grade.
+ *
+ *  Está aqui fora, e não dentro do componente, para que o MOCK use exatamente
+ *  esta montagem. Duas montagens divergiriam na primeira coluna nova — e um mock
+ *  que desenha uma tabela diferente da de verdade é pior do que mock nenhum,
+ *  porque quem o olha conclui coisas erradas sobre a tela real. */
+function montarLinhas(
+  resultados: Resultado[],
+  colunas: ColunaAud[],
+  checklist: Checklist,
+  en: boolean,
+): LinhaGrade[] {
+  return resultados.map((r) => ({
+    chave: r.id,
+    grupo: AGRUPA_POR_ELEMENTO.has(checklist) ? r.criterio.categoria : null,
+    leitura: colunas.map((col) => col.le?.(r, en) ?? null),
+    // A INSTRUÇÃO é a coluna OCULTA da planilha — diz COMO conferir o item, e
+    // nunca foi para o fornecedor. Aqui ela é o `title` da célula do nome: uma
+    // coluna própria a poria na frente de quem lê o portal, e uma linha abaixo
+    // do nome dobraria a altura de todas as linhas por um texto que se consulta
+    // uma vez.
+    titulos: colunas.map((col) => (col.le === NOME ? r.criterio.instrucao : null)),
+    valores: colunas.map((col) => (col.campo ? paraATela(r, col.campo) : '')),
+    anexos: r.evidencias.length,
+  }))
 }
 
 function ehChecklist(v: string | undefined): v is Checklist {
@@ -203,6 +272,46 @@ function paraOServidor(campo: Campo, valor: string): Record<string, unknown> {
   if (campo === 'status') return { status: valor === '' ? 'pendente' : valor }
   return { [campo]: valor.trim() === '' ? null : valor }
 }
+
+/* ========================================================================== *
+ *  MOCK — APAGAR ESTE BLOCO INTEIRO, junto com `mockLod300.ts`.
+ *
+ *  Ele desenha a tabela do LOD 300 com linhas inventadas, para o formato poder
+ *  ser visto enquanto o projeto não tem critérios semeados neste recorte. Entra
+ *  SÓ onde não haveria grade nenhuma — nunca no lugar de dado real —, e entra
+ *  TRAVADO: célula que não aceita digitação não convida a preencher o que não se
+ *  grava, que é a objeção pela qual o antigo modo de prévia foi removido em
+ *  01/08/2026.
+ *
+ *  Os usos estão marcados com `MOCK` e têm a forma `mock ?? <tela de verdade>`:
+ *  apagar a chamada devolve exatamente a tela que existia antes.
+ * ========================================================================== */
+function MockLod300({ colunas }: { colunas: ColunaAud[] }) {
+  const { L, lang } = useI18n()
+  return (
+    <div className="plan-tela">
+      <p className="plan-aviso plan-mock">
+        {L(
+          'DADOS DE EXEMPLO — esta tabela existe só para mostrar o formato do LOD 300. Nada aqui vem do banco, nada aqui é gravado.',
+          'SAMPLE DATA — this table only shows the LOD 300 layout. Nothing here comes from the database, nothing here is saved.',
+        )}
+      </p>
+      <GradePlanilha
+        colunas={colunas}
+        dados={montarLinhas(resultadosDeMentira(), colunas, 'lod300', lang === 'en')}
+        travada
+        onSalvar={() => undefined}
+      />
+    </div>
+  )
+}
+
+/** O mock, quando ele cabe: só no LOD 300 e só com a chave ligada. */
+function mockDoLod300(checklist: Checklist) {
+  if (!MOCK_LOD300_LIGADO || checklist !== 'lod300') return null
+  return <MockLod300 colunas={colunasDe(checklist)} />
+}
+/* ===================== fim do bloco a apagar ============================== */
 
 export default function Recorte() {
   const { L } = useI18n()
@@ -232,6 +341,10 @@ export default function Recorte() {
   // antes de escolher um mostra uma tabela que não é de nada — e a versão
   // anterior disto, a prévia do gabarito, era pior: parecia preenchível.
   if (!modeloId) {
+    // MOCK — apagar esta linha devolve o `<Vazio>` de sempre.
+    const mock = mockDoLod300(checklist)
+    if (mock) return mock
+
     return (
       <Vazio
         titulo={L('Escolha um modelo', 'Pick a model')}
@@ -313,6 +426,10 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
   }
 
   if (!p.detalhe) {
+    // MOCK — apagar estas duas linhas devolve a tela de sempre.
+    const mock = mockDoLod300(checklist)
+    if (mock) return mock
+
     return (
       <>
         <Erro mensagem={p.erro} />
@@ -328,6 +445,12 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
   }
 
   if (p.detalhe.resultados.length === 0) {
+    // MOCK — apagar estas duas linhas devolve a tela de sempre. Este é o caso de
+    // uma auditoria RECÉM-CRIADA num projeto sem critérios de LOD 300 semeados;
+    // é aqui que o exemplo mais aparece.
+    const mock = mockDoLod300(checklist)
+    if (mock) return mock
+
     return (
       <>
         <Erro mensagem={p.erro} />
@@ -343,21 +466,7 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
   }
 
   const en = lang === 'en'
-  const linhas: LinhaGrade[] = p.detalhe.resultados.map((r) => ({
-    chave: r.id,
-    // A faixa de grupo é a coluna ELEMENT, e ela só existe onde a planilha de
-    // origem tem essa coluna — ver `AGRUPA_POR_ELEMENTO`.
-    grupo: AGRUPA_POR_ELEMENTO.has(checklist) ? r.criterio.categoria : null,
-    leitura: colunas.map((col) => col.le?.(r, en) ?? null),
-    // A INSTRUÇÃO é a coluna OCULTA da planilha — diz COMO conferir o item, e
-    // nunca foi para o fornecedor. Aqui ela é o `title` da célula do nome: uma
-    // coluna própria a poria na frente de quem lê o portal, e uma linha abaixo
-    // do nome dobraria a altura das 17 linhas por um texto que se consulta uma
-    // vez.
-    titulos: colunas.map((col) => (col.le === NOME ? r.criterio.instrucao : null)),
-    valores: colunas.map((col) => (col.campo ? paraATela(r, col.campo) : '')),
-    anexos: r.evidencias.length,
-  }))
+  const linhas = montarLinhas(p.detalhe.resultados, colunas, checklist, en)
 
   const daImagem = p.detalhe.resultados.find((r) => r.id === linhaDaImagem)
 

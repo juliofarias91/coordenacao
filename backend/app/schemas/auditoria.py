@@ -100,6 +100,14 @@ class ResultadoOut(Identificado):
     comentario_fornecedor: str | None
     itens_analisados: int | None
     itens_ok: int | None
+    # A coluna LOD da planilha de espec. ELA NÃO É DO RESULTADO nem do critério:
+    # mora em `checklist_item.min_lod`, porque o MESMO critério pode ser exigido
+    # em LOD diferente conforme o checklist — é para isso que a tabela de junção
+    # existe (ver `models/criterios.py`). Vem preenchida no detalhe da auditoria,
+    # que é quem faz o join; no PATCH de uma célula ela volta nula, e não faz
+    # falta: a tela recarrega o detalhe inteiro depois de gravar, e é de lá que a
+    # grade se redesenha (ver `salvar`, em `components/planilha.tsx`).
+    min_lod: str | None = None
     criterio: CriterioOut
     ocorrencias: list[OcorrenciaOut] = Field(default_factory=list)
     evidencias: list[EvidenciaOut] = Field(default_factory=list)
