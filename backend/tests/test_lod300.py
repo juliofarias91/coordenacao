@@ -219,3 +219,39 @@ def test_colunas_da_planilha_de_lod(
     linha = next(r for r in depois if r["id"] == resultado["id"])
     assert linha["comentario"] == "parâmetro em português"
     assert linha["comentario_fornecedor"].startswith("A informação")
+
+
+# ------------------------------------------------------------- a coluna LOD
+@requer_banco
+def test_a_coluna_lod_chega_ao_detalhe(
+    autenticado: TestClient, auditavel: CenarioAuditavel, db: Session
+) -> None:
+    """A coluna LOD da planilha vem de `checklist_item`, e tem de CHEGAR à tela.
+
+    Ela não é do resultado nem do critério: o mesmo critério pode ser exigido em
+    LOD diferente conforme o checklist, e é para isso que a tabela de junção
+    existe. Antes de 04/08/2026 o `ResultadoOut` não a expunha — o dado estava no
+    banco e a planilha não tinha como desenhá-lo.
+
+    O teste existe porque a ligação é um JOIN dentro de `_carregar_detalhe`, e um
+    JOIN é exatamente o tipo de coisa que se perde numa refatoração sem que nada
+    quebre: a coluna volta a sair vazia e a tela continua montando.
+    """
+    assert _aplicar(autenticado, auditavel.projeto.id).status_code == 200
+
+    # A disciplina do cenário declara só a geral; sem o LOD 300 aqui não há o que
+    # abrir. É cadastro do cenário, não regra sob teste.
+    auditavel.disciplina.checklists = [ChecklistTipo.GERAL, ChecklistTipo.LOD300]
+    db.flush()
+
+    aberta = autenticado.post(
+        f"{API}/versoes/{auditavel.versao.id}/auditar", json={"checklist": "lod300"}
+    )
+    assert aberta.status_code in (200, 201), aberta.text
+    corpo = aberta.json()
+    auditoria_id = corpo[0]["id"] if isinstance(corpo, list) else corpo["id"]
+
+    resultados = autenticado.get(f"{API}/auditorias/{auditoria_id}").json()["resultados"]
+    assert resultados, "a auditoria de LOD 300 abriu sem linhas"
+    # `min_lod` do gabarito de LOD é "300" em todas as 60 linhas.
+    assert {r["min_lod"] for r in resultados} == {"300"}
