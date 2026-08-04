@@ -399,10 +399,26 @@ def aplicar(
                     checklist=checklist,
                     criterio_id=criterio.id,
                     ordem=ordem,
+                    # `min_lod` VINHA SENDO PERDIDO AQUI (corrigido em
+                    # 04/08/2026). O gabarito de LOD já o calculava — é o "300"
+                    # de `CHECKLISTS_POR_DISCIPLINA`, gravado em cada
+                    # `ItemGabarito` por `_lod_para` —, a coluna existe em
+                    # `checklist_item` desde a migration 0001, e o valor morria
+                    # no caminho entre os dois. Ninguém notou porque nenhuma tela
+                    # mostrava a coluna LOD; quando ela entrou na planilha do LOD
+                    # 300, saiu vazia em todas as 60 linhas.
+                    min_lod=item.min_lod,
                 )
             )
             resumo.itens_criados.append(item.codigo)
         else:
+            # O VÍNCULO QUE JÁ EXISTE NÃO É TOCADO, nem para preencher o
+            # `min_lod` que falta. É a mesma regra de `aplicar()` inteiro: achar
+            # o item é sinal de que o projeto já o tem, possivelmente ajustado à
+            # mão, e o gabarito ACRESCENTA em vez de sobrescrever. Projeto que
+            # semeou o LOD 300 antes desta correção fica com a coluna vazia até
+            # alguém preenchê-la — o que é preferível a uma "melhoria" que passa
+            # por cima de ajuste feito à mão sem avisar.
             resumo.itens_existentes.append(item.codigo)
 
     db.flush()

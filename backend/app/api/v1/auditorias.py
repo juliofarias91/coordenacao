@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
 from app.models import (
     Auditoria,
+    ChecklistItem,
     ComentarioFornecedor,
     Criterio,
     Disciplina,
@@ -87,20 +88,41 @@ def _exigir_round_aberto(db: Session, auditoria_id: uuid.UUID) -> Auditoria:
 
 
 def _carregar_detalhe(db: Session, auditoria: Auditoria) -> AuditoriaDetalhe:
-    resultados = db.execute(
-        select(ResultadoCheck)
+    """O detalhe com os resultados na ordem da planilha impressa.
+
+    O JOIN COM `checklist_item` É POR CAUSA DA COLUNA LOD, e ele é EXTERNO de
+    propósito: a linha do resultado existe mesmo quando o item de checklist que
+    a originou foi removido do projeto depois de a auditoria abrir. Com um join
+    interno, tirar um item da biblioteca faria as linhas já respondidas sumirem
+    da planilha — apagar da TELA o que continua no banco é a pior forma de
+    perder trabalho, porque não parece perda.
+
+    A ordenação continua saindo de `criterio`, e não do `ordem` do item: os
+    resultados têm de vir na ordem da planilha de origem, que é o que a faixa de
+    ELEMENT pressupõe ao comparar cada linha com a anterior.
+    """
+    linhas = db.execute(
+        select(ResultadoCheck, ChecklistItem.min_lod)
         .options(
             selectinload(ResultadoCheck.criterio),
             selectinload(ResultadoCheck.ocorrencias),
             selectinload(ResultadoCheck.evidencias),
         )
         .join(Criterio, Criterio.id == ResultadoCheck.criterio_id)
+        .outerjoin(
+            ChecklistItem,
+            (ChecklistItem.criterio_id == ResultadoCheck.criterio_id)
+            & (ChecklistItem.checklist == auditoria.checklist),
+        )
         .where(ResultadoCheck.auditoria_id == auditoria.id)
         .order_by(Criterio.categoria.nulls_last(), Criterio.codigo)
-    ).scalars()
+    ).all()
 
     detalhe = AuditoriaDetalhe.model_validate(auditoria)
-    detalhe.resultados = [ResultadoOut.model_validate(r) for r in resultados]
+    detalhe.resultados = [
+        ResultadoOut.model_validate(r).model_copy(update={"min_lod": min_lod})
+        for r, min_lod in linhas
+    ]
     detalhe.pendentes = itens_pendentes(db, auditoria)
     return detalhe
 
