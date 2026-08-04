@@ -4003,7 +4003,15 @@ td.num {
   gap: 8px;
   height: 100%;
   min-height: 0;
-  padding: 12px var(--pad-x) 8px;
+  /* SEM RESPIRO NO TOPO (04/08/2026, a pedido). O respiro passou a pertencer ao
+     `.plan-aviso`, que desde a mesma data só existe quando há o que dizer —
+     round publicado ou "salvando…". Mantido aqui, ele deixava uma faixa vazia
+     entre a borda do cabeçalho e a linha 1 nos 99% do tempo em que não há
+     aviso: um vão sem conteúdo logo acima da grade, que é a razão de existir
+     da tela. Encostar a planilha no cabeçalho é o mesmo princípio do
+     `.pgbody:has(> .plan-tela)` acima — superfície de trabalho encosta nas
+     bordas. */
+  padding: 0 var(--pad-x) 8px;
 }
 /* A grade DESFAZ o respiro lateral da tela — ver `.pgbody:has(> .plan-tela)`. */
 .plan-tela .grade-rolagem {
@@ -4024,6 +4032,10 @@ td.num {
 .plan-aviso {
   flex: none;
   margin: 0;
+  /* O RESPIRO DO TOPO É DELE, não da tela. Assim a grade encosta no cabeçalho
+     quando não há aviso, e o aviso — quando existe — não nasce colado na
+     borda. */
+  padding-top: 10px;
   color: var(--ink-3);
   font-size: 11.5px;
   line-height: 1.4;
@@ -4148,6 +4160,17 @@ td.num {
   border-bottom: 1px solid var(--line);
   font-size: 13.5px;
   font-weight: 700;
+}
+/* A FORMA DO BREADCRUMB, NÃO O TAMANHO DELE (04/08/2026, a pedido).
+   O cabeçalho da auditoria monta `recorte / modelo` com as classes da topbar
+   (`.tb-crumbs`, `.tb-crumb`, `.sep`), para o separador, os pesos e os tons
+   serem os mesmos e não divergirem. O que NÃO vem junto é o `font-size: 15px`
+   de lá: a régua do esqueleto põe a topbar em 56px e o header de seção em 48px
+   de propósito — chrome externo acima de header de ferramenta —, e igualar a
+   tipografia apagaria essa hierarquia justamente onde os dois se empilham. */
+.pghead .tb-crumbs {
+  font-size: inherit;
+  min-width: 0;
 }
 .pgside .pghead {
   padding: 0 var(--pad-x) 0 var(--pad-x);

@@ -31,6 +31,7 @@ import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import NovaAuditoria from '@/components/NovaAuditoria'
 import { useI18n } from '@/i18n'
+import { useMigalha } from '@/layout/migalha'
 import { CHECKLISTS, ROTULO_CHECKLIST } from '@/layout/nav'
 import { api } from '@/lib/api'
 import type { AuditoriaDaLista } from '@/lib/types'
@@ -165,6 +166,26 @@ export default function Auditoria() {
     })
   }, [linhas, atual, busca])
 
+  /** A linha do modelo aberto. Sai de `linhas`, e NÃO de `doRecorte`: aquela é
+   *  filtrada pela busca, e digitar no campo faria o nome do modelo aberto
+   *  sumir do cabeçalho e do breadcrumb sem que se tenha saído dele. */
+  const aberto = useMemo(
+    () => (modeloId ? linhas.find((l) => l.modelo_id === modeloId) : undefined),
+    [linhas, modeloId],
+  )
+
+  // O BREADCRUMB TERMINA EM `disciplina › modelo` (04/08/2026, a pedido).
+  //
+  // QUEM PUBLICA É ESTA TELA, e não a planilha, porque a DISCIPLINA só existe
+  // aqui: `GET /modelos/{id}` — o que o `Recorte` busca — devolve
+  // `disciplina_id`, não o nome dela. A lista que este painel já carregou traz
+  // `disciplina_nome` resolvido, então o nome sai de dado que já está em
+  // memória, sem uma requisição a mais só para escrever uma palavra na barra.
+  //
+  // O HOOK VEM ANTES DO `return` de carregamento logo abaixo. Depois dele, ele
+  // deixaria de rodar quando `projeto` é nulo e violaria a ordem dos hooks.
+  useMigalha([aberto?.disciplina_nome, aberto?.modelo_codigo])
+
   if (!projeto) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
 
   const titulo = atual ? L(...ROTULO_CHECKLIST[atual]) : L('Auditoria', 'Audit')
@@ -278,7 +299,23 @@ export default function Auditoria() {
           >
             <Ico path={PATH_PAINEL} />
           </button>
-          <span>{titulo}</span>
+          {/* UM NOME SÓ, E É O DO QUE SE ESTÁ VENDO (04/08/2026, a pedido).
+              Com modelo aberto o cabeçalho é o CÓDIGO DELE; sem modelo, é o
+              nome do recorte.
+
+              O recorte não se perde ao sair daqui: ele está no breadcrumb da
+              topbar, poucos pixels acima e na mesma margem, junto da disciplina.
+              Mantê-lo também aqui escrevia `Auditoria geral / CPQ04-ARCH-NONE-
+              DATA` a quatro pixels de tamanho do `Geral / Architecture /
+              CPQ04-ARCH-NONE-DATA` logo acima — a mesma informação duas vezes na
+              vertical, e o modelo repetido em ambas. É a razão que tirou o `h1`
+              das vinte telas em 30/07: quem nomeia o caminho é o breadcrumb.
+
+              A classe do breadcrumb fica, e não é enfeite: é o que dá ao nome o
+              mesmo peso e o mesmo tom de "onde eu estou" que a barra usa. */}
+          <span className="tb-crumbs">
+            <span className="tb-crumb atual">{aberto?.modelo_codigo ?? titulo}</span>
+          </span>
           {/* Sem modelo, o que está à direita é a ESTRUTURA do recorte, e ela
               não se preenche. Dizer isso aqui evita que alguém responda dezessete
               linhas antes de descobrir que não havia onde gravá-las. */}
