@@ -15,7 +15,7 @@
  *  (`pages/Modelo.tsx`) — que é onde se cuida do modelo, enquanto aqui se
  *  preenche a auditoria dele. Um método de hook que ninguém chama é andaime.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { ApiError, api } from '@/lib/api'
 import type {
@@ -32,10 +32,23 @@ import type {
  *  Um hook e não um componente porque o que ele devolve é montado de formas
  *  diferentes por cada tela — a de LOD agrupa por categoria, a geral não.
  */
-export function usePlanilha(modeloId: string | undefined, checklist: ChecklistTipo) {
+export function usePlanilha(
+  modeloId: string | undefined,
+  checklist: ChecklistTipo,
+  /** A ÁREA, nos recortes que têm uma auditoria por área (LOD 400 e 500).
+   *
+   *  Omitida — que é o caso da geral, do 4D e do LOD 300 —, vale a auditoria de
+   *  maior round entre as do recorte, como sempre valeu.
+   *
+   *  ELA PRECISA EXISTIR PORQUE A ESCOLHA ERA ALEATÓRIA. Em 400 e 500 há uma
+   *  auditoria POR ÁREA no mesmo round, e ordenar por round deixava o desempate
+   *  para a ordem em que o servidor devolveu: a tela abria a planilha de uma
+   *  área qualquer e não dizia qual. */
+  area?: string | null,
+) {
   const [modelo, setModelo] = useState<ModeloDetalhe | null>(null)
   const [versaoId, setVersaoId] = useState<string | null>(null)
-  const [auditoria, setAuditoria] = useState<Auditoria | null>(null)
+  const [auditorias, setAuditorias] = useState<Auditoria[]>([])
   const [detalhe, setDetalhe] = useState<AuditoriaDetalhe | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
@@ -51,15 +64,34 @@ export function usePlanilha(modeloId: string | undefined, checklist: ChecklistTi
 
   const carregarAuditoria = useCallback(async () => {
     if (!versaoId) {
-      setAuditoria(null)
+      setAuditorias([])
       return
     }
     const lista = await api.versoes.auditorias(versaoId)
-    const doRecorte = lista.filter((a) => a.checklist === checklist)
-    // O maior round é o que vale — os anteriores são histórico.
-    doRecorte.sort((a, b) => (b.round ?? 0) - (a.round ?? 0))
-    setAuditoria(doRecorte[0] ?? null)
+    setAuditorias(lista.filter((a) => a.checklist === checklist))
   }, [versaoId, checklist])
+
+  /** As áreas que ESTA versão tem neste recorte, na ordem em que o servidor as
+   *  devolveu — que é a ordem de criação, e é a que a disciplina declarou.
+   *
+   *  Sai das auditorias e não de uma lista fixa: o controle de LOD 400 tem sete
+   *  áreas e o de LOD 500 tem oito, e nada garante que o próximo projeto use as
+   *  mesmas. Quem não tem área (geral, 4D, LOD 300) devolve lista vazia, e a
+   *  tela não desenha aba nenhuma. */
+  const areas = useMemo(() => {
+    const vistas: string[] = []
+    for (const a of auditorias) {
+      if (a.area && !vistas.includes(a.area)) vistas.push(a.area)
+    }
+    return vistas
+  }, [auditorias])
+
+  /** A auditoria que a planilha mostra. O maior round é o que vale — os
+   *  anteriores são histórico —, e a área restringe antes do desempate. */
+  const auditoria = useMemo(() => {
+    const candidatas = area == null ? auditorias : auditorias.filter((a) => a.area === area)
+    return [...candidatas].sort((a, b) => (b.round ?? 0) - (a.round ?? 0))[0] ?? null
+  }, [auditorias, area])
 
   const carregarDetalhe = useCallback(async () => {
     if (!auditoria) {
@@ -160,6 +192,7 @@ export function usePlanilha(modeloId: string | undefined, checklist: ChecklistTi
     modelo,
     versao,
     auditoria,
+    areas,
     detalhe,
     erro,
     ocupado,
