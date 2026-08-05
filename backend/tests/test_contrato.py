@@ -27,7 +27,6 @@ import pytest
 
 from app.main import app
 from app.models.enums import ChecklistTipo, NotifTipo, PapelUsuario
-from app.schemas.membro import PAGINAS_DO_PROJETO
 from app.schemas.usuario import SENHA_MINIMA
 
 # backend/tests/test_contrato.py -> tests -> backend -> raiz
@@ -56,43 +55,6 @@ def test_minimo_de_senha_igual_no_front_e_no_back() -> None:
     assert int(achado.group(1)) == SENHA_MINIMA, (
         f"senha.ts exige {achado.group(1)} caracteres e schemas/usuario.py exige "
         f"{SENHA_MINIMA} — alinhe os dois"
-    )
-
-
-def test_paginas_ocultaveis_iguais_no_front_e_no_back() -> None:
-    """As telas que um membro pode ter ocultas (migration 0016) são as MESMAS.
-
-    O front deriva a lista de `ITENS_PROJETO` — os interruptores da gaveta de
-    membro SÃO o menu, não uma cópia dele. O back precisa da mesma lista para
-    recusar rota inexistente no `PATCH /membros/{id}`: guardada, ela seria
-    invisível na gaveta (que desenha só as telas que conhece) e ficaria no banco
-    sem caminho pela interface para tirá-la.
-
-    Tela de projeto NOVA quebra este teste, e é o objetivo: acrescentá-la em
-    `PAGINAS_DO_PROJETO` é uma linha, e esquecer disso produziria uma página que
-    ninguém consegue ocultar, sem nada na tela explicando por quê.
-    """
-    fonte = _ler("layout/nav.ts")
-    # `ITENS_PROJETO` vai até o `]` sozinho na coluna 0 — o mesmo recorte que os
-    # testes de enum fazem, e pela mesma razão: ler o array inteiro e só ele.
-    bloco = re.search(r"export const ITENS_PROJETO[^=]*=\s*\[(.*?)\n\]", fonte, re.S)
-    assert bloco, "ITENS_PROJETO não encontrado em frontend/src/layout/nav.ts"
-
-    rotas = set(re.findall(r"rota:\s*'([^']+)'", bloco.group(1)))
-    # Os recortes de auditoria entram por `...CHECKLISTS.map()`, com a rota em
-    # template string — não há literal para casar, então eles se montam aqui a
-    # partir da mesma constante que o arquivo usa.
-    assert re.search(r"rota:\s*`auditoria/\$\{c\}`", bloco.group(1)), (
-        "as rotas de auditoria mudaram de forma em ITENS_PROJETO"
-    )
-    lista = re.search(r"CHECKLISTS\s*=\s*\[(.*?)\]", fonte, re.S)
-    assert lista, "CHECKLISTS não encontrado em frontend/src/layout/nav.ts"
-    rotas |= {f"auditoria/{c}" for c in re.findall(r"'([^']+)'", lista.group(1))}
-
-    assert rotas == set(PAGINAS_DO_PROJETO), (
-        "as telas ocultáveis divergiram — "
-        f"só no front: {sorted(rotas - set(PAGINAS_DO_PROJETO))}; "
-        f"só no back: {sorted(set(PAGINAS_DO_PROJETO) - rotas)}"
     )
 
 

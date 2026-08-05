@@ -4,38 +4,10 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from app.models.enums import PapelUsuario
 from app.schemas.comum import ESCRITA, Identificado
-
-# As telas do projeto que se pode ocultar por membro (migration 0016). É a lista
-# de `rota` de `ITENS_PROJETO`, em `frontend/src/layout/nav.ts` — duplicação de
-# vocabulário entre back e front, como `SENHA_MINIMA`, e pelo mesmo motivo: sem
-# ela, um erro de digitação viraria uma página oculta que não corresponde a tela
-# nenhuma, invisível na gaveta (que desenha só as telas que conhece) e sem
-# caminho pela interface para tirá-la.
-#
-# `test_contrato.py` confere que os dois lados batem — ele LÊ o `nav.ts`.
-PAGINAS_DO_PROJETO: frozenset[str] = frozenset(
-    {
-        "kpis",
-        "ficha",
-        "peb",
-        "mandate",
-        "configuracao",
-        "criterios",
-        "modelos",
-        "membros",
-        "auditoria/geral",
-        "auditoria/4d",
-        "auditoria/lod300",
-        "auditoria/lod400",
-        "auditoria/lod500",
-        # UMA entrada, e é como o menu a tem: "Relatórios · RNC" é um item só.
-        "relatorios",
-    }
-)
 
 
 class MembroCreate(BaseModel):
@@ -60,24 +32,6 @@ class MembroUpdate(BaseModel):
     papel: PapelUsuario | None = None
     funcao: str | None = Field(default=None, max_length=200)
     equipe: str | None = Field(default=None, max_length=80)
-    # As páginas OCULTAS (migration 0016). `[]` é "não oculta nada"; ausente é
-    # "não mexa", pelo `exclude_unset` da rota — sem essa distinção, gravar só o
-    # papel na gaveta apagaria a escolha de páginas de quem já a tinha.
-    paginas: list[str] | None = None
-
-    @field_validator("paginas")
-    @classmethod
-    def _conferir_paginas(cls, v: list[str] | None) -> list[str] | None:
-        """Recusa rota que não existe, em vez de guardá-la em silêncio."""
-        if v is None:
-            return None
-        desconhecidas = sorted(set(v) - PAGINAS_DO_PROJETO)
-        if desconhecidas:
-            raise ValueError(f"páginas desconhecidas: {', '.join(desconhecidas)}")
-        # Ordenada e sem repetição: o valor é CONJUNTO. Guardá-lo na ordem em que
-        # os interruptores foram clicados faria a trilha registrar "alterou" em
-        # toda gravação que apenas reordenasse a mesma lista.
-        return sorted(set(v))
 
 
 class MembroOut(Identificado):
@@ -87,9 +41,6 @@ class MembroOut(Identificado):
     papel: PapelUsuario
     funcao: str | None
     equipe: str | None
-    # As páginas OCULTAS desta pessoa neste projeto (migration 0016). `null` é
-    # "vê tudo" — ver o modelo para por que se guardam as ocultas.
-    paginas: list[str] | None = None
 
     # Derivados do relacionamento: a tela lista pessoas, não ids. Resolver no
     # servidor evita que o cliente cruze duas listas para escrever um nome —

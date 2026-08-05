@@ -193,7 +193,7 @@ export default function Shell() {
   const { usuario, sair } = useAuth()
   const { lang, setLang, L } = useI18n()
   const { theme, setTheme } = useTheme()
-  const { projeto, projetos, referencia, selecionar, paginasOcultas } = useProjeto()
+  const { projeto, projetos, referencia, selecionar } = useProjeto()
   const { pathname } = useLocation()
   const emProjeto = useMatch(`${PREFIXO_PROJETO}/:projetoId/*`)
   /** O caminho DEPOIS do projeto (`painel`, `modelos/abc`) — é contra ele que
@@ -270,14 +270,7 @@ export default function Shell() {
         ? ITENS_PROJETO
         : ITENS_GLOBAIS
   const itens = doEscopo.filter(
-    (item) =>
-      (!item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao)) &&
-      // As páginas ocultas para esta pessoa NESTE projeto (migration 0016). Na
-      // mesma linha da permissão porque é o mesmo estatuto — conveniência de
-      // navegação, não segurança; a API decide sozinha. A diferença é o alcance:
-      // `exigePermissao` vale na organização, isto vale num projeto, e por isso
-      // só se aplica aos itens de escopo `projeto`.
-      !(item.escopo === 'projeto' && paginasOcultas.has(item.rota)),
+    (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
   )
 
   /** Para onde o item aponta. Item de projeto sem projeto de referência não

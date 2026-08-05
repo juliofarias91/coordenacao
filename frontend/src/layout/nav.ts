@@ -452,31 +452,6 @@ export const ITENS_PROJETO: ItemNav[] = [
   },
 ]
 
-/** AS TELAS QUE SE PODE OCULTAR POR MEMBRO (migration 0016), nos grupos do menu.
- *
- *  DERIVADA de `ITENS_PROJETO`, e é o ponto: os interruptores da gaveta de membro
- *  SÃO o menu, não uma cópia dele. Uma lista escrita à mão ficaria para trás na
- *  primeira tela nova — e o sintoma seria uma página que ninguém consegue
- *  ocultar, sem nada na interface explicando por quê.
- *
- *  A ORDEM E OS GRUPOS SÃO OS DA BARRA: quem oculta está olhando para a mesma
- *  sequência que a pessoa do outro lado vai ver. Reordenar aqui obrigaria a
- *  traduzir de cabeça entre duas listas dos mesmos itens.
- *
- *  O contrato com o back é `PAGINAS_DO_PROJETO`, em `schemas/membro.py`, e quem
- *  o tranca é `test_contrato.py` — ele LÊ este arquivo. */
-export const PAGINAS_DO_PROJETO: Array<{
-  grupo: GrupoNav
-  pt: string
-  en: string
-  itens: ItemNav[]
-}> = GRUPOS.map((g) => ({
-  grupo: g.chave,
-  pt: g.pt,
-  en: g.en,
-  itens: ITENS_PROJETO.filter((i) => i.grupo === g.chave),
-})).filter((g) => g.itens.length > 0)
-
 /** O menu do PAINEL ADMINISTRATIVO.
  *
  *  O `/admin` é uma área à parte, não uma tela do fluxo — como o próprio nome

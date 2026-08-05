@@ -23,7 +23,6 @@ import {
 } from 'react'
 import { useMatch, useNavigate } from 'react-router-dom'
 
-import { useAuth } from '@/auth/AuthContext'
 import { ITENS_NAV } from '@/layout/nav'
 import { api } from '@/lib/api'
 import type { Projeto } from '@/lib/types'
@@ -58,15 +57,6 @@ type Ctx = {
   selecionar: (id: string) => void
   recarregar: () => Promise<void>
   carregando: boolean
-  /** AS TELAS QUE ESTA PESSOA NÃO VÊ neste projeto (migration 0016). Saem do
-   *  vínculo dela em `projeto_membro`, e quem as define é a gaveta de membro.
-   *
-   *  NÃO É PERMISSÃO — é o mesmo estatuto do `exigePermissao` do `nav.ts`:
-   *  esconde o item do menu, e quem barra a API continua sendo o
-   *  `requer_permissao` sobre as permissões de ORGANIZAÇÃO. Mora aqui, e não no
-   *  `AuthContext`, porque é POR PROJETO: a mesma pessoa vê tudo num e metade
-   *  noutro. */
-  paginasOcultas: ReadonlySet<string>
 }
 
 const ProjetoContext = createContext<Ctx | null>(null)
@@ -83,7 +73,6 @@ export function ProjetoProvider({ children }: { children: ReactNode }) {
   const [projetos, setProjetos] = useState<Projeto[]>([])
   const [ultimo, setUltimo] = useState<string | null>(leUltimo)
   const [carregando, setCarregando] = useState(true)
-  const { usuario } = useAuth()
 
   const navigate = useNavigate()
   // O `*` casa também com o caminho sem sufixo (`/projetos/abc`), então uma
@@ -131,44 +120,6 @@ export function ProjetoProvider({ children }: { children: ReactNode }) {
     [projeto, projetos, ultimo],
   )
 
-  /** As páginas ocultas de quem está logado, no projeto aberto (migration 0016).
-   *
-   *  PELA ROTA QUE JÁ EXISTE, e não por uma nova: `GET /projetos/{id}/membros`
-   *  exige `ver_painel`, e TODO papel que entra na plataforma o tem — só o
-   *  `cliente` não, e ele nunca vê esta barra (o portal dele é `/portal/{token}`).
-   *  A linha própria se acha pelo id do usuário logado.
-   *
-   *  FALHA CALADA E MOSTRANDO TUDO. Se a requisição não voltar, o menu fica como
-   *  sempre foi. O contrário — esconder por falta de resposta — transformaria um
-   *  soluço de rede numa barra vazia, e ninguém relaciona as duas coisas. Como
-   *  isto não é permissão (a API decide sozinha), errar para o lado de mostrar
-   *  não abre nada que já não estivesse aberto. */
-  const [paginasOcultas, setPaginasOcultas] = useState<ReadonlySet<string>>(new Set())
-
-  useEffect(() => {
-    if (!idDaUrl || !usuario) {
-      setPaginasOcultas(new Set())
-      return
-    }
-    let valeu = true
-    api.membros
-      .listar(idDaUrl)
-      .then((lista) => {
-        // A resposta de um projeto que já não é o aberto não pode escrever no
-        // estado: trocar de projeto rápido dispara duas, e a lenta chegaria
-        // depois escondendo as páginas do projeto errado.
-        if (!valeu) return
-        const meu = lista.find((m) => m.usuario_id === usuario.id)
-        setPaginasOcultas(new Set(meu?.paginas ?? []))
-      })
-      .catch(() => {
-        if (valeu) setPaginasOcultas(new Set())
-      })
-    return () => {
-      valeu = false
-    }
-  }, [idDaUrl, usuario])
-
   const selecionar = useCallback(
     (id: string) => {
       // Trocar de projeto MANTÉM A TELA: quem compara o painel de dois
@@ -191,18 +142,8 @@ export function ProjetoProvider({ children }: { children: ReactNode }) {
       selecionar,
       recarregar,
       carregando,
-      paginasOcultas,
     }),
-    [
-      projetos,
-      projeto,
-      referencia,
-      naoEncontrado,
-      selecionar,
-      recarregar,
-      carregando,
-      paginasOcultas,
-    ],
+    [projetos, projeto, referencia, naoEncontrado, selecionar, recarregar, carregando],
   )
   return <ProjetoContext.Provider value={valor}>{children}</ProjetoContext.Provider>
 }
