@@ -235,7 +235,16 @@ export default function Membros() {
             // criação, edição, permissões e link de convite. Reimplementar aqui
             // daria duas telas para divergirem na primeira permissão nova.
             // `novoEm` faz o "+" do painel abrir o editor dela.
-            <AbaUsuarios novoEm={novoEm} />
+            //
+            // SEM A ENGRENAGEM AQUI (05/08/2026, a pedido). Este recorte responde
+            // QUEM EXISTE na organização — é lista para conferir. O que a gaveta
+            // de conta edita (papel de organização, permissões, telas visíveis)
+            // vale para a pessoa em TODOS os projetos, e oferecer isso numa tela
+            // cujo assunto é a equipe de um projeto convida a mexer no alcance
+            // global sem perceber. A edição de conta continua num lugar só:
+            // `Painel administrativo › Usuários`. Dentro de um projeto, a
+            // engrenagem é a do VÍNCULO — outra gaveta, outro assunto.
+            <AbaUsuarios novoEm={novoEm} comAcoes={false} />
           ) : (
             <TabelaMembros membros={visiveis} onMudou={carregar} />
           )}
