@@ -33,9 +33,6 @@ import { CHECKLISTS, type Checklist } from '@/layout/nav'
 import type { ChecklistTipo, Resultado } from '@/lib/types'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
-// MOCK — apagar este import junto com `mockLodArea.ts`. Ver o cabeçalho do arquivo.
-import { MOCK_LOD_AREA_LIGADO, areasDeMentira, resultadosDeMentira } from './mockLodArea'
-
 /** O campo de `resultado_check` que a coluna grava. Sem `campo`, a coluna é de
  *  leitura (ou calculada, ou de ação) e não grava nada. */
 type Campo = 'status' | 'comentario' | 'direcao' | 'parametro_encontrado' | 'comentario_fornecedor'
@@ -275,54 +272,6 @@ function paraOServidor(campo: Campo, valor: string): Record<string, unknown> {
   return { [campo]: valor.trim() === '' ? null : valor }
 }
 
-/* ========================================================================== *
- *  MOCK — APAGAR ESTE BLOCO INTEIRO, junto com `mockLodArea.ts`.
- *
- *  Desenha as abas e a tabela de LOD 400 / LOD 500 com áreas e linhas
- *  inventadas, enquanto esses recortes não têm gabarito em `gabarito.py` e uma
- *  auditoria deles nasce sem uma linha sequer. Entra SÓ onde não haveria grade
- *  nenhuma, e entra TRAVADO.
- *
- *  As abas em si (`<Abas>`, `.abas`/`.aba`) NÃO são do mock — elas servem ao
- *  dado real e ficam. O que sai daqui é só o conteúdo inventado.
- * ========================================================================== */
-function MockLodArea({ checklist }: { checklist: Checklist }) {
-  const { L, lang } = useI18n()
-  const areas = areasDeMentira(checklist)
-  const [area, setArea] = useState(areas[0] ?? '')
-  const colunas = colunasDe(checklist)
-  const en = lang === 'en'
-
-  const linhas: LinhaGrade[] = resultadosDeMentira(checklist, area).map((r) => ({
-    chave: r.id,
-    grupo: AGRUPA_POR_ELEMENTO.has(checklist) ? r.criterio.categoria : null,
-    leitura: colunas.map((col) => col.le?.(r, en) ?? null),
-    titulos: colunas.map((col) => (col.le === NOME ? r.criterio.instrucao : null)),
-    valores: colunas.map((col) => (col.campo ? paraATela(r, col.campo) : '')),
-    anexos: r.evidencias.length,
-  }))
-
-  return (
-    <div className="plan-tela">
-      <p className="plan-aviso plan-mock">
-        {L(
-          `DADOS DE EXEMPLO — as abas e a tabela existem só para mostrar o formato. Nada aqui vem do banco, nada aqui é gravado. As áreas são as do arquivo de controle; a área aberta é ${area}.`,
-          `SAMPLE DATA — the tabs and table only show the layout. Nothing here comes from the database, nothing here is saved. The areas are the ones in the control file; the open area is ${area}.`,
-        )}
-      </p>
-      <GradePlanilha colunas={colunas} dados={linhas} travada onSalvar={() => undefined} />
-      <Abas areas={areas} atual={area} onTrocar={setArea} />
-    </div>
-  )
-}
-
-/** O mock, quando ele cabe: só em 400/500 e só com a chave ligada. */
-function mockDeArea(checklist: Checklist) {
-  if (!MOCK_LOD_AREA_LIGADO || !POR_AREA.has(checklist)) return null
-  return <MockLodArea checklist={checklist} />
-}
-/* ===================== fim do bloco a apagar ============================== */
-
 export default function Recorte() {
   const { L } = useI18n()
   const { projeto } = useProjeto()
@@ -351,10 +300,6 @@ export default function Recorte() {
   // antes de escolher um mostra uma tabela que não é de nada — e a versão
   // anterior disto, a prévia do gabarito, era pior: parecia preenchível.
   if (!modeloId) {
-    // MOCK — apagar estas duas linhas devolve o `<Vazio>` de sempre.
-    const mock = mockDeArea(checklist)
-    if (mock) return mock
-
     return (
       <Vazio
         titulo={L('Escolha um modelo', 'Pick a model')}
@@ -392,14 +337,14 @@ function Abas({
 }) {
   if (areas.length < 2) return null
   return (
-    <div className="abas thin-scroll" role="tablist">
+    <div className="plan-abas thin-scroll" role="tablist">
       {areas.map((a) => (
         <button
           key={a}
           type="button"
           role="tab"
           aria-selected={a === atual}
-          className={`aba${a === atual ? ' on' : ''}`}
+          className={`plan-aba${a === atual ? ' on' : ''}`}
           onClick={() => onTrocar(a)}
         >
           {a}
@@ -500,10 +445,6 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
   }
 
   if (!p.detalhe) {
-    // MOCK — apagar estas duas linhas devolve a tela de sempre.
-    const mock = mockDeArea(checklist)
-    if (mock) return mock
-
     return (
       <>
         <Erro mensagem={p.erro} />
@@ -519,11 +460,6 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
   }
 
   if (p.detalhe.resultados.length === 0) {
-    // MOCK — apagar estas duas linhas devolve a tela de sempre. É o caso mais
-    // provável em 400/500: não há gabarito, então a auditoria nasce sem linhas.
-    const mock = mockDeArea(checklist)
-    if (mock) return mock
-
     return (
       <>
         <Erro mensagem={p.erro} />

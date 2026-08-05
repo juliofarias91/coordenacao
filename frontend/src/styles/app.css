@@ -4496,7 +4496,17 @@ td.num {
    Rola na horizontal em vez de quebrar em duas linhas — oito áreas cabem em
    quase toda tela, mas o dia em que não couberem, uma fileira de altura variável
    moveria a borda inferior da grade. */
-.abas {
+/* O PREFIXO `plan-` NÃO É ENFEITE — ele conserta uma colisão (04/08/2026).
+   Estas classes nasceram como `.abas`/`.aba`, que JÁ EXISTIAM: são as abas de
+   página da configuração do projeto, mais abaixo neste arquivo. Como aquele
+   bloco vem DEPOIS e a especificidade é a mesma, ele vencia nas propriedades
+   declaradas nos dois — as abas de área herdavam `border-bottom`,
+   `margin-bottom: 22px` e `flex-wrap` da configuração, e a configuração herdava
+   `flex: none` e `overflow-x` daqui. As duas telas saíam erradas, e nenhuma das
+   duas quebrava de um jeito visível o bastante para denunciar a causa.
+   `plan-` é o prefixo que o resto desta tela já usa (`.plan-tela`,
+   `.plan-aviso`, `.plan-salvando`). */
+.plan-abas {
   flex: none;
   display: flex;
   gap: 2px;
@@ -4509,7 +4519,7 @@ td.num {
 /* ATIVA É TINTA, PESO E BORDA — nunca fundo (regras 1 e 6). O contorno é o que
    dá forma de aba a um texto; um retângulo colorido faria a aba pesar mais que
    o dado da planilha, e estar numa aba não é estado do domínio (regra 2). */
-.aba {
+.plan-aba {
   flex: none;
   padding: 4px 11px;
   border: 1px solid transparent;
@@ -4523,37 +4533,16 @@ td.num {
   transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 
-.aba:hover {
+.plan-aba:hover {
   color: var(--ink);
 }
 
-.aba.on {
+.plan-aba.on {
   border-color: var(--line-2);
   color: var(--ink);
   font-weight: 600;
 }
 
-
-/* MOCK — APAGAR ESTA REGRA junto com `pages/auditoria/mockLodArea.ts`.
-   As ABAS acima não são do mock e ficam: elas servem ao dado real.
-
-   A tarja de "dados de exemplo". É o único lugar do sistema onde a cor NÃO
-   marca um estado do domínio (regra 2), e a exceção se justifica pelo mesmo
-   motivo da tela de login: o que ela precisa dizer é que NADA ali é dado — se
-   passar despercebida, alguém lê números inventados como se fossem a auditoria.
-   Translúcida como todo estado semântico, nunca sólida. */
-.plan-mock {
-  padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--wait) 32%, transparent);
-  border-radius: var(--r-lg);
-  /* `--wait-bg` é o translúcido que a régua já define para este tom — usá-lo em
-     vez de um `color-mix` próprio mantém a tarja no mesmo passo dos outros
-     estados nos DOIS temas. */
-  background: var(--wait-bg);
-  color: var(--wait);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
 
 /* "salvando…" na mesma linha do aviso. Não é pílula nem barra de progresso: uma
    célula grava em ~200ms, e um elemento com cor piscando a cada palavra
