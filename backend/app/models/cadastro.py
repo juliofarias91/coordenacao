@@ -375,6 +375,14 @@ class ProjetoMembro(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     # COMERCIAL noutro. Text livre: as equipes vão aparecendo conforme a
     # coordenação as nomeia, e uma tabela exigiria cadastrá-las antes de existir.
     equipe: Mapped[str | None] = mapped_column(Text)
+    # As telas do projeto que esta pessoa NÃO vê (migration 0016). Guarda as
+    # OCULTAS, nunca as visíveis: com a lista de visíveis, toda entrada nova do
+    # menu nasceria escondida para quem já está cadastrado. `NULL` é "vê tudo".
+    #
+    # E NÃO AUTORIZA — tira o item do menu, como o `exigePermissao` do `nav.ts`
+    # sempre fez. Quem barra a API continua sendo `requer_permissao` sobre as
+    # permissões de organização; ver a docstring desta classe.
+    paginas: Mapped[list[str] | None] = mapped_column(JSONB)
 
     projeto: Mapped[Projeto] = relationship()
     usuario: Mapped[Usuario] = relationship()

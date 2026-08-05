@@ -5658,6 +5658,97 @@ td.num {
   border-top: 1px solid var(--line);
 }
 
+/* --- VISUALIZAÇÃO DE PÁGINAS, na gaveta de membro (migration 0016) --------- */
+.memb-paginas {
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.memb-pagtit {
+  margin-bottom: 12px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.memb-paggrupo + .memb-paggrupo {
+  margin-top: 16px;
+}
+
+/* O nome do grupo e o "Ocultar todas" na MESMA linha: o atalho pertence ao
+   grupo, e uma linha própria para ele dobraria a altura de cada bloco. */
+.memb-pagcab {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.memb-pagitem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  transition: color var(--dur-fast);
+}
+
+.memb-pagitem:hover {
+  color: var(--ink);
+}
+
+/* --- O INTERRUPTOR --------------------------------------------------------
+
+   É a única coisa da plataforma que ganha FUNDO colorido no estado ligado, e não
+   é exceção à regra 6: aquela regra é sobre realce de CURSOR. Aqui a cor é
+   estado semântico permanente (regra 2) — o interruptor não tem outro jeito de
+   dizer em que posição está, porque a posição da bola sozinha é ambígua sem a
+   referência ao lado oposto. Desligado é contorno, sem cor. */
+.chave {
+  flex: none;
+  width: 38px;
+  height: 21px;
+  padding: 2px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-full);
+  background: none;
+  transition:
+    background var(--dur-fast),
+    border-color var(--dur-fast);
+}
+
+.chave-bola {
+  display: block;
+  width: 15px;
+  height: 15px;
+  border-radius: var(--r-full);
+  background: var(--ink-3);
+  transition:
+    transform var(--dur) var(--ease),
+    background var(--dur-fast);
+}
+
+.chave.on {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.chave.on .chave-bola {
+  background: var(--accent-ink);
+  transform: translateX(17px);
+}
+
 /* --- disciplinas: nome, cor e a legenda que era a aba "Cores" -------------- */
 .disc-nome {
   color: var(--ink);

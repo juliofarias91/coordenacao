@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.models import Organizacao, Projeto, ProjetoMembro, TrilhaAuditoria, Usuario
 from app.models.enums import PERMISSOES, PapelUsuario
+from app.schemas.membro import PAGINAS_DO_PROJETO
 from tests.conftest import API, Cenario, requer_banco
 
 
@@ -213,3 +214,100 @@ def test_checklists_lod300_e_lod350_existem(autenticado: TestClient, cenario: Ce
         )
         assert resp.status_code == 200, f"{checklist}: {resp.text}"
         assert resp.json()["checklist"] == checklist
+
+
+# ============================================ páginas visíveis (migration 0016)
+
+
+def _membro(autenticado: TestClient, cenario: Cenario) -> dict:
+    pessoa = _usuario(autenticado, uuid.uuid4().hex[:6])
+    resp = autenticado.post(
+        f"{API}/projetos/{cenario.projeto.id}/membros",
+        json={"usuario_id": pessoa["id"], "papel": "auditor"},
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+@requer_banco
+def test_membro_nasce_vendo_tudo(autenticado: TestClient, cenario: Cenario) -> None:
+    """`null` é "vê tudo", e é o default.
+
+    É o que todo vínculo anterior a esta coluna sempre significou — e é por isso
+    que a coluna guarda as OCULTAS: com a lista de visíveis, esta asserção só
+    passaria se a migration tivesse preenchido todos os vínculos existentes, e
+    toda tela nova nasceria escondida para eles.
+    """
+    assert _membro(autenticado, cenario)["paginas"] is None
+
+
+@requer_banco
+def test_ocultar_paginas_e_o_caminho_de_volta(autenticado: TestClient, cenario: Cenario) -> None:
+    membro = _membro(autenticado, cenario)
+
+    resp = autenticado.patch(
+        f"{API}/membros/{membro['id']}", json={"paginas": ["peb", "auditoria/lod400"]}
+    )
+    assert resp.status_code == 200, resp.text
+    # Ordenada e sem repetição: o valor é CONJUNTO. Guardá-lo na ordem dos
+    # cliques faria a trilha registrar alteração em toda gravação que apenas
+    # reordenasse a mesma lista.
+    assert resp.json()["paginas"] == ["auditoria/lod400", "peb"]
+
+    # E a lista, que é o que a tela lê para desenhar os interruptores.
+    lista = autenticado.get(f"{API}/projetos/{cenario.projeto.id}/membros").json()
+    linha = next(m for m in lista if m["id"] == membro["id"])
+    assert linha["paginas"] == ["auditoria/lod400", "peb"]
+
+    # Voltar a mostrar tudo é `[]`, não omitir o campo — ver o teste seguinte.
+    resp = autenticado.patch(f"{API}/membros/{membro['id']}", json={"paginas": []})
+    assert resp.json()["paginas"] == []
+
+
+@requer_banco
+def test_pagina_desconhecida_e_recusada(autenticado: TestClient, cenario: Cenario) -> None:
+    """Rota que não existe não entra no banco.
+
+    Guardada, ela seria invisível na gaveta — que desenha só as telas que conhece
+    — e ficaria lá para sempre, sem caminho pela interface para tirá-la.
+    """
+    membro = _membro(autenticado, cenario)
+    resp = autenticado.patch(f"{API}/membros/{membro['id']}", json={"paginas": ["kpis", "xpto"]})
+    assert resp.status_code == 422, resp.text
+
+
+@requer_banco
+def test_gravar_o_papel_nao_apaga_as_paginas(autenticado: TestClient, cenario: Cenario) -> None:
+    """Campo ausente é "não mexa" (`exclude_unset`); `[]` é "não oculta nada".
+
+    Sem essa distinção, trocar só o papel na gaveta apagaria a escolha de páginas
+    — e o sintoma apareceria depois, sem ninguém ligar uma coisa à outra.
+    """
+    membro = _membro(autenticado, cenario)
+    autenticado.patch(f"{API}/membros/{membro['id']}", json={"paginas": ["modelos"]})
+
+    resp = autenticado.patch(f"{API}/membros/{membro['id']}", json={"papel": "leitor"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["papel"] == "leitor"
+    assert resp.json()["paginas"] == ["modelos"]
+
+
+@requer_banco
+def test_paginas_ocultas_nao_sao_permissao(autenticado: TestClient, cenario: Cenario) -> None:
+    """O irmão de `test_participacao_nao_e_permissao`, para a coluna nova.
+
+    Ocultar uma página tira o item do menu e nada mais. A API continua decidindo
+    por `requer_permissao` sobre as permissões de ORGANIZAÇÃO — e é isso que
+    impede alguém de "corrigir" a tela achando que ela tranca alguma coisa.
+    Ligar as duas tem de ser decisão, não acidente.
+    """
+    membro = _membro(autenticado, cenario)
+    resp = autenticado.patch(
+        f"{API}/membros/{membro['id']}", json={"paginas": sorted(PAGINAS_DO_PROJETO)}
+    )
+    assert resp.status_code == 200, resp.text
+    assert len(resp.json()["paginas"]) == len(PAGINAS_DO_PROJETO)
+
+    # Com TUDO oculto, as rotas do projeto continuam respondendo.
+    assert autenticado.get(f"{API}/projetos/{cenario.projeto.id}").status_code == 200
+    assert autenticado.get(f"{API}/projetos/{cenario.projeto.id}/membros").status_code == 200

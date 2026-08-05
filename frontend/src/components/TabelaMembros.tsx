@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react'
 import Gaveta from '@/components/Gaveta'
 import { Campo, Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
+import { PAGINAS_DO_PROJETO } from '@/layout/nav'
 import { ApiError, api } from '@/lib/api'
 import type { Membro, UsuarioCadastro } from '@/lib/types'
 
@@ -361,12 +362,46 @@ function GavetaMembro({
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
+  /** As páginas OCULTAS. O estado guarda o que o banco guarda — as ocultas —,
+   *  e a tela desenha o inverso; ver o bloco de interruptores abaixo. */
+  const [ocultas, setOcultas] = useState<Set<string>>(new Set(membro.paginas ?? []))
+
+  function alternar(rota: string) {
+    setOcultas((atual) => {
+      const proximo = new Set(atual)
+      if (proximo.has(rota)) proximo.delete(rota)
+      else proximo.add(rota)
+      return proximo
+    })
+  }
+
+  /** "Ocultar todas" / "Mostrar todas" de um grupo. O rótulo vira o inverso
+   *  quando o grupo já está todo oculto — um botão que diz "ocultar todas" com
+   *  tudo apagado é um botão que não faz nada, e quem o clica conclui que a tela
+   *  travou. */
+  function alternarGrupo(rotas: string[], ocultarTudo: boolean) {
+    setOcultas((atual) => {
+      const proximo = new Set(atual)
+      for (const r of rotas) {
+        if (ocultarTudo) proximo.add(r)
+        else proximo.delete(r)
+      }
+      return proximo
+    })
+  }
 
   async function salvar() {
     setErro(null)
     setSalvando(true)
     try {
-      await api.membros.atualizar(membro.id, { equipe: equipe.trim() || null, papel })
+      await api.membros.atualizar(membro.id, {
+        equipe: equipe.trim() || null,
+        papel,
+        // SEMPRE enviada: `[]` é "não oculta nada", e é diferente de não mandar
+        // o campo — que, pelo `exclude_unset` da rota, seria "não mexa" e
+        // deixaria as ocultas de antes no lugar.
+        paginas: [...ocultas],
+      })
       onMudou()
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : String(e))
@@ -435,6 +470,73 @@ function GavetaMembro({
           'The role records what was agreed on the project and does NOT restrict access yet: what blocks today is the person’s organization permission. To actually remove access, change their role under member management.',
         )}
       </p>
+
+      {/* OS INTERRUPTORES DE PÁGINA (migration 0016).
+
+          A LISTA É O PRÓPRIO MENU (`PAGINAS_DO_PROJETO`, derivada de
+          `ITENS_PROJETO`), nos mesmos grupos e na mesma ordem: quem oculta está
+          olhando para a sequência que a pessoa do outro lado vai ver.
+
+          LIGADO É "VÊ", e o estado guarda o contrário. A razão de o BANCO
+          guardar as OCULTAS está na migration 0016 — tela nova nasce visível. A
+          razão de a TELA mostrar as visíveis é que a pergunta de quem edita é "o
+          que essa pessoa enxerga?", e um painel inteiro de interruptores
+          desligados para alguém que vê tudo lê-se como acesso negado. */}
+      <div className="memb-paginas">
+        <div className="memb-pagtit">{L('Visualização de páginas', 'Page visibility')}</div>
+
+        {PAGINAS_DO_PROJETO.map((g) => {
+          const rotas = g.itens.map((i) => i.rota)
+          const todasOcultas = rotas.every((r) => ocultas.has(r))
+          return (
+            <div key={g.grupo} className="memb-paggrupo">
+              <div className="memb-pagcab">
+                <span>{L(g.pt, g.en)}</span>
+                <button
+                  type="button"
+                  className="linkmudo"
+                  onClick={() => alternarGrupo(rotas, !todasOcultas)}
+                >
+                  {todasOcultas ? L('Mostrar todas', 'Show all') : L('Ocultar todas', 'Hide all')}
+                </button>
+              </div>
+              {g.itens.map((i) => {
+                const visivel = !ocultas.has(i.rota)
+                return (
+                  <div key={i.rota} className="memb-pagitem">
+                    <span>{L(i.pt, i.en)}</span>
+                    {/* `role="switch"` e não checkbox: o desenho é um
+                        interruptor, e o leitor de tela deve anunciar o mesmo que
+                        o olho vê. */}
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={visivel}
+                      aria-label={L(i.pt, i.en)}
+                      className={`chave${visivel ? ' on' : ''}`}
+                      onClick={() => alternar(i.rota)}
+                    >
+                      <span className="chave-bola" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+
+        {/* ⚠ ESTE AVISO É OBRIGATÓRIO ENQUANTO ISTO NÃO AUTORIZAR — é o irmão do
+            aviso do papel, acima, e pelo mesmo motivo: quem desliga um
+            interruptor acredita ter trancado uma tela. Ele tira o item do menu e
+            barra a rota no navegador; a API continua decidindo pelo papel da
+            pessoa na ORGANIZAÇÃO. */}
+        <p className="hint">
+          {L(
+            'Ocultar tira a página do menu desta pessoa. Não é permissão: quem barra a API é o papel dela na organização — para tirar acesso de verdade, mude-o em Painel administrativo › Usuários.',
+            'Hiding removes the page from this person’s menu. It is not a permission: what blocks the API is their organization role — to actually revoke access, change it under Admin panel › Users.',
+          )}
+        </p>
+      </div>
 
       <div className="memb-remover">
         {confirmando ? (

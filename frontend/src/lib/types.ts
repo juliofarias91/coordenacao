@@ -596,6 +596,13 @@ export type Membro = Base & {
   /** COORDENAÇÃO, INOVAÇÃO, COMERCIAL (migration 0014). É por PROJETO: a mesma
    *  pessoa está em equipes diferentes em projetos diferentes. */
   equipe: string | null
+  /** As telas do projeto que esta pessoa NÃO vê (migration 0016). Guarda as
+   *  OCULTAS e não as visíveis: com a lista de visíveis, toda entrada nova do
+   *  menu nasceria escondida para quem já está cadastrado. `null` = vê tudo.
+   *
+   *  NÃO É PERMISSÃO — tira o item do menu, como o `exigePermissao` do `nav.ts`
+   *  sempre fez. Quem barra a API é o papel da pessoa na ORGANIZAÇÃO. */
+  paginas: string[] | null
   /** Resolvidos no servidor — a tela lista pessoas, não ids. */
   empresa_nome: string | null
   /** O status da CONTA (ativo / pendente), não do vínculo: quem foi convidado e
