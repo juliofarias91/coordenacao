@@ -452,6 +452,51 @@ export const ITENS_PROJETO: ItemNav[] = [
   },
 ]
 
+/** AS TELAS QUE SE PODE ESCONDER DE UMA CONTA, nos grupos do menu.
+ *
+ *  DERIVADA de `ITENS_PROJETO`, e é o ponto: os interruptores da gaveta de
+ *  membro SÃO o menu, não uma cópia dele. Uma lista escrita à mão ficaria para
+ *  trás na primeira tela nova, e o sintoma seria uma página que ninguém consegue
+ *  esconder, sem nada na interface explicando por quê.
+ *
+ *  SÓ AS TELAS DE PROJETO (05/08/2026, a pedido). As GLOBAIS chegaram a entrar e
+ *  saíram: elas são a home, os KPIs da organização, a importação, os
+ *  apontamentos — o chão de quem usa a plataforma, não o trabalho de um projeto.
+ *  Esconder a home de alguém deixa a pessoa sem ponto de partida, e o pedido é
+ *  outro: dizer, DENTRO de um projeto, o que cada um acompanha nele.
+ *
+ *  Também não entram as do painel administrativo — já barradas por
+ *  `admin_cadastro`, e esconder o que a permissão já nega é dizer a mesma coisa
+ *  em dois lugares que podem discordar — nem as de `Configurações` da conta:
+ *  ninguém deve poder esconder de alguém a própria senha.
+ *
+ *  O contrato com o back é `PAGINAS_OCULTAVEIS`, em `models/enums.py`, e quem o
+ *  tranca é `test_contrato.py` — ele LÊ este arquivo. */
+export const PAGINAS_OCULTAVEIS: Array<{
+  grupo: GrupoNav
+  pt: string
+  en: string
+  itens: ItemNav[]
+}> = GRUPOS.map((g) => ({
+  grupo: g.chave,
+  pt: g.pt,
+  en: g.en,
+  // `PROJETOS` FORA (05/08/2026, a pedido). Ele é o primeiro item de
+  // `ITENS_PROJETO` mas NÃO é uma tela do projeto: é `ITENS_GLOBAIS[0]`, o mesmo
+  // objeto, encabeçando a barra para fazer o papel de VOLTAR. Esconder o caminho
+  // de volta deixaria a pessoa dentro do projeto sem porta de saída no menu.
+  //
+  // Comparado por IDENTIDADE, e não pela rota: é literalmente a mesma
+  // referência, e assim isto continua valendo se um dia o `/` virar outra coisa.
+  //
+  // ⚠ ELE ENGANOU DUAS VERIFICAÇÕES. Como entra na lista por NOME e não como
+  // objeto literal, tanto uma leitura por regex quanto o `test_contrato.py`
+  // passavam por cima dele — a lista parecia só de projeto e a tela desenhava um
+  // interruptor de "Projetos". O teste foi corrigido junto, para recusar
+  // qualquer entrada que não seja objeto literal.
+  itens: ITENS_PROJETO.filter((i) => i !== PROJETOS && i.grupo === g.chave),
+})).filter((g) => g.itens.length > 0)
+
 /** O menu do PAINEL ADMINISTRATIVO.
  *
  *  O `/admin` é uma área à parte, não uma tela do fluxo — como o próprio nome
@@ -514,7 +559,11 @@ export const ITENS_ADMIN: ItemNav[] = [
     grupo: 'cadastro',
     escopo: 'admin',
     fase: 1,
-    exigePermissao: 'admin_cadastro',
+    // A ÚNICA TELA DO PAINEL COM `admin_total` — é ela que separa `Admin` de
+    // `Super admin`. As outras cinco seguem em `admin_cadastro`: cadastrar
+    // cliente, projeto e usuário é trabalho de administração; trocar a
+    // identidade da organização é mexer na plataforma.
+    exigePermissao: 'admin_total',
   },
   {
     rota: '/admin/clientes',

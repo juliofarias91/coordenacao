@@ -28,6 +28,9 @@ export type Usuario = {
   papel: Papel
   empresa_id: string | null
   permissoes: string[]
+  /** As telas que esta conta não vê — o que a barra lateral não desenha. Não é
+   *  permissão: a API decide pelo `permissoes` acima. Ver `models/enums.py`. */
+  paginas_ocultas: string[]
   idioma: string
 }
 
@@ -247,6 +250,14 @@ export const api = {
       escrever<T.UsuarioCadastro>('/usuarios', 'POST', corpo),
     atualizar: (id: string, corpo: Record<string, unknown>) =>
       escrever<T.UsuarioCadastro>(`/usuarios/${id}`, 'PATCH', corpo),
+    /** Troca SÓ as telas escondidas, preservando as permissões.
+     *
+     *  Rota própria porque as duas coisas dividem a coluna `permissoes` no
+     *  banco: mandar a lista inteira exigiria receber as permissões antes, e
+     *  quem chama isto da gaveta de MEMBRO só tem `ver_painel`. Aqui vai só a
+     *  lista de telas; a fusão acontece no servidor. */
+    definirPaginas: (id: string, paginas: string[]) =>
+      escrever<T.UsuarioCadastro>(`/usuarios/${id}/paginas`, 'PUT', { paginas }),
     definirSenha: (id: string, senha: string) =>
       escrever<void>(`/usuarios/${id}/senha`, 'PUT', { senha }),
     /** Gera o link de definição de senha — o caminho recomendado para dar

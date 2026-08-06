@@ -115,6 +115,11 @@ export type UsuarioCadastro = Base & {
   papel: string
   empresa_id: string | null
   permissoes: string[]
+  /** AS TELAS QUE ESTA CONTA NÃO VÊ, sem o prefixo. Elas viajam na MESMA coluna
+   *  de `permissoes` no banco (`oculta:<rota>`, ver `models/enums.py`) — o
+   *  servidor as separa na saída para a tela não ter de fazê-lo, e o `permissoes`
+   *  acima já chega limpo. Guarda as OCULTAS: tela nova nasce visível. */
+  paginas_ocultas: string[]
   idioma: string
   status: string
 }
@@ -607,6 +612,10 @@ export type Membro = Base & {
   usuario_nome: string | null
   usuario_login: string | null
   usuario_papel_org: string | null
+  /** As telas que esta pessoa NÃO vê. Vêm da CONTA, não do vínculo — e por isso
+   *  valem em TODOS os projetos. A gaveta de membro as edita por
+   *  `PUT /usuarios/{id}/paginas`, que funde as metades da coluna no servidor. */
+  usuario_paginas_ocultas: string[]
 }
 
 /** Erro do SISTEMA reportado por quem usa (migration 0005).

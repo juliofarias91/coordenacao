@@ -35,6 +35,17 @@ class TokenPair(BaseModel):
 
 
 class UsuarioOut(BaseModel):
+    """O usuário DA SESSÃO — a projeção que o login e o `/auth/me` devolvem.
+
+    É outra classe que a `UsuarioOut` de `schemas/usuario.py`, que é a do
+    CADASTRO e traz `status`. Duas projeções do mesmo registro para dois
+    consumidores: aqui quem lê é a aplicação que acabou de entrar; lá, a tela de
+    contas. Quem acrescentar campo precisa decidir em qual das duas ele entra —
+    e `paginas_ocultas` entra nas DUAS, por motivos diferentes: aqui a barra
+    lateral precisa saber o que não desenhar, lá a gaveta precisa preencher os
+    interruptores.
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -44,6 +55,13 @@ class UsuarioOut(BaseModel):
     papel: PapelUsuario
     empresa_id: uuid.UUID | None
     permissoes: list[str]
+    # AS TELAS QUE ESTA CONTA NÃO VÊ, sem o prefixo. Elas viajam dentro de
+    # `usuario.permissoes` no banco (`oculta:<rota>`, ver `models/enums.py`) e
+    # são separadas na saída — `permissoes`, acima, já chega limpo e resolvido.
+    #
+    # NÃO É PERMISSÃO: esconde item de menu. Quem barra a API é o
+    # `requer_permissao` sobre `permissoes`.
+    paginas_ocultas: list[str] = []
     idioma: str
 
 

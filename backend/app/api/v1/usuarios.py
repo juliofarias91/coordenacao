@@ -17,9 +17,15 @@ from app.core.deps import CurrentUser, get_current_user, get_tenant_db, requer_p
 from app.core.pagination import Page, ParamsPagina, aplicar_cursor, montar_pagina
 from app.core.security import hash_password
 from app.models import Empresa, Usuario
-from app.models.enums import PERMISSOES, PERMISSOES_POR_PAPEL, PapelUsuario
+from app.models.enums import (
+    PERMISSOES,
+    PERMISSOES_POR_PAPEL,
+    PREFIXO_PAGINA,
+    PapelUsuario,
+)
 from app.schemas.auth import ConviteCriadoOut
 from app.schemas.usuario import (
+    PaginasUpdate,
     PermissaoOut,
     SenhaUpdate,
     UsuarioCreate,
@@ -120,11 +126,50 @@ def atualizar(
         if "papel" in dados and dados["papel"] != usuario.papel:
             raise conflito("não é possível alterar o próprio papel")
 
+    # O NOME É DE QUEM O USA (05/08/2026, a pedido). Quem administra define papel,
+    # empresa e situação — mas como a pessoa se chama é dela, e ela troca em
+    # `Configurações › Perfil`. A tela já desabilita o campo; a guarda está AQUI
+    # porque desabilitar um input não impede nada: quem chamar a rota direto
+    # continuaria renomeando terceiros.
+    #
+    # NA CRIAÇÃO CONTINUA VALENDO — ali ainda não há pessoa a quem o nome
+    # pertença, e uma conta sem nome é uma linha que ninguém identifica na lista.
+    elif "nome" in dados and dados["nome"] != usuario.nome:
+        raise conflito("o nome é da própria pessoa: ela o altera em Configurações › Perfil")
+
     if dados.get("empresa_id") is not None:
         exigir(db, Empresa, dados["empresa_id"], "empresa")
 
     for campo, valor in dados.items():
         setattr(usuario, campo, valor)
+    db.flush()
+    return UsuarioOut.model_validate(usuario)
+
+
+@router.put("/{usuario_id}/paginas", response_model=UsuarioOut)
+def definir_paginas(
+    usuario_id: uuid.UUID,
+    payload: PaginasUpdate,
+    db: Session = Depends(get_tenant_db),
+    _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+) -> UsuarioOut:
+    """Troca SÓ as telas escondidas desta conta, preservando as permissões.
+
+    ROTA PRÓPRIA, e não `PATCH /usuarios/{id}` com a lista inteira, por uma razão
+    de segurança concreta: as duas coisas dividem a coluna `permissoes`, então
+    quem quisesse mudar só as telas teria de reenviar as permissões REAIS junto —
+    e para isso teria de recebê-las antes. Quem chama daqui é a gaveta de membro
+    de PROJETO, que lista pessoas com `ver_painel`; mandar a lista de permissões
+    de todo mundo para aquela tela seria alargar o que ela vê para resolver um
+    problema de escrita.
+
+    Aqui o cliente manda só as telas. As permissões nunca saem do servidor, e a
+    fusão acontece neste corpo — que é o único lugar que precisa conhecer as duas
+    metades. Continua exigindo `admin_cadastro`, a mesma barra do `PATCH`.
+    """
+    usuario = exigir(db, Usuario, usuario_id, "usuário")
+    reais = [p for p in usuario.permissoes if not p.startswith(PREFIXO_PAGINA)]
+    usuario.permissoes = reais + [f"{PREFIXO_PAGINA}{r}" for r in payload.paginas]
     db.flush()
     return UsuarioOut.model_validate(usuario)
 

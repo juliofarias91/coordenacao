@@ -26,7 +26,13 @@ from pathlib import Path
 import pytest
 
 from app.main import app
-from app.models.enums import ChecklistTipo, NotifTipo, PapelUsuario
+from app.models.enums import (
+    PAGINAS_OCULTAVEIS,
+    PREFIXO_PAGINA,
+    ChecklistTipo,
+    NotifTipo,
+    PapelUsuario,
+)
 from app.schemas.usuario import SENHA_MINIMA
 
 # backend/tests/test_contrato.py -> tests -> backend -> raiz
@@ -56,6 +62,79 @@ def test_minimo_de_senha_igual_no_front_e_no_back() -> None:
         f"senha.ts exige {achado.group(1)} caracteres e schemas/usuario.py exige "
         f"{SENHA_MINIMA} — alinhe os dois"
     )
+
+
+def test_paginas_ocultaveis_iguais_no_front_e_no_back() -> None:
+    """As telas que se pode esconder de uma conta são as MESMAS dos dois lados.
+
+    O front deriva a lista de `ITENS_GLOBAIS` + `ITENS_PROJETO` — os interruptores
+    da gaveta de usuário SÃO o menu, não uma cópia dele. O back precisa da mesma
+    lista para recusar rota inexistente: guardada, ela seria invisível na gaveta
+    (que desenha só as telas que conhece) e ficaria na coluna sem caminho pela
+    interface para desligá-la.
+
+    Tela nova quebra este teste, e é o objetivo: acrescentá-la em
+    `PAGINAS_OCULTAVEIS` é uma linha. As do painel administrativo e as de
+    Configurações ficam DE FORA nos dois lados — ver o comentário no enum.
+    """
+    fonte = _ler("layout/nav.ts")
+
+    # SÓ `ITENS_PROJETO`. As globais saíram em 05/08/2026 — ver o comentário do
+    # enum. Se voltarem, este teste é o segundo lugar a mudar.
+    bloco = re.search(r"export const ITENS_PROJETO[^=]*=\s*\[(.*?)\n\]", fonte, re.S)
+    assert bloco, "ITENS_PROJETO não encontrado em frontend/src/layout/nav.ts"
+    corpo = bloco.group(1)
+    rotas: set[str] = set(re.findall(r"rota:\s*'([^']+)'", corpo))
+
+    # ⚠ ENTRADA QUE NÃO É OBJETO LITERAL PASSA POR CIMA DESTE TESTE, e isso já
+    # aconteceu: `ITENS_PROJETO` começa com `PROJETOS,` — uma constante, o mesmo
+    # objeto de `ITENS_GLOBAIS[0]`, que encabeça a barra fazendo o papel de
+    # voltar. A regex acima só vê `rota: '...'`, então ele ficava invisível aqui
+    # e VISÍVEL na gaveta, como um interruptor de "Projetos" que não devia
+    # existir. As duas verificações mentiram junto.
+    #
+    # Agora toda entrada por nome precisa ser declarada aqui. `PROJETOS` está na
+    # lista porque `PAGINAS_OCULTAVEIS`, no `nav.ts`, o exclui de propósito.
+    POR_NOME = {"PROJETOS"}
+    nomes = set(re.findall(r"^  ([A-Z][A-Z_0-9]*),$", corpo, re.M))
+    assert nomes <= POR_NOME, (
+        f"entrada nova por nome em ITENS_PROJETO: {sorted(nomes - POR_NOME)}. "
+        "Decida se ela é ocultável — se for, acrescente a rota em PAGINAS_OCULTAVEIS "
+        "(models/enums.py); se não, exclua-a no `nav.ts` como se faz com PROJETOS."
+    )
+
+    # Os recortes de auditoria entram por `...CHECKLISTS.map()`, com a rota em
+    # template string — não há literal para casar, então se montam aqui a partir
+    # da mesma constante que o arquivo usa.
+    lista = re.search(r"CHECKLISTS\s*=\s*\[(.*?)\]", fonte, re.S)
+    assert lista, "CHECKLISTS não encontrado em frontend/src/layout/nav.ts"
+    rotas |= {f"auditoria/{c}" for c in re.findall(r"'([^']+)'", lista.group(1))}
+
+    assert rotas == set(PAGINAS_OCULTAVEIS), (
+        "as telas ocultáveis divergiram — "
+        f"só no front: {sorted(rotas - set(PAGINAS_OCULTAVEIS))}; "
+        f"só no back: {sorted(set(PAGINAS_OCULTAVEIS) - rotas)}"
+    )
+
+
+def test_o_prefixo_de_pagina_nao_vaza_para_o_front() -> None:
+    """`oculta:` é DETALHE DO SERVIDOR, e este teste existe para continuar sendo.
+
+    Houve uma versão em que a tela montava a string e mandava a coluna inteira no
+    PATCH — e havia aqui um teste comparando os dois lados, porque eram dois. Com
+    `PUT /usuarios/{id}/paginas`, o cliente manda as ROTAS CRUAS e o servidor
+    prefixa; o vocabulário voltou a ter um dono só.
+
+    O teste inverteu junto: em vez de conferir que as duas cópias batem, ele
+    confere que a segunda cópia NÃO VOLTOU. Um `oculta:` reaparecendo no front é
+    sinal de que alguém tornou a montar a lista lá — e aí o prefixo passa a poder
+    divergir de novo.
+    """
+    for arquivo in ("pages/admin/Usuarios.tsx", "components/TabelaMembros.tsx", "lib/api.ts"):
+        assert PREFIXO_PAGINA not in _ler(arquivo), (
+            f"'{PREFIXO_PAGINA}' apareceu em frontend/src/{arquivo} — o prefixo é do "
+            "servidor; o cliente manda as rotas cruas para PUT /usuarios/{id}/paginas"
+        )
 
 
 # ============================================================== os enums

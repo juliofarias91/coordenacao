@@ -27,7 +27,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models.cadastro import Organizacao, Usuario
-from app.models.enums import PERMISSOES_POR_PAPEL
+from app.models.enums import PERMISSOES_POR_PAPEL, paginas_ocultas, permissoes_reais
 from app.schemas.auth import (
     ConviteSenhaOut,
     EsqueciSenhaRequest,
@@ -66,8 +66,22 @@ MAX_CANDIDATOS = 5
 
 
 def _permissoes(usuario: Usuario) -> list[str]:
-    """Permissões explícitas do usuário; na ausência, o padrão do papel."""
-    return list(usuario.permissoes) or list(PERMISSOES_POR_PAPEL.get(usuario.papel, ()))
+    """Permissões explícitas do usuário; na ausência, o padrão do papel.
+
+    ⚠ AS PÁGINAS OCULTAS SÃO FILTRADAS AQUI, E A ORDEM É O PONTO: elas moram na
+    mesma coluna (`PREFIXO_PAGINA`, em `models/enums.py`) e precisam sair ANTES
+    do `or`. Em `deps.py`, uma lista não vazia DESLIGA o padrão do papel — então
+    sem este filtro, esconder uma tela de quem herda as permissões do papel
+    encheria a lista com uma entrada inerte e tiraria dessa pessoa todas as
+    permissões reais de uma vez.
+
+    Esta função é o FUNIL ÚNICO: passam por ela o token (`_emitir`) e o
+    `/auth/me`. É por isso que `requer_permissao` comprovadamente nunca vê uma
+    entrada `oculta:` — e é o que `test_pagina_oculta_nao_autoriza` tranca.
+    """
+    return permissoes_reais(usuario.permissoes) or list(
+        PERMISSOES_POR_PAPEL.get(usuario.papel, ())
+    )
 
 
 def _emitir(usuario: Usuario) -> TokenPair:
@@ -87,7 +101,11 @@ def _emitir(usuario: Usuario) -> TokenPair:
 
 def _sessao(usuario: Usuario) -> SessaoOut:
     out = UsuarioOut.model_validate(usuario)
+    # As duas metades da coluna, cada uma no seu campo: `_permissoes` devolve as
+    # reais (já sem o prefixo, e caindo para o padrão do papel quando não há
+    # nenhuma), `paginas_ocultas` devolve as telas.
     out.permissoes = _permissoes(usuario)
+    out.paginas_ocultas = paginas_ocultas(usuario.permissoes)
     return SessaoOut(tokens=_emitir(usuario), usuario=out)
 
 
@@ -199,7 +217,11 @@ def me(
     if usuario is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="usuário não encontrado")
     out = UsuarioOut.model_validate(usuario)
+    # As mesmas duas metades de `_sessao`. É por AQUI que a barra lateral fica
+    # sabendo o que não desenhar quando a sessão é reidratada — sem isto, quem
+    # recarrega a página volta a ver as telas escondidas até tornar a entrar.
     out.permissoes = _permissoes(usuario)
+    out.paginas_ocultas = paginas_ocultas(usuario.permissoes)
     return out
 
 

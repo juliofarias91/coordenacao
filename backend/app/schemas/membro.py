@@ -64,3 +64,12 @@ class MembroOut(Identificado):
     # leitor na organização, e é a permissão de organização que hoje decide o
     # que a pessoa consegue fazer de fato.
     usuario_papel_org: PapelUsuario | None = None
+    # AS TELAS QUE ESTA PESSOA NÃO VÊ. Vêm da CONTA (`usuario.permissoes`, com o
+    # prefixo `oculta:`), não do vínculo — e por isso valem em todos os projetos.
+    #
+    # SÓ AS TELAS, nunca as permissões: a gaveta de membro precisa desenhar os
+    # interruptores, e quem lista membros tem `ver_painel`. Mandar junto a lista
+    # de permissões de cada pessoa alargaria o que essa tela enxerga. Gravar é
+    # `PUT /usuarios/{id}/paginas`, que funde as metades no servidor e exige
+    # `admin_cadastro`.
+    usuario_paginas_ocultas: list[str] = []

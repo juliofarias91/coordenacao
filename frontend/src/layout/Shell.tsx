@@ -270,7 +270,19 @@ export default function Shell() {
         ? ITENS_PROJETO
         : ITENS_GLOBAIS
   const itens = doEscopo.filter(
-    (item) => !item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao),
+    (item) =>
+      (!item.exigePermissao || usuario?.permissoes.includes(item.exigePermissao)) &&
+      // As telas escondidas desta CONTA, escolhidas na gaveta de membro. Na
+      // mesma linha da permissão porque é o mesmo estatuto — conveniência de
+      // navegação, não segurança; quem barra a API é o `requer_permissao` sobre
+      // as permissões acima. Ver `PREFIXO_PAGINA`, em `models/enums.py`.
+      //
+      // SÓ NO ESCOPO DE PROJETO. As telas globais deixaram de ser ocultáveis em
+      // 05/08/2026, e a guarda fica aqui e não só na lista: as rotas de projeto
+      // são SEGMENTOS (`membros`) e as globais são ABSOLUTAS (`/membros`), então
+      // sem ela um dia em que as duas convergissem esconder a de projeto
+      // esconderia a global junto.
+      !(item.escopo === 'projeto' && usuario?.paginas_ocultas?.includes(item.rota)),
   )
 
   /** Para onde o item aponta. Item de projeto sem projeto de referência não

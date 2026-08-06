@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
 from app.models import Empresa, Projeto, ProjetoMembro, Usuario
+from app.models.enums import paginas_ocultas
 from app.schemas.membro import MembroCreate, MembroOut, MembroUpdate
 from app.services import lixeira
 from app.services.escopo import conflito, exigir, exigir_projeto, ja_existe
@@ -38,6 +39,7 @@ DERIVADOS = {
     "usuario_status",
     "projeto_codigo",
     "projeto_nome",
+    "usuario_paginas_ocultas",
 }
 
 
@@ -61,6 +63,8 @@ def _saida(
             "usuario_nome": usuario.nome if usuario else None,
             "usuario_login": usuario.login if usuario else None,
             "usuario_papel_org": usuario.papel if usuario else None,
+            # Da CONTA, não do vínculo — ver o campo em `schemas/membro.py`.
+            "usuario_paginas_ocultas": paginas_ocultas(usuario.permissoes) if usuario else [],
             "usuario_status": usuario.status if usuario else None,
             "empresa_nome": empresa_nome,
             "projeto_codigo": projeto_codigo,
