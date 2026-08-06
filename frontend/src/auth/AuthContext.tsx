@@ -10,12 +10,23 @@ import {
   type ReactNode,
 } from 'react'
 
-import { api, gravarTokens, lerTokens, type Usuario } from '@/lib/api'
+import { api, gravarTokens, lerTokens, type Sessao, type Usuario } from '@/lib/api'
 
 type Ctx = {
   usuario: Usuario | null
   carregando: boolean
   entrar: (login: string, senha: string, org?: string) => Promise<void>
+  /** Cria a própria conta e JÁ ENTRA com ela. Ver `POST /auth/cadastro`. */
+  cadastrar: (dados: {
+    login: string
+    senha: string
+    nome?: string
+    org: string
+  }) => Promise<void>
+  /** Adota uma sessão que veio pronta de outro caminho — hoje só o retorno do
+   *  SSO, que recebe os tokens de `GET /auth/oidc/callback` e não passa por
+   *  `entrar` porque nunca houve senha para digitar. */
+  aplicarSessao: (sessao: Sessao) => void
   sair: () => void
   pode: (permissao: string) => boolean
 }
@@ -49,11 +60,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const entrar = useCallback(async (login: string, senha: string, org?: string) => {
-    const sessao = await api.login(login, senha, org)
+  /** O ÚNICO lugar que grava tokens e usuário juntos.
+   *
+   *  As três portas de entrada — senha, cadastro e SSO — terminam aqui de
+   *  propósito: as três recebem o mesmo `SessaoOut` do servidor, e cada uma com
+   *  o seu par de linhas seria três lugares para esquecer de gravar o token, ou
+   *  para gravá-lo antes de o usuário existir. */
+  const aplicarSessao = useCallback((sessao: Sessao) => {
     gravarTokens(sessao.tokens)
     setUsuario(sessao.usuario)
   }, [])
+
+  const entrar = useCallback(
+    async (login: string, senha: string, org?: string) => {
+      aplicarSessao(await api.login(login, senha, org))
+    },
+    [aplicarSessao],
+  )
+
+  const cadastrar = useCallback(
+    async (dados: { login: string; senha: string; nome?: string; org: string }) => {
+      aplicarSessao(await api.cadastro(dados))
+    },
+    [aplicarSessao],
+  )
 
   /** Sai daqui E no servidor.
    *
@@ -87,8 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const valor = useMemo(
-    () => ({ usuario, carregando, entrar, sair, pode }),
-    [usuario, carregando, entrar, sair, pode],
+    () => ({ usuario, carregando, entrar, cadastrar, aplicarSessao, sair, pode }),
+    [usuario, carregando, entrar, cadastrar, aplicarSessao, sair, pode],
   )
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>
 }

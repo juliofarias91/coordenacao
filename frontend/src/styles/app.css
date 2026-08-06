@@ -778,8 +778,12 @@ main {
 
    O modelo é a tela de login do VDCity: fundo escuro contínuo com glows,
    marca à esquerda, formulário à direita, campos translúcidos. O que NÃO veio
-   foi a marca gráfica (o tetraedro é identidade deles) nem o cadastro aberto e
-   o login social — aqui o acesso é só por convite do admin.
+   foi a marca gráfica — o tetraedro é identidade deles.
+
+   O CADASTRO ABERTO E O LOGIN SOCIAL, que também estavam nesta lista de "não
+   veio", ENTRARAM EM 05/08/2026 a pedido. Com eles vieram três blocos abaixo —
+   `.auth-sso`, `.auth-ou` e `.auth-req` —, e a segunda exceção da regra 2 nesta
+   tela: as quatro cores do "G" do Google, que são MARCA e não decoração.
    ============================================================================ */
 .auth {
   /* PALETA LOCAL. Redeclarar os tokens aqui é o que permite `.f`, `.btn`,
@@ -860,6 +864,15 @@ main {
 .auth a:hover {
   color: var(--ink);
   text-decoration: underline;
+}
+
+/* ÂNCORA VESTIDA DE BOTÃO — o "Criar conta" do retorno do SSO e afins. O
+   sublinhado da regra acima está certo para link em prosa, onde o alvo é
+   pequeno e vale confirmar que ele é clicável; num botão de largura cheia ele
+   risca o rótulo, e a superfície já anuncia o clique sozinha. A cor fica com o
+   `.btn`, que tem especificidade maior. */
+.auth a.btn:hover {
+  text-decoration: none;
 }
 
 /* MARCA — metade esquerda, alinhada à direita para encostar na dobra. Some
@@ -1033,9 +1046,116 @@ main {
   color: var(--ink);
 }
 
-/* A fileira de ações secundárias sob o botão. No original são duas ("esqueceu a
-   senha" e "criar conta"); aqui é uma só, porque conta nova não se cria — o
-   acesso é por convite do admin. */
+/* ENTRAR PELO PROVEDOR EXTERNO (05/08/2026) — a pílula do Google.
+
+   MESMA SUPERFÍCIE DOS CAMPOS, e não a de um `.btn`: ele fica encostado no
+   formulário, e um botão opaco ali recortaria um retângulo sólido sobre o glow
+   do fundo bem no meio de dois campos translúcidos que o deixam passar. O
+   translúcido é o que faz os três pertencerem à mesma tela.
+
+   NÃO É `.btn.pri`. O preenchimento de accent é do "Entrar", que é a ação
+   principal; dois botões cheios à mesma distância do olho fariam a tela
+   perguntar qual dos dois é o caminho em vez de oferecer um.
+
+   Regra 6 até no hover: a borda acende (`--line-2`), o fundo não muda. A marca
+   do provedor conserva as quatro cores dela — é MARCA, não estado, e é a
+   segunda exceção da regra 2 nesta tela, depois dos glows. */
+.auth-sso {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.auth-sso:hover:not(:disabled) {
+  border-color: var(--ink-3);
+}
+
+.auth-sso:disabled {
+  cursor: default;
+  color: var(--ink-3);
+}
+
+/* O "ou" entre o provedor e o formulário. Duas réguas e a palavra no meio: sem
+   ela os dois caminhos ficam empilhados como se fossem passos de uma sequência,
+   e o botão do provedor pareceria a primeira etapa do login por senha. */
+.auth-ou {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.auth-ou::before,
+.auth-ou::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* O CHECKLIST DA SENHA, ao vivo sob o campo (05/08/2026).
+
+   DUAS COLUNAS: empilhados, os quatro itens empurram o botão de criar conta
+   para fora da primeira dobra num notebook — e o formulário de cadastro já tem
+   cinco campos acima deles.
+
+   ⚠ O VERDE ENTRA SÓ NO ITEM CUMPRIDO. O pendente fica em `--ink-3`, tinta
+   apagada, e NÃO em vermelho: vermelho nos quatro faria toda senha começar como
+   quatro erros, e um campo que ainda não foi tocado não errou nada. É a regra 2
+   — estado semântico, e só onde há estado a comunicar. */
+.auth-req {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 14px;
+  margin-top: 10px;
+  list-style: none;
+}
+
+.auth-req li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--ink-3);
+  transition: color var(--dur) var(--ease);
+}
+
+.auth-req li.ok {
+  color: var(--ok);
+}
+
+/* Abaixo de 400px as duas colunas espremem "Um caractere especial" em três
+   linhas e o bloco fica mais alto do que empilhado — que é o que ele existia
+   para evitar. */
+@media (max-width: 400px) {
+  .auth-req {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* A fileira de ações secundárias sob o botão. Voltou a ter os DOIS botões do
+   original em 05/08/2026 ("esqueci minha senha" e "criar conta"), quando o
+   cadastro de conta própria entrou — o `space-between` já estava aqui desde o
+   transplante, mantendo o primeiro encostado à esquerda como no VDCity enquanto
+   a direita ficava vazia. */
 .auth-acoes {
   display: flex;
   align-items: center;
@@ -2564,6 +2684,42 @@ td.num {
 
 .frow .full {
   grid-column: 1 / -1;
+}
+
+/* LINHA DE OPÇÃO — caixa de seleção com o rótulo AO LADO (05/08/2026).
+
+   Não havia padrão para isto: os checkboxes que existiam iam dentro de um
+   `Campo`, com o rótulo ACIMA — arranjo que serve a campo de texto e não a
+   interruptor, onde o par caixa+frase se lê como uma sentença só. Com o rótulo
+   em cima, "Diferenciar maiúsculas" fica sobre uma caixinha solta e a relação
+   entre os dois some.
+
+   O `<label>` inteiro é a área de clique, e é o que faz o alvo ser a frase e
+   não um quadrado de 13px. `align-items: flex-start` + o `margin-top` da caixa
+   alinham os dois pela PRIMEIRA LINHA do texto: centrado, um rótulo de duas
+   linhas empurraria a caixa para o meio do parágrafo. */
+.linha-op {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color var(--dur) var(--ease);
+}
+
+/* Regra 6: hover é tinta. */
+.linha-op:hover {
+  color: var(--ink);
+}
+
+.linha-op input {
+  flex: none;
+  margin-top: 2px;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 .eact {

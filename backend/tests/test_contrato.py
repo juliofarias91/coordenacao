@@ -64,6 +64,48 @@ def test_minimo_de_senha_igual_no_front_e_no_back() -> None:
     )
 
 
+@requer_front
+def test_composicao_da_senha_igual_no_front_e_no_back() -> None:
+    """As TRÊS exigências de composição estão nos dois lados (05/08/2026).
+
+    Mesma razão da duplicação do mínimo, e o mesmo risco: a tela de cadastro é
+    PÚBLICA e desenha o checklist enquanto se digita, sem ter a quem perguntar.
+    Se um lado ganhar uma regra e o outro não, o checklist fica todo verde e o
+    envio volta 422 — que é exatamente o beco de onde veio o `[object Object]`.
+
+    Compara as EXPRESSÕES REGULARES, não os rótulos: são elas que decidem, e
+    `[^\\W\\d_]` contra `[a-z]` é a divergência que passaria despercebida — a
+    segunda recusa uma senha cuja única letra seja acentuada.
+    """
+    fonte = _ler("lib/senha.ts")
+    for expressao in (r"[^\W\d_]", r"\d", r"[\W_]"):
+        assert expressao in fonte, (
+            f"a regra {expressao!r} está em schemas/usuario.py e sumiu de "
+            "frontend/src/lib/senha.ts — alinhe os dois"
+        )
+
+    # E a recíproca: o validador do servidor cobra as quatro coisas que a tela
+    # promete. Um `validar_senha` que só medisse comprimento deixaria a API
+    # aceitar o que o checklist diz não valer.
+    for pedaco in ("uma letra", "um número", "um caractere especial", "caracteres"):
+        assert pedaco in _validar_senha_fonte(), (
+            f"{pedaco!r} sumiu de validar_senha, em schemas/usuario.py"
+        )
+
+
+def _validar_senha_fonte() -> str:
+    """O texto de `schemas/usuario.py` — lido, e não importado, de propósito.
+
+    Importar `validar_senha` e exercitá-lo diria que ele recusa senha fraca, que
+    é o que `test_cadastro_aberto.py` já cobre contra o banco. O que ESTE teste
+    guarda é outra coisa: que as duas cópias da regra continuam sendo a mesma
+    regra. Isso só se vê comparando as fontes.
+    """
+    return (
+        Path(__file__).resolve().parents[1] / "app" / "schemas" / "usuario.py"
+    ).read_text(encoding="utf-8")
+
+
 def test_paginas_ocultaveis_iguais_no_front_e_no_back() -> None:
     """As telas que se pode esconder de uma conta são as MESMAS dos dois lados.
 

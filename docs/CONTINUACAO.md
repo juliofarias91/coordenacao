@@ -560,11 +560,15 @@ backend já existe.
 ### Decidido, mas ainda não implementado
 
 10. ~~**Rotas por projeto**~~ — **feito em 29/07**, ver o topo.
-11. ~~**Login/cadastro**~~ — **feito em 30/07** (migration 0010). Segue "só por
-    convite do admin": cadastro aberto contradiz "SSO autentica, não provisiona"
-    (`docs/SUPABASE.md`). `POST /usuarios/{id}/convite` gera o link de uso único,
-    `/definir-senha/:token` é a tela pública, e `POST /auth/senha/esqueci`
-    notifica os admins enquanto não houver SMTP. Ver a seção "Acesso" do
+11. ~~**Login/cadastro**~~ — **feito em 30/07** (migration 0010) e **ampliado em
+    05/08** (migration 0016). `POST /usuarios/{id}/convite` gera o link de uso
+    único, `/definir-senha/:token` é a tela pública, e `POST /auth/senha/esqueci`
+    notifica os admins enquanto não houver SMTP.
+    **O "só por convite do admin" caiu a pedido em 05/08**: entraram o cadastro
+    de conta própria (`/cadastro`) e a entrada pelo Google. A contradição com
+    "SSO autentica, não provisiona" foi resolvida por condição, não por exceção —
+    quem se cadastra não cria organização, entra numa que já existe e que ligou
+    `cadastro_aberto`, no papel menos privilegiado. Ver a seção "Acesso" do
     `CLAUDE.md` para as regras que não devem ser revertidas.
 
 ### Achado no caminho, e corrigido em 30/07

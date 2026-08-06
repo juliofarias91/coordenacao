@@ -36,6 +36,9 @@ export type Organizacao = {
   updated_at: string
   nome: string
   slug: string | null
+  /** Se o `slug` acima serve de código para alguém criar a própria conta
+   *  (migration 0016). Desligado por padrão — o slug não é segredo. */
+  cadastro_aberto: boolean
 }
 
 export type ResumoOrganizacao = {
@@ -137,6 +140,19 @@ export type ConviteSenha = {
   expira_em: string
   /** Vem do servidor: esta tela é pública e não tem outra forma de saber a
    *  regra antes de o usuário errá-la. */
+  senha_minima: number
+}
+
+/** O que a tela de entrada sabe antes de haver sessão (`GET /auth/config`).
+ *
+ *  Não diz QUAL organização aceita cadastro: isso depende do código que a pessoa
+ *  digita, e a tela só descobre ao enviá-lo. Responder aqui transformaria a rota
+ *  pública numa lista de tenants da plataforma. */
+export type ConfigPublica = {
+  /** Há provedor OIDC ligado e configurado. */
+  sso: boolean
+  /** Nome do provedor, para o rótulo do botão ('Google', 'Autodesk', 'SSO'). */
+  sso_rotulo: string
   senha_minima: number
 }
 

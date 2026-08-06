@@ -165,6 +165,33 @@ export const api = {
       body: JSON.stringify({ login, senha, org: org ?? null }),
     }),
 
+  /** Criar a PRÓPRIA conta, dentro de uma organização que aceita (05/08/2026).
+   *
+   *  `org` é obrigatório, ao contrário do login: lá o e-mail já existe em algum
+   *  tenant e a senha desempata qual; aqui não existe em nenhum, e adivinhar o
+   *  tenant é como se cria uma conta na organização errada. */
+  cadastro: (corpo: { login: string; senha: string; nome?: string; org: string }) =>
+    escrever<Sessao>('/auth/cadastro', 'POST', corpo),
+
+  /** O que a tela de entrada precisa saber ANTES de haver sessão — hoje, se há
+   *  provedor de SSO configurado e como ele se chama. É o que faz o botão do
+   *  Google não ser desenhado num servidor que não tem provedor. */
+  configPublica: () =>
+    requisitar<T.ConfigPublica>('/auth/config'),
+
+  /** SSO/OIDC — as duas pontas do mesmo redirecionamento.
+   *
+   *  `iniciar` devolve a URL do provedor; `concluir` troca o `code` que ele
+   *  devolve pela sessão. O passo do meio acontece fora daqui, no navegador. */
+  sso: {
+    iniciar: (org?: string) =>
+      requisitar<{ authorization_url: string; state: string }>(
+        `/auth/oidc/login${qs({ org })}`,
+      ),
+    concluir: (code: string, state: string) =>
+      requisitar<Sessao>(`/auth/oidc/callback${qs({ code, state })}`),
+  },
+
   me: () => requisitar<Usuario>('/auth/me'),
 
   /** Encerra as sessões desta conta no SERVIDOR. Sem esta chamada, "Sair" era
@@ -190,7 +217,7 @@ export const api = {
   // --------------------------------------------------------- administração
   organizacao: {
     resumo: () => requisitar<T.ResumoOrganizacao>('/organizacao'),
-    atualizar: (corpo: { nome?: string; slug?: string }) =>
+    atualizar: (corpo: { nome?: string; slug?: string; cadastro_aberto?: boolean }) =>
       escrever<T.Organizacao>('/organizacao', 'PATCH', corpo),
   },
 

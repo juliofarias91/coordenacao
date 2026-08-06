@@ -1,10 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthContext'
 import AuthLayout from '@/auth/AuthLayout'
+import BotaoSSO from '@/auth/BotaoSSO'
 import CampoSenha from '@/auth/CampoSenha'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
+import type { ConfigPublica } from '@/lib/types'
 
 export default function Login() {
   const { entrar } = useAuth()
@@ -12,6 +15,10 @@ export default function Login() {
   const [login, setLogin] = useState('')
   const [senha, setSenha] = useState('')
   const [org, setOrg] = useState('')
+  /** Só para saber se existe provedor de SSO, e como ele se chama. Falhar aqui
+   *  não é erro de tela: sem resposta o botão não é desenhado e a entrada por
+   *  senha — o caminho principal — continua inteira. */
+  const [config, setConfig] = useState<ConfigPublica | null>(null)
   /** O campo de organização SÓ APARECE quando a API pede — no 409 de
    *  `/auth/login`. Exibi-lo sempre obrigaria todo mundo a saber o slug do
    *  próprio tenant para uma ambiguidade que quase nunca existe: o backend
@@ -23,6 +30,17 @@ export default function Login() {
   /** A resposta do pedido de redefinição. É sempre a mesma frase, exista a
    *  conta ou não — ver `POST /auth/senha/esqueci`. */
   const [aviso, setAviso] = useState<string | null>(null)
+
+  useEffect(() => {
+    let ativo = true
+    api
+      .configPublica()
+      .then((c) => ativo && setConfig(c))
+      .catch(() => undefined)
+    return () => {
+      ativo = false
+    }
+  }, [])
 
   async function submeter(e: FormEvent) {
     e.preventDefault()
@@ -81,6 +99,21 @@ export default function Login() {
           </div>
         )}
 
+        {/* O PROVEDOR VEM ANTES DOS CAMPOS. Quem entra pelo Google não tem senha
+            aqui para digitar, e pôr o botão embaixo do formulário faria essa
+            pessoa ler dois campos que não lhe dizem respeito antes de achar o
+            caminho dela.
+
+            SEM `org`: nesta tela quem entra JÁ EXISTE, e o callback o encontra
+            pela identidade. Mandar o código daqui abriria o provisionamento na
+            tela de entrar, que é o oposto do que ela faz. */}
+        {config?.sso && (
+          <>
+            <BotaoSSO rotulo={config.sso_rotulo} onErro={setErro} />
+            <div className="auth-ou">{L('ou', 'or')}</div>
+          </>
+        )}
+
         <div>
           <label className="oculto" htmlFor="login">
             {L('E-mail', 'E-mail')}
@@ -132,11 +165,15 @@ export default function Login() {
           {enviando ? L('Entrando…', 'Signing in…') : L('Entrar na plataforma', 'Sign in')}
         </button>
 
-        {/* No VDCity esta fileira tem dois botões: "Esqueceu a senha?" e "Criar
-            conta nova". Aqui só o primeiro — conta nova não se cria, o acesso é
-            por convite do admin. O `space-between` fica: ele mantém o botão
-            encostado à esquerda como no original, em vez de centralizá-lo e
-            fazer parecer uma ação principal. */}
+        {/* A FILEIRA VOLTOU A TER OS DOIS BOTÕES DO ORIGINAL (05/08/2026), e é
+            o `space-between` que sempre esteve aqui esperando pelo segundo: ele
+            existia para manter "esqueci minha senha" encostado à esquerda como
+            no VDCity, mesmo com a direita vazia enquanto conta nova não se
+            criava. Agora se cria, e o par ocupa a linha como lá.
+
+            "Criar conta" é `.btn-link` e não `.btn`: quem chega nesta tela quase
+            sempre já tem conta, e dois botões preenchidos à mesma distância do
+            olho fariam a tela perguntar qual dos dois é o caminho. */}
         <div className="auth-acoes">
           <button
             type="button"
@@ -146,14 +183,10 @@ export default function Login() {
           >
             {L('Esqueci minha senha', 'I forgot my password')}
           </button>
+          <Link className="btn-link" to="/cadastro">
+            {L('Criar conta', 'Create account')}
+          </Link>
         </div>
-
-        <p className="hint" style={{ marginTop: 4 }}>
-          {L(
-            'O acesso por SSO/Autodesk entra quando o provedor for definido (decisão em aberto nº 2 do plano técnico).',
-            'SSO/Autodesk sign-in lands once the provider is chosen (open decision #2 in the technical plan).',
-          )}
-        </p>
       </form>
     </AuthLayout>
   )

@@ -10,6 +10,7 @@ import Importacao from '@/pages/Importacao'
 import Auditoria from '@/pages/auditoria'
 import Recorte from '@/pages/auditoria/Recorte'
 import BimMandate from '@/pages/BimMandate'
+import Cadastro from '@/pages/Cadastro'
 import Configuracao from '@/pages/configuracao'
 import CfgCliente from '@/pages/configuracao/Cliente'
 import CfgDisciplinas from '@/pages/configuracao/Disciplinas'
@@ -39,6 +40,7 @@ import Painel from '@/pages/Painel'
 import Peb from '@/pages/Peb'
 import Portal from '@/pages/Portal'
 import Relatorios from '@/pages/Relatorios'
+import RetornoSSO from '@/pages/RetornoSSO'
 import EscopoProjeto, { RotaLegada } from '@/projeto/EscopoProjeto'
 import { ProjetoProvider } from '@/projeto/ProjetoContext'
 
@@ -99,6 +101,16 @@ export default function App() {
           {/* A política também: ela informa sobre o tratamento de dados, e uma
               política que só se lê depois de entrar chega tarde demais. */}
           <Route path="/privacidade" element={<Privacidade />} />
+          {/* CRIAR A PRÓPRIA CONTA (05/08/2026). Rota própria e não um modo da
+              tela de login: são cinco campos contra dois, e alternar entre os
+              dois arranjos no mesmo endereço tiraria do cadastro a única coisa
+              que ele precisa ter — um link que se manda a alguém. */}
+          <Route path="/cadastro" element={<Cadastro />} />
+          {/* O pouso do provedor externo. É para AQUI que o `OIDC_REDIRECT_URI`
+              aponta, e não para a API: quem chega ao redirect é o NAVEGADOR, e
+              a resposta do callback é JSON — apontá-lo para a API mostrava uma
+              página de JSON cru no fim do login. */}
+          <Route path="/entrar/sso" element={<RetornoSSO />} />
           <Route path="*" element={<Login />} />
         </Routes>
       </Suspense>

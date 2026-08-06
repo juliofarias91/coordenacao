@@ -316,6 +316,71 @@ conta na plataforma passa a precisar de uma.
 
 ## Acesso: login, usuários e senha (30/07/2026)
 
+**A PORTA DEIXOU DE SER SÓ O CONVITE** (05/08/2026, a pedido): entraram o
+cadastro de conta própria (`/cadastro`) e a entrada pelo Google. Isto REVERTE
+"o acesso é só por convite do admin", que estava escrito aqui e em três outros
+lugares — mas a reversão é condicionada, e as condições são o recurso. O porquê
+longo está em `services/cadastro_aberto.py`; o resumo:
+
+- **O cadastro NÃO cria organização.** Quem chega entra numa que já existe, pelo
+  código dela. Criar tenant continua sendo provisionamento e continua saindo do
+  seed — se uma rota pública pudesse criar, nada impediria mil deles.
+- **`organizacao.cadastro_aberto` (migration 0016) é o interruptor, e nasce
+  DESLIGADO.** Sem ele o código seria o slug, e o slug não é segredo: ele está
+  no endereço do convite e a tela de login já o pede quando o mesmo e-mail está
+  em dois tenants. Ligar é decisão de quem administra, em `/admin/organizacao`.
+  Cheguei a desenhar um `codigo_cadastro` à parte — dois segredos a gerenciar e
+  a girar quando um vazasse, para resolver o que uma decisão resolve.
+- **A conta nasce LEITOR**, o papel menos privilegiado, com `permissoes` VAZIA
+  (que significa "usa o padrão do papel", e é o que a faz acompanhar uma
+  promoção). Nascer coordenador daria a um estranho de posse do código o poder
+  de publicar round — o ato que congela o resultado para o fornecedor.
+- **Slug inexistente e organização fechada respondem IGUAL** (404, mesma frase).
+  Respostas diferentes fariam do formulário público um verificador de tenants.
+  É a mesma razão do 202 fixo de `/auth/senha/esqueci`.
+- **O SSO passa pelo MESMO módulo.** `oidc_callback` provisiona sob as duas
+  condições acima — código no `state` **e** interruptor ligado —, e não com
+  código próprio. Duas implementações divergiriam, e a que esquecesse o
+  interruptor abriria todo tenant a qualquer conta do Google.
+- **O código da organização viaja ASSINADO dentro do `state`** (`oidc_login` →
+  `_do_state`). Ele diz ao callback em que tenant a conta pode nascer, e o
+  callback não tem outra fonte: o provedor devolve `code` e `state`, e nada mais
+  nosso. Como parâmetro solto do callback, qualquer pessoa trocaria o tenant de
+  destino editando a URL de volta.
+- **A tela de ENTRAR não manda o código; a de CADASTRO manda.** É o que mantém
+  `/` reconhecendo quem já existe e `/cadastro` sendo o único lugar que cria.
+
+**O `OIDC_REDIRECT_URI` APONTA PARA A TELA (`/entrar/sso`), NÃO PARA A API.**
+Quem chega ao redirect é o NAVEGADOR, e `GET /auth/oidc/callback` responde JSON —
+apontá-lo para a API mostrava uma página de JSON cru no fim do login.
+`pages/RetornoSSO.tsx` lê o `code` e faz a chamada ela mesma; o `useRef` ali é
+contra o StrictMode gastar o `code`, que é de uso único. **Entrar com o Google é
+só configuração** (`.env.example` tem o passo a passo): o cliente OIDC é genérico
+desde a Fase 0, e quem descobre o nome do provedor é `GET /auth/config`, a partir
+do `OIDC_ISSUER`. Escrever "Google" no React obrigaria a mexer em código no dia
+em que a decisão aberta nº 2 for resolvida a favor da Autodesk.
+
+**A SENHA GANHOU COMPOSIÇÃO** (05/08/2026): além dos 10 caracteres, letra,
+número e caractere especial. `SENHA_MINIMA` **não mudou** — o print de referência
+pedia 8, e baixar o mínimo para ganhar composição troca uma proteção por outra.
+- **A regra é UM validador (`validar_senha`), não quatro `Field`**, e diz tudo o
+  que falta de uma vez. Levantar no primeiro faria quem digitou dez letras
+  acrescentar um número, reenviar, e só então descobrir que falta um especial.
+- **Ela vale na ESCRITA, nunca na leitura.** Nenhuma senha gravada é reconferida:
+  conferir no login trancaria de uma vez toda conta anterior à regra, numa tela
+  que não tem como explicar o que houve. `test_senha_de_antes_da_regra_continua_entrando`
+  tranca isso.
+- **`[^\W\d_]` e não `[a-z]`** para "letra": quem escolhe senha em português
+  escolhe com acento, e `[a-z]` recusaria uma senha cuja única letra fosse `ã`.
+- **O checklist ao vivo (`auth/RequisitosSenha.tsx`) é o retorno**, e substituiu
+  a prosa que contava a regra uma vez e a conferia depois de enviar. **O verde
+  entra só no item CUMPRIDO** — o pendente é `--ink-3`, nunca vermelho: vermelho
+  nos quatro faria toda senha começar como quatro erros, e um campo que ninguém
+  tocou não errou nada.
+- As duas cópias da regra são trancadas por
+  `test_composicao_da_senha_igual_no_front_e_no_back`, que compara as EXPRESSÕES
+  e não os rótulos.
+
 **Senha não se digita para outra pessoa.** Dar acesso é
 `POST /usuarios/{id}/convite` → link de uso único → a pessoa escolhe a própria em
 `/definir-senha/:token`. O campo de senha no editor de usuários continua lá, mas
@@ -354,11 +419,19 @@ tabela (`token_acesso`, migration 0010); o tipo sai de haver ou não `senha_hash
 **Três superfícies, e elas não se misturam** — a régua está na seção
 AUTENTICAÇÃO do `app.css`, com o porquê de cada valor:
 
-- **`.auth`** (login, definir-senha) — escura SEMPRE, com glows de accent.
-  **É a única tela onde a regra 2 cede**, porque é a única sem dado com que a cor
-  possa competir e sem tema a seguir. Não leve a permissão para outra tela. A
-  paleta é local ao seletor, e é isso que faz `.f`/`.btn`/`.hint` valerem lá
-  dentro sem estilo próprio.
+- **`.auth`** (login, cadastro, definir-senha, retorno do SSO) — escura SEMPRE,
+  com glows de accent. **É a única tela onde a regra 2 cede**, porque é a única
+  sem dado com que a cor possa competir e sem tema a seguir. Não leve a
+  permissão para outra tela. A paleta é local ao seletor, e é isso que faz
+  `.f`/`.btn`/`.hint` valerem lá dentro sem estilo próprio.
+  **A cor cede DUAS vezes ali, e a segunda é o "G" do Google** (`auth/BotaoSSO`):
+  quatro cores que não são estado nem decoração, e sim MARCA — redesenhá-lo em
+  `currentColor` para "respeitar o sistema" produziria um G cinza que não é o do
+  Google e que as diretrizes do provedor não permitem. Provedor desconhecido cai
+  num cadeado neutro, que é quando não há marca a respeitar.
+  **`.auth-sso` usa a superfície dos CAMPOS, não a de um `.btn`**: opaco, ele
+  recortaria um retângulo sólido sobre o glow bem no meio de dois campos
+  translúcidos que o deixam passar.
 - **`.telacheia` + `.avisocard`** — segue o tema. É o "Carregando…" da
   reidratação (aparece para quem JÁ entrou; escuro piscaria preto) e os estados
   do portal do cliente. Chamavam-se `.login*`, nome que mentia.
@@ -367,7 +440,9 @@ AUTENTICAÇÃO do `app.css`, com o porquê de cada valor:
   navegador.
 
 **Do VDCity não veio:** a marca gráfica (o tetraedro é deles; aqui não há símbolo
-até haver logotipo), o cadastro aberto, o login social e o MFA/TOTP.
+até haver logotipo) e o MFA/TOTP. **O cadastro aberto e o login social estavam
+nesta lista e saíram dela em 05/08/2026, a pedido** — ver o topo desta seção
+para as condições que a reversão manteve.
 
 **Sem SMTP, a entrega é o link copiado pelo admin.** `POST /auth/senha/esqueci`
 cria o token e notifica os admins pelo PAPEL (`NotifTipo.ACESSO`), para o pedido
@@ -377,6 +452,12 @@ canal entra em `esqueci_a_senha` e o resto não muda.
 **Ainda não existe, e é decisão em aberto:** limite de tentativas no login
 (cada tentativa paga um Argon2, então é vetor de DoS além de brute force),
 registro de falha de login, e exigir a senha atual ao trocar a própria.
+**O cadastro aberto entrou nessa mesma lista** (05/08/2026): `POST /auth/cadastro`
+é público e não tem limite, pela mesma razão que o login não tem. Com o
+interruptor desligado em toda organização, a superfície é uma rota que responde
+404 rápido; ligado num tenant, ela passa a merecer o limite tanto quanto o login.
+**Confirmação de e-mail também não existe** — sem SMTP não há como enviá-la, e é
+por isso que o cadastro já devolve sessão em vez de mandar confirmar.
 
 ## Importação de planilha — PONTE PROVISÓRIA (30/07/2026)
 

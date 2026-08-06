@@ -7,13 +7,17 @@
  *  - **A marca gráfica.** O tetraedro orbitando é identidade do VDCity, e o
  *    Shell daqui decidiu não ter símbolo enquanto não houver logotipo de
  *    verdade (ver `layout/Shell.tsx`). Fica o wordmark.
- *  - **Cadastro aberto e login social.** Aqui o acesso é só por convite do
- *    admin — cadastro aberto contradiz "SSO autentica, não provisiona".
  *  - **O passo de MFA/TOTP.** Não existe segundo fator nesta plataforma.
  *
- *  Existe como componente, e não copiado nas duas páginas, porque as duas
- *  colunas e a marca são a mesma coisa nas duas telas — o que muda é o
- *  formulário. Duplicar deixaria o login e o definir-senha divergirem no
+ *  **CADASTRO ABERTO E LOGIN SOCIAL ENTRARAM EM 05/08/2026, a pedido**, e esta
+ *  lista os trazia como "o que não veio" — o acesso era só por convite do admin.
+ *  A reversão não é total, e o que sobrou da regra antiga está em
+ *  `services/cadastro_aberto.py`: quem se cadastra não cria organização, entra
+ *  numa que já existe E que ligou o interruptor, no papel menos privilegiado.
+ *
+ *  Existe como componente, e não copiado nas páginas, porque as duas colunas e
+ *  a marca são a mesma coisa em todas — o que muda é o formulário. Duplicar
+ *  deixaria login, cadastro, definir-senha e retorno do SSO divergirem no
  *  primeiro ajuste de espaçamento.
  *
  *  É a única tela que não segue o tema: escura sempre. O porquê está na seção

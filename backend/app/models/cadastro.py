@@ -11,7 +11,16 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Text, UniqueConstraint, text
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -35,6 +44,13 @@ class Organizacao(TimestampMixin, Base):
     id: Mapped[uuid.UUID] = uuid_pk()
     nome: Mapped[str] = mapped_column(Text, nullable=False)
     slug: Mapped[str | None] = mapped_column(Text, unique=True)
+    # Se `POST /auth/cadastro` aceita este slug como código de entrada
+    # (migration 0016). DESLIGADO por padrão: o slug não é segredo — ele está no
+    # endereço do convite —, então sem o interruptor bastaria conhecê-lo para
+    # criar conta dentro do tenant.
+    cadastro_aberto: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"), default=False
+    )
 
     projetos: Mapped[list[Projeto]] = relationship(back_populates="organizacao")
 

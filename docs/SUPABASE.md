@@ -223,12 +223,27 @@ OIDC_ENABLED=true
 OIDC_ISSUER=https://pilyrmvxytuwoiwjxgdv.supabase.co/auth/v1
 OIDC_CLIENT_ID=<client id>
 OIDC_CLIENT_SECRET=<client secret>
-OIDC_REDIRECT_URI=https://<seu-dominio>/api/v1/auth/oidc/callback
+OIDC_REDIRECT_URI=https://<seu-dominio>/entrar/sso
 ```
 
-**SSO autentica, não provisiona.** O usuário precisa existir na plataforma
-antes de entrar — é o que impede qualquer conta do provedor de virar acesso.
-O primeiro login casa por `oidc_sub`, ou por e-mail se for a primeira vez.
+⚠ **O redirect aponta para a TELA, não para a API** (05/08/2026). Quem chega ao
+`redirect_uri` é o navegador, redirecionado pelo provedor, e
+`GET /auth/oidc/callback` responde JSON — apontá-lo para a API mostrava uma
+página de JSON cru no fim do login. A rota `/entrar/sso` (`pages/RetornoSSO.tsx`)
+lê o `code` e faz a chamada ela mesma.
+
+**SSO autentica, e provisiona SOB DUAS CONDIÇÕES** (05/08/2026, a pedido). A
+regra era "autentica, não provisiona": quem não existisse levava 403, e era o
+que impedia qualquer conta do provedor de virar acesso. O primeiro login casa
+por `oidc_sub`, ou por e-mail se for a primeira vez — isso não mudou.
+
+O que mudou é o que acontece quando não casa com ninguém. Antes, 403 sempre;
+agora a conta pode nascer, se **o `state` trouxer o código de uma organização**
+(só a tela de cadastro o manda; a de entrar não) **e essa organização tiver
+`cadastro_aberto` ligado** (migration 0016, desligado por padrão). Sem as duas,
+403 como antes. Quem aplica as condições é `services/cadastro_aberto.py`, o
+mesmo módulo do cadastro por formulário — duas implementações divergiriam, e a
+que esquecesse o interruptor abriria todo tenant cujo slug alguém conhecesse.
 
 ### Por que a autorização não vai para o Supabase
 

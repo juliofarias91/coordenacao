@@ -5,10 +5,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models.enums import PapelUsuario
-from app.schemas.usuario import SENHA_MINIMA
+from app.schemas.usuario import validar_senha
 
 
 class LoginRequest(BaseModel):
@@ -21,6 +21,54 @@ class LoginRequest(BaseModel):
             "obrigatório quando o mesmo e-mail existir em mais de uma organização."
         ),
     )
+
+
+class CadastroRequest(BaseModel):
+    """Criar a própria conta — o cadastro por CÓDIGO DA ORGANIZAÇÃO.
+
+    `org` NÃO É OPCIONAL AQUI, ao contrário do login, e é a diferença que define
+    este recurso. No login o e-mail já existe em algum tenant e a senha desempata
+    qual; no cadastro não existe em nenhum, e não há o que desempatar — sem o
+    código, a conta teria de nascer numa organização escolhida pelo servidor.
+    Toda entidade da plataforma carrega `org_id`, e adivinhá-lo é como se cria
+    uma conta no tenant errado.
+
+    Ele NÃO CRIA ORGANIZAÇÃO: quem se cadastra entra numa que já existe. Criar
+    tenant continua sendo provisionamento, e continua saindo do seed — ver a
+    docstring de `api/v1/organizacao.py`.
+    """
+
+    nome: str | None = Field(default=None, max_length=200)
+    login: EmailStr = Field(description="E-mail, que é o login")
+    senha: str = Field(max_length=200)
+    org: str = Field(
+        min_length=1,
+        max_length=60,
+        description="Código (slug) da organização que autoriza o cadastro aberto.",
+    )
+
+    @field_validator("senha")
+    @classmethod
+    def senha_forte(cls, v: str) -> str:
+        return validar_senha(v)
+
+
+class ConfigPublicaOut(BaseModel):
+    """O que a tela de entrada precisa saber ANTES de haver sessão.
+
+    Existe para o botão do Google não ser desenhado quando não há provedor
+    configurado: um botão que só pode responder 501 é pior do que botão nenhum —
+    ele promete um caminho de entrada que não existe, e quem o tenta conclui que
+    a plataforma está fora do ar.
+
+    Não diz QUAL organização aceita cadastro: isso depende do código, e a tela
+    só descobre ao enviá-lo. Responder aqui transformaria a rota pública numa
+    lista de tenants.
+    """
+
+    sso: bool = Field(description="Há provedor OIDC configurado e ligado")
+    sso_rotulo: str = Field(description="Nome do provedor, para o rótulo do botão")
+    senha_minima: int
 
 
 class RefreshRequest(BaseModel):
@@ -87,7 +135,12 @@ class EsqueciSenhaRequest(BaseModel):
 
 class RedefinirSenhaRequest(BaseModel):
     token: str
-    senha: str = Field(min_length=SENHA_MINIMA, max_length=200)
+    senha: str = Field(max_length=200)
+
+    @field_validator("senha")
+    @classmethod
+    def senha_forte(cls, v: str) -> str:
+        return validar_senha(v)
 
 
 class ConviteSenhaOut(BaseModel):

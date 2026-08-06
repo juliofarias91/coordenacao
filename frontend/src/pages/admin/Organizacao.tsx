@@ -26,6 +26,8 @@ export default function AbaOrganizacao() {
   const [resumo, setResumo] = useState<ResumoOrganizacao | null>(null)
   const [nome, setNome] = useState('')
   const [slug, setSlug] = useState('')
+  /** Se o slug acima serve de código de cadastro (migration 0016). */
+  const [aberto, setAberto] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -36,6 +38,7 @@ export default function AbaOrganizacao() {
       setResumo(r)
       setNome(r.organizacao.nome)
       setSlug(r.organizacao.slug ?? '')
+      setAberto(r.organizacao.cadastro_aberto)
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : String(e))
     }
@@ -50,7 +53,11 @@ export default function AbaOrganizacao() {
     setSalvo(false)
     setSalvando(true)
     try {
-      await api.organizacao.atualizar({ nome, slug: slug || undefined })
+      await api.organizacao.atualizar({
+        nome,
+        slug: slug || undefined,
+        cadastro_aberto: aberto,
+      })
       setSalvo(true)
       await carregar()
     } catch (e) {
@@ -105,6 +112,30 @@ export default function AbaOrganizacao() {
           {L(
             'O slug é único na plataforma inteira: é ele que identifica a organização no login antes de existir token.',
             'The slug is unique across the whole platform: it identifies the organization at sign-in, before a token exists.',
+          )}
+        </p>
+
+        {/* O INTERRUPTOR DO CADASTRO ABERTO (migration 0016). Vive COLADO no
+            slug, e não numa seção própria: ele é o que decide se aquele campo
+            logo acima vira uma chave de entrada. Separá-los deixaria a decisão
+            mais perigosa da tela longe do dado de que ela depende. */}
+        <label className="linha-op">
+          <input
+            type="checkbox"
+            checked={aberto}
+            onChange={(e) => setAberto(e.target.checked)}
+          />
+          <span>
+            {L(
+              'Permitir que qualquer pessoa com este código crie a própria conta',
+              'Let anyone holding this code create their own account',
+            )}
+          </span>
+        </label>
+        <p className="hint">
+          {L(
+            'Desligado, só quem recebe convite entra — o slug sozinho não vale nada. Ligado, quem souber o código cria uma conta de LEITOR nesta organização, e quem administra promove depois. O slug não é segredo: ele aparece no endereço dos convites.',
+            'Off, only invited people get in — the slug alone is worth nothing. On, anyone who knows the code creates a READER account in this organization, and an administrator promotes them later. The slug is not a secret: it appears in invitation addresses.',
           )}
         </p>
 
