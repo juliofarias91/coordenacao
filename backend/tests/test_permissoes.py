@@ -210,6 +210,77 @@ def test_so_o_super_admin_muda_a_organizacao(client: TestClient, cenario: Cenari
 
 
 @requer_banco
+def test_ninguem_edita_a_propria_conta(autenticado: TestClient, cenario: Cenario) -> None:
+    """⚠ NEM TENDO `admin_cadastro` — é o que a permissão NÃO alcança.
+
+    Esta rota edita papel, empresa, situação e permissões: o que decide o que a
+    pessoa pode fazer. Errar em si mesmo é o único erro que ninguém desfaz
+    sozinho — um super admin que se rebaixa fica esperando outro trazê-lo de
+    volta, e numa organização com um admin só não há outro.
+
+    Substituiu duas guardas PARCIAIS que não tinham teste nenhum: "não desativar
+    a si mesmo" e "não trocar o próprio papel". Agora é total.
+    """
+    eu = cenario.admin.id
+
+    for corpo in (
+        {"papel": "leitor"},
+        {"status": "inativo"},
+        {"empresa_id": None},
+        {"permissoes": ["ver_painel"]},
+    ):
+        r = autenticado.patch(f"{API}/usuarios/{eu}", json=corpo)
+        assert r.status_code == 409, f"{corpo} passou: {r.text}"
+        assert "própria conta" in r.json()["detail"]
+
+    # As telas visíveis pelo mesmo motivo: quem esconde as próprias some com o
+    # caminho de volta — a gaveta que as religa está numa delas.
+    negado = autenticado.put(f"{API}/usuarios/{eu}/paginas", json={"paginas": ["modelos"]})
+    assert negado.status_code == 409, negado.text
+
+    # E A SENHA CONTINUA ABERTA: é o caminho de `Configurações › Segurança`, e
+    # trancá-lo deixaria alguém sem como trocar a própria senha.
+    trocada = autenticado.put(f"{API}/usuarios/{eu}/senha", json={"senha": "outra-senha-longa-12"})
+    assert trocada.status_code == 204, trocada.text
+
+
+@requer_banco
+def test_ninguem_mexe_no_proprio_vinculo(autenticado: TestClient, cenario: Cenario) -> None:
+    """A irmã da guarda de conta, do lado do projeto — alterar E remover.
+
+    Trocar o próprio papel no projeto ou sair dele é mexer no que decide o que se
+    pode fazer ali, e quem sai precisa de outra pessoa para voltar.
+    """
+    r = autenticado.post(
+        f"{API}/projetos/{cenario.projeto.id}/membros",
+        json={"usuario_id": str(cenario.admin.id), "papel": "coordenador"},
+    )
+    assert r.status_code == 201, r.text
+    meu = r.json()["id"]
+
+    alterar = autenticado.patch(f"{API}/membros/{meu}", json={"papel": "leitor"})
+    assert alterar.status_code == 409, alterar.text
+    assert "próprio vínculo" in alterar.json()["detail"]
+
+    sair = autenticado.delete(f"{API}/membros/{meu}")
+    assert sair.status_code == 409, sair.text
+
+    # O de OUTRA pessoa continua editável — é o que o `admin_cadastro` é para.
+    outra = autenticado.post(
+        f"{API}/usuarios",
+        json={"login": f"vinculo-{uuid.uuid4().hex[:6]}@spbim.com.br", "papel": "auditor"},
+    )
+    assert outra.status_code == 201, outra.text
+    dela = autenticado.post(
+        f"{API}/projetos/{cenario.projeto.id}/membros",
+        json={"usuario_id": outra.json()["id"], "papel": "auditor"},
+    )
+    assert dela.status_code == 201, dela.text
+    ok = autenticado.patch(f"{API}/membros/{dela.json()['id']}", json={"papel": "leitor"})
+    assert ok.status_code == 200, ok.text
+
+
+@requer_banco
 def test_ninguem_renomeia_outra_pessoa(autenticado: TestClient) -> None:
     """O nome é de quem o usa — quem administra mexe em papel, empresa e situação.
 

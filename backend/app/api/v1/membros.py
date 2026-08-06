@@ -73,6 +73,26 @@ def _saida(
     )
 
 
+def _exigir_que_nao_seja_voce(membro: ProjetoMembro, user: CurrentUser) -> None:
+    """⚠ NINGUÉM MEXE NO PRÓPRIO VÍNCULO (05/08/2026, a pedido).
+
+    Vale para alterar e para remover, e as duas pelo mesmo motivo: trocar o
+    próprio papel ou sair do projeto é mexer no que decide o que se pode fazer
+    ali, e é o único erro que quem o comete não consegue desfazer — quem se
+    remove do CPQ11 precisa de outra pessoa para voltar.
+
+    A tela já desabilita a engrenagem da própria linha; a guarda está aqui porque
+    botão desabilitado não impede quem chama a rota direto. É a irmã da guarda de
+    `PATCH /usuarios/{id}`, e o `admin_cadastro` continua sendo a barra de
+    entrada — isto é o que ele NÃO alcança nem tendo a permissão.
+    """
+    if membro.usuario_id == user.id:
+        raise conflito(
+            "você não mexe no próprio vínculo com o projeto: "
+            "peça a outra pessoa da coordenação"
+        )
+
+
 def _consulta():
     """A consulta base: membro + pessoa + empresa + projeto, num JOIN só.
 
@@ -186,9 +206,10 @@ def atualizar(
     membro_id: uuid.UUID,
     payload: MembroUpdate,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
 ) -> MembroOut:
     membro = exigir(db, ProjetoMembro, membro_id, "membro")
+    _exigir_que_nao_seja_voce(membro, user)
     for campo, valor in payload.model_dump(exclude_unset=True).items():
         setattr(membro, campo, valor)
     db.flush()
@@ -199,12 +220,18 @@ def atualizar(
 def remover(
     membro_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
 ) -> None:
     """Tira a pessoa do projeto. NÃO apaga a conta dela nem o que ela auditou.
 
     O histórico vive nas auditorias assinadas e na trilha, que têm vida própria
     — sair de um projeto não pode reescrever o que já foi decidido nele.
+
+    NEM A SI MESMO: ver `_exigir_que_nao_seja_voce`. Sair sozinho é a versão
+    irreversível do mesmo erro — depois de fora, é outra pessoa que tem de
+    trazer de volta.
     """
-    lixeira.remover(db, exigir(db, ProjetoMembro, membro_id, "membro"))
+    membro = exigir(db, ProjetoMembro, membro_id, "membro")
+    _exigir_que_nao_seja_voce(membro, user)
+    lixeira.remover(db, membro)
     db.flush()

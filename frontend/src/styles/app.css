@@ -3413,31 +3413,67 @@ td.num {
 
    `position: fixed` e não `absolute`: ela mede a JANELA, não o `main`. Como o
    `main` rola, uma gaveta absoluta rolaria junto e sairia da tela.
+
+   ELA NÃO COBRE MAIS O CHROME (05/08/2026, a pedido). Nasce ABAIXO da topbar e
+   à DIREITA do trilho de navegação — os dois continuam clicáveis com a gaveta
+   aberta. Antes ela e o véu tomavam a janela inteira: para trocar de tela, ou
+   mesmo para ver em que projeto se estava, era preciso fechá-la primeiro.
+
+   O TOPO CAI EXATAMENTE NO `.pghead`. Não é coincidência de medida: o
+   `.pgsplit` começa na borda de baixo da topbar (`height: calc(100vh -
+   var(--h-topbar))` e a margem negativa que anula o respiro do `main`), então
+   `top: var(--h-topbar)` põe a gaveta no mesmo nível do título da seção — o
+   "Todas as equipes" da tela de membros.
    ========================================================================== */
 .gaveta-fundo {
   position: fixed;
-  inset: 0;
-  /* Preto a 45%, não `--canvas` translúcido: o véu tem de escurecer nos DOIS
-     temas, e no claro uma superfície do tema por cima do tema não escurece
-     nada. É a mesma receita do véu de modal. */
-  background: rgb(0 0 0 / 0.45);
+  top: var(--h-topbar);
+  right: 0;
+  bottom: 0;
+  /* À DIREITA DO TRILHO. O véu escurece o conteúdo, não a navegação: escurecer
+     o menu sugere que ele está desligado, e ele não está — continua clicável.
+     `--w-nav` acompanha a barra recolhida pelo seletor logo abaixo. */
+  left: var(--w-nav);
+  /* SEM COR (05/08/2026, a pedido). Era preto a 45%. O véu escuro é a convenção
+     de MODAL — "pare o que estava fazendo" —, e a gaveta não pede isso: ela é
+     formulário pontual ao lado do trabalho, e o trabalho continua ali para ser
+     consultado enquanto se preenche. Escurecê-lo dizia o contrário.
+     Ele fica, invisível, porque é quem captura o clique fora — uma das três
+     saídas da gaveta. Quem a separa do fundo é a borda e a sombra. */
+  background: none;
   z-index: var(--z-drawer);
-  animation: gavetaVeu var(--dur) var(--ease);
+  /* A MESMA CURVA DA BARRA. `.app` anima `grid-template-columns` com
+     `--dur`/`--ease`; sem isto, recolher a barra com a gaveta aberta deixaria o
+     véu saltar para a posição nova enquanto o trilho ainda desliza. */
+  transition: left var(--dur) var(--ease);
 }
 
-@keyframes gavetaVeu {
-  from {
-    opacity: 0;
-  }
+.app[data-nav='off'] .gaveta-fundo {
+  left: var(--w-nav-off);
+}
 
-  to {
-    opacity: 1;
+/* Abaixo de 900px o trilho já sai da frente (ver o `@media` da `.pgsplit`), e um
+   véu recuado deixaria uma faixa clara à esquerda sem nada por baixo. */
+@media (max-width: 900px) {
+
+  .gaveta-fundo,
+  .app[data-nav='off'] .gaveta-fundo {
+    left: 0;
   }
+}
+
+/* O véu SOME NO ATO ao fechar, sem animação própria: ele é transparente, então
+   não há o que desaparecer — mas some junto para não engolir cliques durante os
+   ~200ms em que a gaveta ainda desliza para fora. */
+.gaveta-fundo.saindo {
+  display: none;
 }
 
 .gaveta {
   position: fixed;
-  top: 0;
+  /* ABAIXO DA TOPBAR — ver o cabeçalho desta seção. É o que a faz nascer no
+     nível do `.pghead` e deixa os ícones do topo alcançáveis. */
+  top: var(--h-topbar);
   right: 0;
   bottom: 0;
   /* LARGURA FIXA — o pedido, e a decisão. O `max-width` não a torna fluida: é
@@ -3470,17 +3506,47 @@ td.num {
   }
 }
 
-/* 56px, a MESMA altura da topbar (`--h-topbar`), e pelo mesmo motivo que a
-   marca da sidebar a usa: a gaveta nasce colada ao topo, e um cabeçalho de
-   outra altura deixaria dois títulos desalinhados por poucos pixels — a
-   diferença que se vê sem conseguir nomear. */
+/* A SAÍDA (05/08/2026, a pedido) — o caminho de volta da entrada.
+
+   Ela existe porque abrir e fechar deixaram de ser simétricos: a gaveta entrava
+   deslizando e sumia no mesmo quadro do clique, e um painel de 400px que
+   desaparece de uma vez lê-se como falha de renderização, não como resposta.
+
+   `forwards` é obrigatório: sem ele o elemento volta ao estado final da regra —
+   `transform: none` — no último quadro, e a gaveta pisca de volta no lugar antes
+   de o React a desmontar. Quem a desmonta é o `onAnimationEnd`, em `Gaveta.tsx`;
+   é ele que amarra a duração aqui à vida do componente sem repetir o número. */
+.gaveta.saindo {
+  animation: gavetaSai var(--dur) var(--ease) forwards;
+}
+
+@keyframes gavetaSai {
+  from {
+    transform: none;
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* 48px, A RÉGUA DE HEADER DE SEÇÃO — e não os 56px da topbar.
+
+   Era `--h-topbar` porque a gaveta encostava no alto da janela e o cabeçalho
+   dela caía exatamente sobre a topbar, as duas linhando. Com ela começando
+   ABAIXO da topbar, essa coincidência acabou: o vizinho passou a ser o
+   `.pghead`, que é 48px. Mantendo 56, o traço de baixo da gaveta ficaria 8px
+   fora do traço do cabeçalho ao lado — desalinho que se lê como defeito.
+
+   É a hierarquia da régua sendo respeitada, não uma medida solta: a gaveta
+   deixou de ser chrome externo e passou a viver dentro da seção. */
 .gaveta-cab {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   flex: none;
-  min-height: var(--h-topbar);
+  min-height: var(--h-header);
   padding: 0 12px 0 20px;
   border-bottom: 1px solid var(--line);
 }
@@ -5645,7 +5711,7 @@ td.num {
   letter-spacing: 0.05em;
 }
 
-.usr-paggrupo + .usr-paggrupo {
+.usr-paggrupo+.usr-paggrupo {
   margin-top: 16px;
 }
 
@@ -5736,8 +5802,16 @@ td.num {
   transition: color var(--dur-fast);
 }
 
-.memb-eng:hover {
+.memb-eng:hover:not(:disabled) {
   color: var(--ink);
+}
+
+/* A ENGRENAGEM DA PRÓPRIA LINHA. Ela FICA, apagada, em vez de sumir: uma célula
+   vazia só na sua linha faz procurar o botão que não está lá. Apagada e sem
+   cursor, ela diz "existe, não é para você" — e o `title` diz por quê. */
+.memb-eng:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* O DESTRUTIVO SEPARADO DO RESTO por um traço e um respiro grande: ele está no

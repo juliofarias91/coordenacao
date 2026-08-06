@@ -520,10 +520,27 @@ export default function AbaUsuarios({
                     direita de toda linha faria a tabela parecer cortada. */}
                 {comAcoes && (
                   <td className="memb-acoes-col">
+                    {/* ⚠ NINGUÉM EDITA A PRÓPRIA CONTA AQUI (05/08/2026, a
+                        pedido). Papel, empresa e situação decidem o que a pessoa
+                        pode fazer na plataforma, e o erro aqui é de desfazer
+                        caro: um super admin que se rebaixa por engano pode ficar
+                        sem ninguém que o traga de volta. O que é DA pessoa —
+                        senha, idioma, tema — segue em `Configurações`.
+                        Desabilitado e não escondido, com o porquê no `title`: uma
+                        célula vazia na sua linha faz procurar o botão que sumiu.
+                        A guarda de verdade está na API. */}
                     <button
                       type="button"
                       className="memb-eng"
-                      title={L('Editar', 'Edit')}
+                      disabled={u.id === logado?.id}
+                      title={
+                        u.id === logado?.id
+                          ? L(
+                              'Você não edita a sua própria conta — peça a outro administrador. Senha e preferências ficam em Configurações.',
+                              'You cannot edit your own account — ask another admin. Password and preferences live under Settings.',
+                            )
+                          : L('Editar', 'Edit')
+                      }
                       aria-label={L('Editar', 'Edit')}
                       onClick={() =>
                         setRascunho({
