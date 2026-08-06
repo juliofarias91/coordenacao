@@ -17,6 +17,7 @@
  */
 import { useEffect, useState } from 'react'
 
+import { useAuth } from '@/auth/AuthContext'
 import Gaveta from '@/components/Gaveta'
 import PaginasVisiveis from '@/components/PaginasVisiveis'
 import { Campo, Erro, Vazio } from '@/components/ui'
@@ -107,7 +108,20 @@ export default function TabelaMembros({
   onMudou: () => void
 }) {
   const { L } = useI18n()
+  const { usuario: logado } = useAuth()
+  /** QUEM a gaveta mostra. Sobrevive ao fechamento — ver o bloco que a monta. */
+  const [naGaveta, setNaGaveta] = useState<Membro | null>(null)
+  /** SE ela está aberta. `null` fecha e dispara a animação de saída. */
   const [editando, setEditando] = useState<Membro | null>(null)
+  /** Um contador de aberturas, usado como `key`: cada abertura é uma montagem
+   *  nova, e é o que zera o formulário entre uma edição e a seguinte. */
+  const [abertura, setAbertura] = useState(0)
+
+  function abrir(m: Membro) {
+    setNaGaveta(m)
+    setEditando(m)
+    setAbertura((n) => n + 1)
+  }
 
   // TABELA VAZIA NÃO EXISTE. O estado vazio dentro de um `<td colSpan>` desenhava
   // a caixa tracejada DENTRO de uma célula, com a régua de cabeçalho solta acima
@@ -174,11 +188,26 @@ export default function TabelaMembros({
                   </span>
                 </td>
                 <td className="memb-acoes-col">
+                  {/* ⚠ NINGUÉM EDITA O PRÓPRIO VÍNCULO (05/08/2026, a pedido).
+                      Trocar o próprio papel ou se remover do projeto é mexer no
+                      que decide o que se pode fazer — e o erro aqui é de
+                      desfazer caro: quem se rebaixa por engano pode não ter mais
+                      como voltar. Desabilitado e NÃO escondido, com o porquê no
+                      `title`: uma célula vazia na sua linha faz procurar o botão
+                      que sumiu. A guarda de verdade está na API. */}
                   <button
                     type="button"
                     className="memb-eng"
-                    onClick={() => setEditando(m)}
-                    title={L('Ações', 'Actions')}
+                    disabled={m.usuario_id === logado?.id}
+                    onClick={() => abrir(m)}
+                    title={
+                      m.usuario_id === logado?.id
+                        ? L(
+                            'Você não edita o seu próprio vínculo — peça a outra pessoa da coordenação.',
+                            'You cannot edit your own membership — ask someone else on the coordination team.',
+                          )
+                        : L('Ações', 'Actions')
+                    }
                     aria-label={L('Ações', 'Actions')}
                   >
                     <svg
@@ -202,9 +231,21 @@ export default function TabelaMembros({
         </table>
       </div>
 
-      {editando && (
+      {/* A GAVETA SOBREVIVE AO FECHAMENTO, e é o que permite animar a saída.
+          Antes era `{editando && <GavetaMembro …/>}`: o pai desmontava a árvore
+          no clique e não havia o que animar — a gaveta sumia num quadro.
+
+          Agora `naGaveta` guarda QUEM ela mostra e `editando` diz SE está
+          aberta. O `key` é um contador de aberturas, e não o id do membro: sem
+          ele a gaveta ficaria montada entre uma abertura e outra, e reabrir a
+          MESMA pessoa traria de volta o que se digitou e desistiu de gravar na
+          vez anterior — exatamente o que a desmontagem existia para evitar (ver
+          `Gaveta.tsx`). Com o contador, toda abertura é uma montagem nova. */}
+      {naGaveta && (
         <GavetaMembro
-          membro={editando}
+          key={abertura}
+          aberta={!!editando}
+          membro={naGaveta}
           onFechar={() => setEditando(null)}
           onMudou={() => {
             setEditando(null)
@@ -385,10 +426,14 @@ export function AdicionarMembro({
  *  da lista sem deixar rastro na tela — o rastro fica na trilha.
  */
 function GavetaMembro({
+  aberta,
   membro,
   onFechar,
   onMudou,
 }: {
+  /** Fechada, ela SEGUE MONTADA até a animação de saída terminar. Quem a
+   *  remonta a cada abertura é o `key` no chamador. */
+  aberta: boolean
   membro: Membro
   onFechar: () => void
   onMudou: () => void
@@ -445,7 +490,7 @@ function GavetaMembro({
 
   return (
     <Gaveta
-      aberta
+      aberta={aberta}
       titulo={membro.usuario_nome ?? membro.usuario_login ?? L('Membro', 'Member')}
       sub={membro.projeto_codigo ?? undefined}
       onFechar={onFechar}

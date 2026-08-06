@@ -118,13 +118,24 @@ def atualizar(
     usuario = exigir(db, Usuario, usuario_id, "usuário")
     dados = payload.model_dump(exclude_unset=True)
 
-    # Um admin desativando ou rebaixando a si mesmo tranca o cadastro da
-    # organização — é um erro caro de desfazer e barato de impedir.
+    # ⚠ NINGUÉM EDITA A PRÓPRIA CONTA POR AQUI (05/08/2026, a pedido).
+    #
+    # Antes eram duas guardas parciais — não desativar a si mesmo, não trocar o
+    # próprio papel — e elas viraram uma só, total. O motivo é o mesmo das duas,
+    # levado ao fim: o que esta rota edita (papel, empresa, situação, permissões)
+    # decide o que a pessoa PODE FAZER, e errar em si mesmo é o único erro que
+    # ninguém pode desfazer sozinho. Um super admin que se rebaixa fica esperando
+    # que outro o traga de volta — e numa organização com um admin só, não há
+    # outro.
+    #
+    # O QUE É DA PESSOA CONTINUA ABERTO A ELA: a senha, em `PUT /usuarios/{id}/
+    # senha`, é o caminho de `Configurações › Segurança` e não passa por aqui.
+    # Idioma e tema são preferências do navegador.
     if usuario.id == user.id:
-        if dados.get("status") == "inativo":
-            raise conflito("não é possível desativar o próprio usuário")
-        if "papel" in dados and dados["papel"] != usuario.papel:
-            raise conflito("não é possível alterar o próprio papel")
+        raise conflito(
+            "você não edita a própria conta: peça a outro administrador. "
+            "Senha e preferências ficam em Configurações"
+        )
 
     # O NOME É DE QUEM O USA (05/08/2026, a pedido). Quem administra define papel,
     # empresa e situação — mas como a pessoa se chama é dela, e ela troca em
@@ -134,7 +145,7 @@ def atualizar(
     #
     # NA CRIAÇÃO CONTINUA VALENDO — ali ainda não há pessoa a quem o nome
     # pertença, e uma conta sem nome é uma linha que ninguém identifica na lista.
-    elif "nome" in dados and dados["nome"] != usuario.nome:
+    if "nome" in dados and dados["nome"] != usuario.nome:
         raise conflito("o nome é da própria pessoa: ela o altera em Configurações › Perfil")
 
     if dados.get("empresa_id") is not None:
@@ -151,7 +162,7 @@ def definir_paginas(
     usuario_id: uuid.UUID,
     payload: PaginasUpdate,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
 ) -> UsuarioOut:
     """Troca SÓ as telas escondidas desta conta, preservando as permissões.
 
@@ -168,6 +179,11 @@ def definir_paginas(
     metades. Continua exigindo `admin_cadastro`, a mesma barra do `PATCH`.
     """
     usuario = exigir(db, Usuario, usuario_id, "usuário")
+    # Pelo mesmo motivo do `PATCH`: quem esconde as próprias telas some com o
+    # caminho para trazê-las de volta — a gaveta que as religa está numa das
+    # telas que ele acabou de esconder.
+    if usuario.id == user.id:
+        raise conflito("você não altera as próprias telas: peça a outro administrador")
     reais = [p for p in usuario.permissoes if not p.startswith(PREFIXO_PAGINA)]
     usuario.permissoes = reais + [f"{PREFIXO_PAGINA}{r}" for r in payload.paginas]
     db.flush()
