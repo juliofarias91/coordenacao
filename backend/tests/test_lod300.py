@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.models import Criterio
 from app.models.enums import Automacao, ChecklistTipo, CriterioNivel
 from app.services import gabarito
+from app.services.auditoria import CHECKLISTS_POR_AREA
 from app.services.gabarito_lod import GABARITOS_LOD
 from tests.conftest import API, Cenario, CenarioAuditavel, requer_banco
 
@@ -255,3 +256,112 @@ def test_a_coluna_lod_chega_ao_detalhe(
     assert resultados, "a auditoria de LOD 300 abriu sem linhas"
     # `min_lod` do gabarito de LOD é "300" em todas as 60 linhas.
     assert {r["min_lod"] for r in resultados} == {"300"}
+
+
+def test_lod300_e_por_area() -> None:
+    """O LOD 300 entrou em `CHECKLISTS_POR_AREA` (05/08/2026, a pedido).
+
+    Ele estava de fora por leitura do PDF de espec, que é organizado por
+    ELEMENTO. O que decidiu foi o outro arquivo: o
+    `Bases/LOD300_SPECIFIC AUDIT_CONTROL.xlsx` tem SEIS abas de área — ADMN,
+    COLO1..COLO4 e SITE —, exatamente como os controles de 400 e 500. A
+    coordenação acompanha os três LOD do mesmo jeito.
+
+    Não precisa de banco: é sobre a constante.
+    """
+    assert ChecklistTipo.LOD300 in CHECKLISTS_POR_AREA
+    # E os outros dois continuam lá — a mudança ACRESCENTA.
+    assert {ChecklistTipo.LOD400, ChecklistTipo.LOD500} <= CHECKLISTS_POR_AREA
+    # Geral e 4D seguem FORA: são do arquivo inteiro, não de um setor dele.
+    assert ChecklistTipo.GERAL not in CHECKLISTS_POR_AREA
+    assert ChecklistTipo.QUATRO_D not in CHECKLISTS_POR_AREA
+
+
+@requer_banco
+def test_lod300_abre_uma_auditoria_por_area(
+    autenticado: TestClient, auditavel: CenarioAuditavel
+) -> None:
+    """`POST /auditar` passa a criar UMA auditoria por área da disciplina.
+
+    É o que faz as abas do painel terem conteúdo — sem isto elas nunca
+    apareceriam, porque a lista de áreas sai das auditorias que existem.
+    """
+    autenticado.patch(
+        f"{API}/disciplinas/{auditavel.disciplina.id}", json={"checklists": ["lod300"]}
+    )
+    r = autenticado.post(
+        f"{API}/versoes/{auditavel.versao.id}/auditar", json={"checklist": "lod300"}
+    )
+    assert r.status_code in (200, 201), r.text
+
+    corpo = r.json()
+    abertas = corpo if isinstance(corpo, list) else [corpo]
+    # O cenário declara ADMIN e COLO1 — uma auditoria para cada.
+    assert {a["area"] for a in abertas} == {"ADMIN", "COLO1"}
+
+
+@requer_banco
+def test_as_abas_saem_da_disciplina_e_nao_das_auditorias(
+    autenticado: TestClient, auditavel: CenarioAuditavel
+) -> None:
+    """`disciplina_areas` é o ESCOPO DECLARADO, não o trabalho já feito.
+
+    ESTE É O BECO SEM SAÍDA QUE ELE ABRE. Derivadas das auditorias que existem,
+    as abas só apareceriam depois de alguém abrir uma em cada área — e não
+    haveria por onde abrir a primeira, porque é a aba que leva até ela. Foi
+    exatamente o que aconteceu em 05/08/2026: o LOD 300 virou por área, as
+    auditorias anteriores tinham `area` nula, a fileira saiu vazia e a tela
+    ficou sem caminho para a divisão que acabara de ganhar.
+
+    A PROVA ESTÁ NA COMBINAÇÃO DAS DUAS ASSERÇÕES, e não em cada uma: abre-se a
+    GERAL, que nunca tem área, e o painel mesmo assim conhece ADMIN e COLO1. Uma
+    lista montada a partir das auditorias sairia vazia aqui.
+
+    E ele guarda um JOIN, que é o tipo de coisa que se perde numa refatoração sem
+    que nada quebre — a mesma razão do teste do `min_lod` acima. `Disciplina.areas`
+    entra no mesmo select que já traz código, nome e macro; tirá-lo de lá não
+    derruba requisição nenhuma, só devolve as abas ao vazio.
+    """
+    aberta = autenticado.post(
+        f"{API}/versoes/{auditavel.versao.id}/auditar", json={"checklist": "geral"}
+    )
+    assert aberta.status_code in (200, 201), aberta.text
+
+    lista = autenticado.get(f"{API}/projetos/{auditavel.projeto.id}/auditorias").json()
+    assert lista, "sem linha nenhuma o painel não desenha nada — o cenário não auditou"
+
+    assert {a["area"] for a in lista} == {None}
+    assert all(a["disciplina_areas"] == ["ADMIN", "COLO1"] for a in lista)
+
+
+@requer_banco
+def test_a_versao_nao_abre_auditoria_de_lod(
+    autenticado: TestClient, auditavel: CenarioAuditavel
+) -> None:
+    """Versão nova abre a GERAL e só ela, mesmo com o LOD 300 declarado.
+
+    Estava em prosa e em nada mais. `ao_registrar_versao` filtra por
+    `ChecklistTipo.GERAL`, e trocar aquele filtro pela lista da disciplina é uma
+    linha — a "melhoria" tentadora de abrir tudo o que o modelo declara.
+
+    O QUE ISSO CUSTARIA: LOD é trabalho dirigido, e o LOD 300 passou a abrir UMA
+    AUDITORIA POR ÁREA. Com seis áreas e os cinco recortes declarados, cada
+    versão registrada encheria o painel de vinte rounds em branco que ninguém
+    pediu — e cada um deles é uma linha de matriz e uma entrada de KPI dizendo
+    "não publicado". A porta do LOD é o "+" do painel, que também registra
+    responsável, datas e prioridade.
+    """
+    autenticado.patch(
+        f"{API}/disciplinas/{auditavel.disciplina.id}",
+        json={"checklists": ["geral", "lod300"]},
+    )
+
+    nova = autenticado.post(
+        f"{API}/modelos/{auditavel.modelo.id}/versoes", json={"versao": "V9", "formato": "ifc"}
+    )
+    assert nova.status_code in (200, 201), nova.text
+
+    abertas = autenticado.get(f"{API}/versoes/{nova.json()['id']}/auditorias").json()
+    assert [a["checklist"] for a in abertas] == ["geral"], (
+        "a versão abriu recorte de LOD sozinha — só a geral nasce com ela"
+    )

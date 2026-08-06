@@ -34,6 +34,7 @@ from app.models.enums import (
     PapelUsuario,
 )
 from app.schemas.usuario import SENHA_MINIMA
+from app.services.auditoria import CHECKLISTS_POR_AREA
 
 # backend/tests/test_contrato.py -> tests -> backend -> raiz
 FRONT = Path(__file__).resolve().parents[2] / "frontend" / "src"
@@ -114,6 +115,41 @@ def test_paginas_ocultaveis_iguais_no_front_e_no_back() -> None:
         "as telas ocultáveis divergiram — "
         f"só no front: {sorted(rotas - set(PAGINAS_OCULTAVEIS))}; "
         f"só no back: {sorted(set(PAGINAS_OCULTAVEIS) - rotas)}"
+    )
+
+
+@requer_front
+def test_recortes_por_area_iguais_no_front_e_no_back() -> None:
+    """Quais recortes se auditam POR ÁREA está escrito nos dois lados.
+
+    `CHECKLISTS_POR_AREA` (`services/auditoria.py`) é quem faz `POST /auditar`
+    abrir UMA AUDITORIA POR ÁREA da disciplina; `POR_AREA` (`Recorte.tsx`) é quem
+    faz a tela desenhar a fileira de abas e passar a área ao `usePlanilha`. O
+    comentário do TypeScript já compara essa duplicação à do `SENHA_MINIMA` —
+    faltava o que aquela tem e esta não tinha: a trava.
+
+    DIVERGIR NÃO DÁ ERRO, DÁ TELA ERRADA, e nos dois sentidos:
+
+    - só no back → a versão abre seis auditorias, uma por área, e a tela não
+      desenha aba nenhuma. Ela cai na de maior round, que entre seis do mesmo
+      round é uma qualquer, e a planilha abre numa área que não diz qual é.
+    - só no front → a fileira aparece com as áreas da disciplina, e clicar em
+      qualquer uma não acha auditoria: a planilha abre vazia e o trabalho feito
+      parece ter sumido.
+
+    Foi por essa segunda porta que o LOD 300 passou em 05/08/2026, e o preço foi
+    uma provisão de transição em `usePlanilha` para as auditorias de área nula.
+    """
+    fonte = _ler("pages/auditoria/Recorte.tsx")
+    achado = re.search(r"POR_AREA[^=]*=\s*new Set<Checklist>\(\[(.*?)\]\)", fonte, re.S)
+    assert achado, "POR_AREA não encontrado em frontend/src/pages/auditoria/Recorte.tsx"
+
+    do_front = set(re.findall(r"'([^']+)'", achado.group(1)))
+    do_back = {c.value for c in CHECKLISTS_POR_AREA}
+    assert do_front == do_back, (
+        "os recortes por área divergiram — "
+        f"só no front: {sorted(do_front - do_back)}; "
+        f"só no back: {sorted(do_back - do_front)}"
     )
 
 

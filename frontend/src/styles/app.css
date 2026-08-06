@@ -4550,42 +4550,45 @@ td.num {
   line-height: 1.4;
 }
 
-/* AS ABAS DE ÁREA — a fileira do Excel, sob a planilha (LOD 400 e 500).
+/* AS ABAS DE ÁREA — a fileira do Excel, no PAINEL da esquerda.
 
-   EMBAIXO, e não no topo: é onde a planilha de origem as põe, e quem passou
-   anos naqueles arquivos procura as áreas no rodapé. Mesmo argumento que fez a
-   grade ser grade e não tabela espaçada.
+   ELAS DESCERAM DO RODAPÉ DA PLANILHA PARA CÁ (05/08/2026, a pedido). Ficavam
+   embaixo da grade porque é onde o arquivo de origem as põe, e quem passou anos
+   naqueles arquivos procura as áreas no rodapé. O que mudou foi a pergunta que
+   elas respondem: no painel já se escolhe disciplina e modelo, e a área é o
+   terceiro pedaço da MESMA escolha — a planilha à direita passou a ser só o que
+   se preenche.
 
-   `flex: none` porque a `.plan-tela` é coluna flex e a grade cresce: sem isto a
-   fileira seria espremida junto com ela ao rolar.
+   LOGO ABAIXO DA BUSCA e acima da lista: a área restringe o que se vê do modelo
+   já escolhido, então ela pertence ao cabeçalho de ferramentas.
 
-   Rola na horizontal em vez de quebrar em duas linhas — oito áreas cabem em
-   quase toda tela, mas o dia em que não couberem, uma fileira de altura variável
-   moveria a borda inferior da grade. */
-/* O PREFIXO `plan-` NÃO É ENFEITE — ele conserta uma colisão (04/08/2026).
-   Estas classes nasceram como `.abas`/`.aba`, que JÁ EXISTIAM: são as abas de
-   página da configuração do projeto, mais abaixo neste arquivo. Como aquele
-   bloco vem DEPOIS e a especificidade é a mesma, ele vencia nas propriedades
-   declaradas nos dois — as abas de área herdavam `border-bottom`,
-   `margin-bottom: 22px` e `flex-wrap` da configuração, e a configuração herdava
-   `flex: none` e `overflow-x` daqui. As duas telas saíam erradas, e nenhuma das
-   duas quebrava de um jeito visível o bastante para denunciar a causa.
-   `plan-` é o prefixo que o resto desta tela já usa (`.plan-tela`,
-   `.plan-aviso`, `.plan-salvando`). */
-.plan-abas {
+   Rola na horizontal em vez de quebrar em duas linhas — seis a oito áreas cabem
+   em 300px na maioria dos casos, e uma fileira de altura variável moveria o topo
+   da lista de modelos a cada troca de modelo.
+
+   O PREFIXO NÃO É ENFEITE — ele conserta uma colisão (04/08/2026). Estas classes
+   nasceram como `.abas`/`.aba`, que JÁ EXISTIAM: são as abas de página da
+   configuração do projeto, mais abaixo neste arquivo. Como aquele bloco vem
+   DEPOIS e a especificidade é a mesma, ele vencia nas propriedades declaradas
+   nos dois — as abas de área herdavam `border-bottom`, `margin-bottom: 22px` e
+   `flex-wrap` da configuração, e a configuração herdava `flex: none` e
+   `overflow-x` daqui. As duas telas saíam erradas, e nenhuma quebrava de um
+   jeito visível o bastante para denunciar a causa. Elas eram `.plan-*` enquanto
+   viviam na planilha; hoje usam `pg-`, que é o prefixo deste painel. */
+.pgabas {
   flex: none;
   display: flex;
   gap: 2px;
   align-items: center;
   overflow-x: auto;
-  padding: 5px 0 0;
-  border-top: 1px solid var(--line);
+  padding: 8px var(--pad-x);
+  border-bottom: 1px solid var(--line);
 }
 
 /* ATIVA É TINTA, PESO E BORDA — nunca fundo (regras 1 e 6). O contorno é o que
-   dá forma de aba a um texto; um retângulo colorido faria a aba pesar mais que
-   o dado da planilha, e estar numa aba não é estado do domínio (regra 2). */
-.plan-aba {
+   dá forma de aba a um texto; um retângulo colorido faria a aba pesar mais que o
+   nome do modelo logo abaixo, e estar numa aba não é estado do domínio. */
+.pgaba {
   flex: none;
   padding: 4px 11px;
   border: 1px solid transparent;
@@ -4596,14 +4599,16 @@ td.num {
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  transition:
+    color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
 }
 
-.plan-aba:hover {
+.pgaba:hover {
   color: var(--ink);
 }
 
-.plan-aba.on {
+.pgaba.on {
   border-color: var(--line-2);
   color: var(--ink);
   font-weight: 600;

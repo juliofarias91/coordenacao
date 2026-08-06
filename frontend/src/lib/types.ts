@@ -364,6 +364,14 @@ export type AuditoriaDaLista = Auditoria & {
   /** De onde sai a COR do grupo: a paleta é por macrodisciplina, não por
    *  disciplina. */
   disciplina_macro: MacroDisc | null
+  /** As áreas DECLARADAS na disciplina (ADMN, COLO1, SITE…) — as abas do painel
+   *  nos recortes por área.
+   *
+   *  Da disciplina, e não das auditorias existentes: derivadas do que já foi
+   *  auditado, as abas só apareceriam depois de alguém abrir uma auditoria em
+   *  cada área — e não haveria por onde abrir a primeira, porque é a aba que
+   *  leva até ela. */
+  disciplina_areas: string[]
 }
 
 /** O que a gaveta grava. `estado` NÃO está aqui de propósito: publicar é outro

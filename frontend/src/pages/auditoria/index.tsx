@@ -27,7 +27,7 @@
  *  tela, filha desta rota, para que o painel não pisque ao navegar entre elas.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import NovaAuditoria from '@/components/NovaAuditoria'
 import { useI18n } from '@/i18n'
@@ -174,6 +174,50 @@ export default function Auditoria() {
     [linhas, modeloId],
   )
 
+  /** AS ÁREAS DO MODELO ABERTO — as abas do Excel, que desde 05/08/2026 moram
+   *  aqui no painel e não mais no rodapé da planilha.
+   *
+   *  Saem da MESMA lista que o painel já carregou (`GET /projetos/{id}/
+   *  auditorias`), filtrada pelo recorte e pelo modelo: nenhuma requisição a
+   *  mais. É por isso que as abas puderam descer para cá — o dado já estava
+   *  neste componente; era a planilha que o buscava por segunda vez.
+   *
+   *  Na ordem em que o servidor devolveu, que é a de criação — a mesma ordem em
+   *  que a disciplina declarou as áreas, e a mesma das abas do arquivo. */
+  const areas = useMemo(() => {
+    const doModelo = linhas.filter((l) => l.checklist === atual && l.modelo_id === modeloId)
+    const vistas: string[] = []
+    // AS DECLARADAS NA DISCIPLINA primeiro, na ordem em que ela as declarou —
+    // que é a ordem das abas do arquivo de origem.
+    for (const l of doModelo) {
+      for (const a of l.disciplina_areas) if (!vistas.includes(a)) vistas.push(a)
+    }
+    // E as que JÁ TÊM auditoria, se alguma estiver fora da lista da disciplina.
+    // Acontece quando a área é retirada da disciplina depois de auditada: o
+    // trabalho feito não pode sumir do painel só porque o escopo encolheu.
+    for (const l of doModelo) {
+      if (l.area && !vistas.includes(l.area)) vistas.push(l.area)
+    }
+    return vistas
+  }, [linhas, atual, modeloId])
+
+  /** A ÁREA ABERTA vive na QUERY, e é assim que ela chega à planilha — os dois
+   *  componentes são irmãos, e o pai comum deles é a rota. Ver o comentário em
+   *  `Recorte.tsx`, que é quem a consome. */
+  const [params, setParams] = useSearchParams()
+  const areaAtual = params.get('area')
+
+  const trocarArea = useCallback(
+    (a: string) => {
+      setParams((atual) => {
+        const proximo = new URLSearchParams(atual)
+        proximo.set('area', a)
+        return proximo
+      })
+    },
+    [setParams],
+  )
+
   // O BREADCRUMB TERMINA EM `disciplina › modelo` (04/08/2026, a pedido).
   //
   // QUEM PUBLICA É ESTA TELA, e não a planilha, porque a DISCIPLINA só existe
@@ -221,6 +265,40 @@ export default function Auditoria() {
               <Ico path={PATH_MAIS} tam={16} />
             </button>
           </div>
+
+          {/* AS ABAS DE ÁREA — a fileira do Excel, agora AQUI (05/08/2026, a
+              pedido). Elas ficavam no rodapé da planilha, que é onde o arquivo
+              de origem as põe; subiram para o painel porque é aqui que se
+              escolhe o que olhar — disciplina, modelo e agora área ficam no
+              mesmo lugar, e a planilha à direita passa a ser só o que se
+              preenche.
+
+              LOGO ABAIXO DA BUSCA e ACIMA da lista: a área restringe o que a
+              planilha mostra do modelo já escolhido, então ela pertence ao
+              cabeçalho de ferramentas, não ao meio da árvore.
+
+              SÓ COM MAIS DE UMA. Uma aba sozinha não é navegação, é rótulo — e o
+              nome da área já está na planilha. Some sem deixar espaço em branco.
+
+              A ABA ATIVA É TINTA E PESO, com BORDA — não fundo colorido (regras
+              1 e 6). O contorno é o que dá forma de aba a um texto; a cor cheia
+              diria "estado", e estar numa aba não é estado do domínio. */}
+          {areas.length > 1 && (
+            <div className="pgabas thin-scroll" role="tablist">
+              {areas.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  role="tab"
+                  aria-selected={a === areaAtual}
+                  className={`pgaba${a === areaAtual ? ' on' : ''}`}
+                  onClick={() => trocarArea(a)}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          )}
 
           <nav className="pglist">
             {grupos.map(([chave, rotulo, doGrupo]) => {

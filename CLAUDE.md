@@ -758,18 +758,29 @@ ordem. O que varia entre os arquivos é a resposta, nunca a pergunta.
   e abrir os seis encheria o painel de rounds que ninguém abriu.
 - **Cada recorte usa a tela que a sua PERGUNTA pede**, e a divisão é
   `CHECKLISTS_POR_AREA` em `services/auditoria.py`:
-  - **geral e LOD 300** não têm área: um modelo por linha, que é o que o painel
-    da esquerda lista sob a disciplina, e clicar nele abre a planilha. O
-    componente `ControleGeral` — a aba `... - CONTROL` desenhada como tabela —
-    saiu em 01/08/2026 junto das duas telas de planilha antigas: ele respondia
-    "que modelos há", e o painel passou a responder isso em 300px, ao lado da
-    planilha em vez de antes dela.
-  - **LOD 400 e LOD 500** são POR ÁREA, e a matriz modelo × área é literalmente
-    a aba `LOD 500 - OVERVIEW` deles. Desde 30/07/2026 `POST /auditar` abre
-    **uma auditoria por área da disciplina** nesses dois; antes `area` só era
-    gravada se o chamador a informasse, e ninguém informava — daí a matriz
-    permanentemente vazia. Quem resolveu a dúvida foram os arquivos: os
-    controles de 400 e 500 em `Bases/` têm uma aba por área.
+  - **geral e 4D** não têm área: um modelo por linha, que é o que o painel
+    da esquerda lista sob a disciplina, e clicar nele abre a planilha. Elas são
+    do ARQUIVO INTEIRO, não de um setor dele. O componente `ControleGeral` — a
+    aba `... - CONTROL` desenhada como tabela — saiu em 01/08/2026 junto das
+    duas telas de planilha antigas: ele respondia "que modelos há", e o painel
+    passou a responder isso em 300px, ao lado da planilha em vez de antes dela.
+  - **OS TRÊS LOD são POR ÁREA**, e a matriz modelo × área é literalmente a aba
+    `LOD 500 - OVERVIEW` deles. Desde 30/07/2026 `POST /auditar` abre **uma
+    auditoria por área da disciplina**; antes `area` só era gravada se o chamador
+    a informasse, e ninguém informava — daí a matriz permanentemente vazia. Quem
+    resolveu a dúvida foram os arquivos: os controles em `Bases/` têm uma aba por
+    área.
+    **O LOD 300 ENTROU EM 05/08/2026, a pedido**, e o arquivo confirma: o
+    `LOD300_SPECIFIC AUDIT_CONTROL.xlsx` tem SEIS abas de área — ADMN, COLO1 a
+    COLO4 e SITE. Ele estava de fora por leitura do PDF de espec, que é
+    organizado por ELEMENTO; o controle mostra que a coordenação acompanha os
+    três LOD do mesmo jeito. `test_lod300_e_por_area` tranca a constante e
+    `test_recortes_por_area_iguais_no_front_e_no_back` tranca as duas cópias.
+    **O QUE JÁ FOI AUDITADO NÃO SE REESCREVEU.** As auditorias de LOD 300
+    anteriores têm `area` nula e continuam válidas: `usePlanilha` cai na de maior
+    round quando a área escolhida não tem nenhuma. É provisão de TRANSIÇÃO e ela
+    some sozinha — sem ela, ligar as abas faria o trabalho feito sumir da tela, e
+    planilha que abre vazia se lê como perda de dado, não como filtro.
   - **O LOD 350 não existe mais na navegação** (30/07/2026): não há arquivo de
     referência dele em projeto nenhum. O valor continua no enum do banco —
     tirar valor de enum no Postgres exige recriar o tipo e trava se houver
@@ -865,27 +876,69 @@ categorias de elemento**, para STRC.
   manuais de propósito; `test_lod300.py` tranca isso.
 - **`parametro_revit` / `parametro_encontrado` (0009) são RESPOSTA**, não
   requisito — onde a informação FOI achada. Onde ela DEVERIA estar é
-  `criterio.parametro_esperado`. São campos separados porque a comparação entre
-  eles é a única pergunta que a planilha faz.
+  `criterio.parametro_esperado`. A comparação entre os dois é a única pergunta
+  que a planilha faz.
+  **QUEM A TELA PERGUNTA É `parametro_encontrado`**, contra o
+  `parametro_esperado` do gabarito na coluna vizinha (04/08/2026 — ver `LOD`, em
+  `Recorte.tsx`). `parametro_revit` continua no banco e no `PATCH /resultados`,
+  **e não chega a tela nenhuma**: ele nasceu de uma leitura em que a coluna REVIT
+  PARAMETER do arquivo era resposta, e o gabarito a lê como ESPEC — é dela que
+  `gabarito_lod.py` tira `parametro_esperado`. Duas leituras da mesma coluna, e a
+  que perdeu foi esta. **Não foi removido porque remover é migration**, e a
+  decisão de 30/07 é não mexer no banco; enquanto isso ele é campo aceito que
+  ninguém escreve. **Decisão em aberto:** ou ele ganha a décima primeira coluna
+  da planilha, ou sai numa migration — o que não deve é ficar sendo um campo que
+  a API aceita e a coordenação nunca vê.
 - **`comentario_fornecedor` (0009) tem outro AUTOR.** `comentario` é da
   coordenação; o guia do arquivo diz "SUPPLIERS COMMENTS — permissão de edição:
   FORNECEDORES". Usar a tabela `comentario_fornecedor` (que é de NC) obrigaria a
   abrir uma NC com prazo e responsável para cada linha esclarecida.
 - **A auditoria de LOD NÃO nasce com a versão** — só a geral. LOD é trabalho
-  dirigido, e abrir os seis recortes encheria o painel de rounds vazios.
+  dirigido, e com o 300 abrindo uma auditoria POR ÁREA, uma disciplina de seis
+  áreas com os recortes declarados encheria cada versão registrada de vinte
+  rounds em branco — cada um uma linha de matriz e uma entrada de KPI dizendo
+  "não publicado". `test_a_versao_nao_abre_auditoria_de_lod` tranca isso: o
+  filtro por `ChecklistTipo.GERAL` em `ao_registrar_versao` é uma linha, e trocá-lo
+  pela lista da disciplina é a "melhoria" tentadora.
 - **A tela é a MESMA dos outros recortes** desde 01/08/2026 — o que o LOD 300 tem
-  de próprio são as colunas (`LOD`, em `pages/auditoria/Recorte.tsx`) e a coluna
-  ELEMENT, que não é coluna: ela agrupa, e vira a **faixa** que atravessa a
-  tabela (`grupo`, em `LinhaGrade`). A faixa sai da comparação com a linha
-  ANTERIOR, e não de um agrupamento montado antes: os resultados já vêm do
-  servidor na ordem da planilha impressa, e reagrupá-los arriscaria reordená-los.
-- **A FAIXA EXISTE SÓ AQUI** — `AGRUPA_POR_ELEMENTO`, em `Recorte.tsx`. Ela
-  chegou a aparecer na auditoria geral, porque lá `criterio.categoria` também
-  vem preenchida; mas ali a categoria é SEÇÃO DO CHECKLIST ("ASPECTOS GERAIS",
-  "PARÂMETROS"), e o arquivo de referência da geral tem os 17 itens **chapados**,
-  sem seção nenhuma. Três faixas numa planilha de dezessete linhas dividem em
-  três o que se lê de uma vez. Recorte novo só entra nesse conjunto se a planilha
-  DELE tiver a coluna ELEMENT.
+  de próprio são as **dez colunas** da planilha de espec (`LOD`, em
+  `pages/auditoria/Recorte.tsx`), na ordem do arquivo: IMAGE · ELEMENT · LOD ·
+  INFORMATION · BIM FORUM DESCRIPTION · REVIT PARAMETER · PARAMETER ·
+  VERIFICATION · COMMENTS · SUPPLIERS COMMENTS. As seis primeiras são LEITURA —
+  vêm do gabarito e não se respondem; as quatro últimas são o que se preenche.
+  400 e 500 apontam para a MESMA lista, e é referência e não cópia: os três fazem
+  a pergunta de uma auditoria de espec, e listas duplicadas divergiriam na
+  primeira coluna que um deles ganhasse.
+- **ELEMENT É COLUNA, E A FAIXA SAIU** (04/08/2026, a pedido). Ela era o
+  cabeçalho que atravessava a tabela dizendo de que elemento se falava, e existia
+  porque o elemento era a estrutura do arquivo sem ter coluna — "Level" na laje
+  não é o mesmo critério que "Level" no pilar, e sem ela a planilha virava uma
+  lista de nomes repetidos. Com ELEMENT na segunda coluna, as duas passaram a
+  mostrar o mesmo dado: a faixa escrevendo "Floor" acima de seis linhas que já
+  trazem "Floor". Repetir é o de menos — o problema é serem **duas fontes para a
+  mesma informação**, e no dia em que uma mudar de origem a outra segue
+  desenhando a antiga.
+  **O MECANISMO CONTINUA, e `AGRUPA_POR_ELEMENTO` continua em `Recorte.tsx`
+  vazio**, pela mesma razão de `CHECKLISTS_SEM_BANCO` em `nav.ts`: o recorte cuja
+  planilha de origem AGRUPE e não tenha coluna própria para o grupo entra ali,
+  numa linha. Na auditoria geral nunca houve faixa (01/08/2026): lá
+  `criterio.categoria` é seção do checklist ("ASPECTOS GERAIS", "PARÂMETROS"), e
+  o arquivo de referência tem os 17 itens **chapados**.
+- **AS ABAS DE ÁREA FICAM NO PAINEL DA ESQUERDA**, abaixo da busca, e as áreas
+  saem de `disciplina_areas` — **da DISCIPLINA, não das auditorias que existem**.
+  Derivadas das auditorias, elas só apareceriam depois de alguém abrir uma em
+  cada área, e não haveria por onde abrir a primeira: é a aba que leva até ela.
+  Foi esse beco que a fileira vazia de 05/08 revelou. O campo viaja no MESMO join
+  que já traz código, nome e macro do painel — nenhuma requisição a mais —, e
+  `test_as_abas_saem_da_disciplina_e_nao_das_auditorias` o tranca, porque um join
+  é o que se perde numa refatoração sem que nada quebre.
+  **A área mora na QUERY** (`?area=ADMN`), e não em estado local: quem a desenha
+  (`auditoria/index.tsx`) e quem a consome (`Recorte.tsx`) são componentes irmãos,
+  e o pai comum dos dois é a rota. Query e não segmento — segmento entraria em
+  `TELAS`, no `ProjetoContext`, e trocar de projeto carregaria a área do antigo
+  para o novo, sendo que áreas são da disciplina. De brinde, aba tem link.
+  **Modelo sem NENHUMA auditoria no recorte não aparece no painel**, e por isso
+  não tem aba: as áreas viajam nas linhas de auditoria. A porta dele é o "+".
 - **`projeto_membro` registra participação e NÃO autoriza** (migration 0004).
   Quem decide continua sendo `requer_permissao` sobre as permissões de
   organização. `tests/test_membros.py::test_participacao_nao_e_permissao`

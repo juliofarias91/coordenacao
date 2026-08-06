@@ -22,7 +22,7 @@
  *  em `components/planilha.tsx`, que era de onde as duas já saíam.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 
 import GradePlanilha, { type Coluna, type LinhaGrade } from '@/components/GradePlanilha'
 import ImagemDaLinha from '@/components/ImagemDaLinha'
@@ -219,7 +219,7 @@ const COLUNAS: Partial<Record<Checklist, ColunaAud[]>> = {
  *  (ADMN, COLO1..COLO4, SITE, UTLS) e o de LOD 500 tem oito (com GUAR e WASTE
  *  SHED, sem COLO4). Os conjuntos são DIFERENTES entre os dois, e é por isso que
  *  a lista de abas não é constante aqui: ela sai das auditorias que existem. */
-const POR_AREA: ReadonlySet<Checklist> = new Set<Checklist>(['lod400', 'lod500'])
+const POR_AREA: ReadonlySet<Checklist> = new Set<Checklist>(['lod300', 'lod400', 'lod500'])
 
 /** ONDE A FAIXA DE GRUPO EXISTE — hoje em NENHUM recorte, e isso é decisão, não
  *  esquecimento.
@@ -314,72 +314,52 @@ export default function Recorte() {
   return <Planilha key={`${checklist}:${modeloId}`} checklist={checklist} modeloId={modeloId} />
 }
 
-/** AS ABAS DE ÁREA — a fileira de abas do Excel, embaixo da planilha.
- *
- *  EMBAIXO, e não no topo, porque é onde a planilha de origem as põe: quem passou
- *  anos naqueles arquivos procura as áreas no rodapé. É o mesmo argumento que fez
- *  a grade ser grade e não tabela espaçada (ver `GradePlanilha`).
- *
- *  A ABA ATIVA É TINTA E PESO, com BORDA — não fundo colorido (regras 1 e 6). O
- *  contorno é o que dá forma de aba a um texto; a cor cheia diria "estado", e
- *  estar numa aba não é estado do domínio. Hover escurece a tinta e só.
- *
- *  ELA NÃO APARECE COM UMA ÁREA SÓ: uma aba sozinha não é navegação, é rótulo —
- *  e o nome da área já está na planilha. Some sem deixar espaço em branco. */
-function Abas({
-  areas,
-  atual,
-  onTrocar,
-}: {
-  areas: string[]
-  atual: string | null
-  onTrocar: (area: string) => void
-}) {
-  if (areas.length < 2) return null
-  return (
-    <div className="plan-abas thin-scroll" role="tablist">
-      {areas.map((a) => (
-        <button
-          key={a}
-          type="button"
-          role="tab"
-          aria-selected={a === atual}
-          className={`plan-aba${a === atual ? ' on' : ''}`}
-          onClick={() => onTrocar(a)}
-        >
-          {a}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 /** A PLANILHA DE UM MODELO — o que se preenche. */
 function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: string }) {
   const { L, lang } = useI18n()
   /** A ÁREA ABERTA, nos recortes que têm uma auditoria por área.
    *
-   *  `null` = "a primeira que houver", e é o estado inicial: a lista de áreas só
-   *  se conhece depois de carregar as auditorias, então escolher aqui exigiria
-   *  adivinhar. Quem resolve é o efeito abaixo.
+   *  MORA NA URL (`?area=ADMN`) DESDE 05/08/2026, e o motivo é a mudança de
+   *  lugar das abas: elas desceram para o painel da esquerda, que é outro
+   *  componente (`auditoria/index.tsx`). Dois componentes irmãos precisando do
+   *  mesmo valor teriam de içá-lo até o pai comum — e o pai comum, aqui, é a
+   *  rota. A URL já carrega recorte e modelo; a área é o terceiro pedaço do
+   *  mesmo endereço.
    *
-   *  MORA NO COMPONENTE, não na URL. A rota já carrega recorte e modelo; pôr a
-   *  área nela obrigaria a mexer no roteador e no `TELAS` do `ProjetoContext`,
-   *  e o que se ganharia — um link para uma aba — ainda não foi pedido. Se for,
-   *  é aqui que passa a sair de `useParams`. */
-  const [area, setArea] = useState<string | null>(null)
+   *  De brinde, o que o comentário anterior dizia que ainda não fora pedido:
+   *  agora existe link para uma aba.
+   *
+   *  QUERY E NÃO SEGMENTO DE ROTA. Segmento entraria em `TELAS`, no
+   *  `ProjetoContext`, e trocar de projeto carregaria a área do projeto antigo
+   *  para o novo — as áreas são da disciplina, não universais. A query cai
+   *  sozinha na troca, que é o que se quer. */
+  const [busca, setBusca] = useSearchParams()
+  const area = busca.get('area')
   const p = usePlanilha(modeloId, checklist as ChecklistTipo, POR_AREA.has(checklist) ? area : null)
   const [linhaDaImagem, setLinhaDaImagem] = useState<string | null>(null)
 
   /** A PRIMEIRA ÁREA, assim que elas aparecem — e a volta ao chão quando a área
-   *  aberta deixa de existir (trocou-se de modelo, e o novo tem outras áreas).
-   *  Sem a segunda metade, a planilha ficaria vazia apontando para uma aba que
-   *  não está mais na fileira. */
+   *  da URL não existe neste modelo (trocou-se de modelo, ou o link veio de
+   *  outro). Sem a segunda metade, a planilha ficaria vazia apontando para uma
+   *  aba que não está na fileira.
+   *
+   *  `replace` para a correção NÃO virar uma entrada no histórico: quem clicou
+   *  numa aba e apertou "voltar" espera sair dela, não desfazer um ajuste que a
+   *  tela fez sozinha. */
   useEffect(() => {
     const primeira = p.areas[0]
     if (primeira === undefined) return
-    if (area === null || !p.areas.includes(area)) setArea(primeira)
-  }, [p.areas, area])
+    if (area === null || !p.areas.includes(area)) {
+      setBusca(
+        (atual) => {
+          const proximo = new URLSearchParams(atual)
+          proximo.set('area', primeira)
+          return proximo
+        },
+        { replace: true },
+      )
+    }
+  }, [p.areas, area, setBusca])
 
   // O NOME DO MODELO CONTINUA INDO PARA O BREADCRUMB — página não tem `h1`
   // desde 30/07 e "Auditoria LOD300" não diz o que se está auditando —, mas
@@ -429,53 +409,39 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
     )
   }
 
-  if (!p.versao) {
-    return (
-      <>
-        <Erro mensagem={p.erro} />
-        <Vazio
-          titulo={L('Sem versão para auditar', 'No version to audit')}
-          texto={L(
-            'Este modelo não tem versão registrada. A planilha nasce com a versão — registre a primeira na tela do modelo.',
-            'This model has no registered version. The sheet is created with the version — register the first one on the model screen.',
-          )}
-        />
-      </>
-    )
-  }
-
-  if (!p.detalhe) {
-    return (
-      <>
-        <Erro mensagem={p.erro} />
-        <Vazio
-          titulo={L('Esta auditoria não está aberta', 'This audit is not open')}
-          texto={L(
-            'Não há round deste recorte para a versão vigente. Abra pelo "+" do painel à esquerda, que também deixa registrar responsável, datas e prioridade.',
-            'There is no round of this scope for the current version. Open it with the "+" in the left panel, which also records the owner, dates and priority.',
-          )}
-        />
-      </>
-    )
-  }
-
-  if (p.detalhe.resultados.length === 0) {
-    return (
-      <>
-        <Erro mensagem={p.erro} />
-        <Vazio
-          titulo={L('A planilha está sem linhas', 'The sheet has no rows')}
-          texto={L(
+  /** O QUE FALTA PARA HAVER LINHA — e a grade aparece do mesmo jeito.
+   *
+   *  A TABELA FICA VISÍVEL COM OU SEM DADOS (05/08/2026, a pedido). Os três
+   *  casos abaixo eram `<Vazio>` de página inteira, e a grade não chegava a ser
+   *  desenhada: quem abria um modelo sem round via um cartão de texto onde
+   *  esperava a planilha, e não tinha como saber que colunas ela teria.
+   *
+   *  O QUE SE MANTEVE FOI A EXPLICAÇÃO, que era o valor daqueles cartões — ela
+   *  virou uma linha na faixa que já existe acima da grade. Uma tabela vazia sem
+   *  motivo declarado é pior que o cartão: parece defeito.
+   *
+   *  Isto NÃO reabre a prévia sem modelo. Sem modelo continua não havendo
+   *  planilha (ver o cabeçalho do arquivo): ali não há colunas a desenhar, porque
+   *  não há auditoria de onde tirá-las. */
+  const faltando = !p.versao
+    ? L(
+        'Este modelo não tem versão registrada. A planilha nasce com a versão — registre a primeira na tela do modelo.',
+        'This model has no registered version. The sheet is created with the version — register the first one on the model screen.',
+      )
+    : !p.detalhe
+      ? L(
+          'Não há round deste recorte para a versão vigente. Abra pelo "+" do painel à esquerda, que também registra responsável, datas e prioridade.',
+          'There is no round of this scope for the current version. Open it with the "+" in the left panel, which also records the owner, dates and priority.',
+        )
+      : p.detalhe.resultados.length === 0
+        ? L(
             'A auditoria existe, mas o projeto não tem itens neste checklist. Aplique os itens de fábrica em Biblioteca de critérios › Compor checklist.',
             'The audit exists, but the project has no items in this checklist. Apply the factory items under Criteria library › Compose checklist.',
-          )}
-        />
-      </>
-    )
-  }
+          )
+        : null
 
   const en = lang === 'en'
-  const linhas: LinhaGrade[] = p.detalhe.resultados.map((r) => ({
+  const linhas: LinhaGrade[] = (p.detalhe?.resultados ?? []).map((r) => ({
     chave: r.id,
     // A faixa de grupo é a coluna ELEMENT, e ela só existe onde a planilha de
     // origem agrupa sem ter coluna para o grupo — ver `AGRUPA_POR_ELEMENTO`.
@@ -491,7 +457,7 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
     anexos: r.evidencias.length,
   }))
 
-  const daImagem = p.detalhe.resultados.find((r) => r.id === linhaDaImagem)
+  const daImagem = p.detalhe?.resultados.find((r) => r.id === linhaDaImagem)
 
   return (
     <div className="plan-tela">
@@ -524,8 +490,11 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
 
           A FAIXA SÓ EXISTE QUANDO TEM O QUE DIZER. Renderizá-la vazia deixaria
           o buraco que a remoção veio tirar. */}
-      {(p.publicada || p.ocupado) && (
+      {(p.publicada || p.ocupado || faltando) && (
         <p className="plan-aviso">
+          {/* O QUE FALTA vem primeiro: numa planilha sem linha nenhuma, é a
+              única frase que explica o que se está vendo. */}
+          {faltando}
           {p.publicada &&
             L(
               'Round publicado — a planilha ficou somente leitura. Uma versão nova reabre a auditoria em outro round.',
@@ -533,7 +502,7 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
             )}
           {p.ocupado && (
             <span className="plan-salvando">
-              {p.publicada ? ' · ' : ''}
+              {p.publicada || faltando ? ' · ' : ''}
               {L('salvando…', 'saving…')}
             </span>
           )}
@@ -551,9 +520,6 @@ function Planilha({ checklist, modeloId }: { checklist: Checklist; modeloId: str
         onAcao={gerarNc}
       />
 
-      {/* DEPOIS DA GRADE, como no Excel. Só aparece nos recortes por área e só
-          com mais de uma — ver `Abas`. */}
-      <Abas areas={p.areas} atual={area} onTrocar={setArea} />
 
       <ImagemDaLinha
         aberta={!!daImagem}

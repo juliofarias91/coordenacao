@@ -42,16 +42,27 @@ from app.models.enums import AuditoriaEstado, ChecklistTipo, CheckStatus
 
 # OS RECORTES QUE SE AUDITAM POR ÁREA, e não sobre o arquivo inteiro.
 #
-# Sai do processo real, não de preferência: os controles de LOD 400 e 500 da
-# coordenação (`Bases/LOD*_SPECIFIC AUDIT_CONTROL.xlsx`) têm UMA ABA POR ÁREA —
-# ADMN, COLO1..COLO4, SITE, UTLS, GUAR —, cada uma com o round e o percentual de
-# cada modelo dentro dela. Os de geral e 4D não têm: são do arquivo.
+# Sai do processo real, não de preferência: os controles de LOD da coordenação
+# (`Bases/LOD*_SPECIFIC AUDIT_CONTROL.xlsx`) têm UMA ABA POR ÁREA — ADMN,
+# COLO1..COLO4, SITE, UTLS, GUAR —, cada uma com o round e o percentual de cada
+# modelo dentro dela. Os de geral e 4D não têm: são do arquivo.
+#
+# O LOD 300 ENTROU EM 05/08/2026, a pedido, e o arquivo confirma: o
+# `LOD300_SPECIFIC AUDIT_CONTROL.xlsx` tem SEIS abas de área — ADMN, COLO1,
+# COLO2, COLO3, COLO4 e SITE — além do CONTROL e do OVERVIEW. Ele estava fora
+# desta lista por leitura do PDF de espec, que é por ELEMENTO e não por área; o
+# controle mostra que a coordenação acompanha os três LOD do mesmo jeito.
+#
+# ISTO NÃO REESCREVE O QUE JÁ EXISTE. As auditorias de LOD 300 abertas antes
+# disto têm `area` nula e continuam válidas: a tela cai na de maior round quando
+# não há aba nenhuma (ver `usePlanilha`). Quem quiser a divisão por área abre um
+# round novo, e é aí que `_areas_do_checklist` passa a criar uma por área.
 #
 # Esta constante é o que faz a matriz modelo × área ter conteúdo. Ela nasceu
 # vazia porque `area` só era gravada quando o chamador a informava, e ninguém
 # informava — ver `api/v1/auditorias.py::_areas_do_checklist`.
 CHECKLISTS_POR_AREA: frozenset[ChecklistTipo] = frozenset(
-    {ChecklistTipo.LOD400, ChecklistTipo.LOD500}
+    {ChecklistTipo.LOD300, ChecklistTipo.LOD400, ChecklistTipo.LOD500}
 )
 
 

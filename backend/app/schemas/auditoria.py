@@ -162,6 +162,18 @@ class AuditoriaDaLista(AuditoriaOut):
     # macrodisciplina — não por disciplina. Sem ela a tela teria de buscar a
     # disciplina só para descobrir a cor.
     disciplina_macro: MacroDisc | None = None
+    # AS ÁREAS DA DISCIPLINA — ADMN, COLO1, SITE… —, que é o que o painel desenha
+    # como abas nos recortes por área.
+    #
+    # DA DISCIPLINA, E NÃO DAS AUDITORIAS QUE EXISTEM, e essa é a diferença que
+    # faz a fileira aparecer: derivadas das auditorias, as abas só existiriam
+    # depois de alguém abrir uma em cada área — e não haveria por onde abrir a
+    # primeira, porque é a aba que leva até ela. É o escopo declarado, não o
+    # trabalho já feito.
+    #
+    # Vem no MESMO join que já traz código, nome e macro: nenhuma requisição a
+    # mais para o painel.
+    disciplina_areas: list[str] = []
 
 
 class PlanoAuditoria(BaseModel):

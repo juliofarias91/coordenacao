@@ -305,6 +305,7 @@ def listar_auditorias_do_projeto(
             Disciplina.codigo,
             Disciplina.nome,
             Disciplina.macro,
+            Disciplina.areas,
         )
         .join(VersaoModelo, VersaoModelo.id == Auditoria.versao_id)
         .join(Modelo, Modelo.id == VersaoModelo.modelo_id)
@@ -337,6 +338,7 @@ def listar_auditorias_do_projeto(
         disc_codigo,
         disc_nome,
         disc_macro,
+        disc_areas,
     ) in linhas:
         item = AuditoriaDaLista.model_validate(auditoria)
         item.modelo_id = modelo_id
@@ -346,6 +348,10 @@ def listar_auditorias_do_projeto(
         item.disciplina_codigo = disc_codigo
         item.disciplina_nome = disc_nome
         item.disciplina_macro = disc_macro
+        # AS ÁREAS DA DISCIPLINA, e não as das auditorias que existem: é o que
+        # faz as abas do painel aparecerem ANTES de haver auditoria em cada uma.
+        # Ver o campo em `schemas/auditoria.py`.
+        item.disciplina_areas = list(disc_areas or [])
         saida.append(item)
     return saida
 

@@ -89,8 +89,26 @@ export function usePlanilha(
   /** A auditoria que a planilha mostra. O maior round é o que vale — os
    *  anteriores são histórico —, e a área restringe antes do desempate. */
   const auditoria = useMemo(() => {
-    const candidatas = area == null ? auditorias : auditorias.filter((a) => a.area === area)
-    return [...candidatas].sort((a, b) => (b.round ?? 0) - (a.round ?? 0))[0] ?? null
+    if (area == null) {
+      return [...auditorias].sort((a, b) => (b.round ?? 0) - (a.round ?? 0))[0] ?? null
+    }
+    const daArea = auditorias.filter((a) => a.area === area)
+    if (daArea.length > 0) {
+      return [...daArea].sort((a, b) => (b.round ?? 0) - (a.round ?? 0))[0] ?? null
+    }
+    /** A AUDITORIA SEM ÁREA, quando a área escolhida não tem nenhuma.
+     *
+     *  É provisão de TRANSIÇÃO, e ela existe por causa do LOD 300: ele passou a
+     *  ser por área em 05/08/2026, e tudo que foi auditado nele antes disso tem
+     *  `area` nula. Sem esta linha, ligar as abas faria esse trabalho sumir da
+     *  tela — a filtragem por área não casaria com nada e a planilha abriria
+     *  vazia, que se lê como perda de dado.
+     *
+     *  Ela some sozinha: assim que houver auditoria na área, é aquela que vale.
+     *  E não atrapalha os recortes que já nasceram por área — em 400 e 500 não
+     *  existe auditoria de área nula para cair aqui. */
+    const semArea = auditorias.filter((a) => !a.area)
+    return [...semArea].sort((a, b) => (b.round ?? 0) - (a.round ?? 0))[0] ?? null
   }, [auditorias, area])
 
   const carregarDetalhe = useCallback(async () => {
