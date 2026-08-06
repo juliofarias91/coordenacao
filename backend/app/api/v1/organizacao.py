@@ -65,7 +65,10 @@ def obter(
 def atualizar(
     payload: OrganizacaoUpdate,
     db: Session = Depends(get_tenant_db),
-    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+    # `admin_total` E NÃO `admin_cadastro` (05/08/2026): trocar o nome da
+    # organização é mexer na PLATAFORMA, não cadastrar dentro dela. É a única
+    # coisa hoje que o `Admin` não faz e o `Super admin` faz — ver `PERMISSOES`.
+    user: CurrentUser = Depends(requer_permissao("admin_total")),
 ) -> OrganizacaoOut:
     org = _atual(db, user)
     dados = payload.model_dump(exclude_unset=True)

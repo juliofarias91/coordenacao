@@ -108,8 +108,21 @@ coordena e o dado que ele veio ler.
 Painel da direita, `position: fixed`, largura FIXA (`--w-gaveta`, 400px), que
 SOBREPÕE — é a regra 4 concretizada. Formulário pontual disparado de uma tela de
 trabalho entra nela, não no meio da página. O componente é
-`components/Gaveta.tsx`; o CSS, a seção GAVETA LATERAL do `app.css`. Quatro
+`components/Gaveta.tsx`; o CSS, a seção GAVETA LATERAL do `app.css`. Cinco
 decisões, e nenhuma é preferência:
+
+- **Ela SOBREPÕE O CONTEÚDO, NÃO O CHROME** (05/08/2026, a pedido). Nasce em
+  `top: var(--h-topbar)` e o véu começa em `left: var(--w-nav)` — topbar e
+  trilho seguem clicáveis com ela aberta. Antes tomava a janela inteira, e para
+  trocar de tela, ou só para ver em que projeto se estava, era preciso fechá-la.
+  O véu não escurece o menu de propósito: escurecer sugere desligado, e ele não
+  está.
+  **O TOPO CAI NO `.pghead`, e não por sorte:** o `.pgsplit` começa na borda de
+  baixo da topbar, então a gaveta nasce no mesmo nível do título da seção.
+  **O cabeçalho dela foi de 56px para `--h-header` (48px)** junto: deixou de
+  vizinhar a topbar e passou a vizinhar o header de seção, e é com o traço dele
+  que o dela precisa linhar — a régua de esqueleto sendo respeitada, não uma
+  medida solta.
 
 - **Sem raio.** A escala de raio pressupõe uma superfície com quatro cantos
   dentro da tela; a gaveta encosta em três bordas, e arredondar só a esquerda

@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
 from app.models import Empresa, Projeto, ProjetoMembro, Usuario
+from app.models.enums import paginas_ocultas
 from app.schemas.membro import MembroCreate, MembroOut, MembroUpdate
 from app.services import lixeira
 from app.services.escopo import conflito, exigir, exigir_projeto, ja_existe
@@ -38,6 +39,7 @@ DERIVADOS = {
     "usuario_status",
     "projeto_codigo",
     "projeto_nome",
+    "usuario_paginas_ocultas",
 }
 
 
@@ -61,12 +63,34 @@ def _saida(
             "usuario_nome": usuario.nome if usuario else None,
             "usuario_login": usuario.login if usuario else None,
             "usuario_papel_org": usuario.papel if usuario else None,
+            # Da CONTA, não do vínculo — ver o campo em `schemas/membro.py`.
+            "usuario_paginas_ocultas": paginas_ocultas(usuario.permissoes) if usuario else [],
             "usuario_status": usuario.status if usuario else None,
             "empresa_nome": empresa_nome,
             "projeto_codigo": projeto_codigo,
             "projeto_nome": projeto_nome,
         }
     )
+
+
+def _exigir_que_nao_seja_voce(membro: ProjetoMembro, user: CurrentUser) -> None:
+    """⚠ NINGUÉM MEXE NO PRÓPRIO VÍNCULO (05/08/2026, a pedido).
+
+    Vale para alterar e para remover, e as duas pelo mesmo motivo: trocar o
+    próprio papel ou sair do projeto é mexer no que decide o que se pode fazer
+    ali, e é o único erro que quem o comete não consegue desfazer — quem se
+    remove do CPQ11 precisa de outra pessoa para voltar.
+
+    A tela já desabilita a engrenagem da própria linha; a guarda está aqui porque
+    botão desabilitado não impede quem chama a rota direto. É a irmã da guarda de
+    `PATCH /usuarios/{id}`, e o `admin_cadastro` continua sendo a barra de
+    entrada — isto é o que ele NÃO alcança nem tendo a permissão.
+    """
+    if membro.usuario_id == user.id:
+        raise conflito(
+            "você não mexe no próprio vínculo com o projeto: "
+            "peça a outra pessoa da coordenação"
+        )
 
 
 def _consulta():
@@ -182,9 +206,10 @@ def atualizar(
     membro_id: uuid.UUID,
     payload: MembroUpdate,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
 ) -> MembroOut:
     membro = exigir(db, ProjetoMembro, membro_id, "membro")
+    _exigir_que_nao_seja_voce(membro, user)
     for campo, valor in payload.model_dump(exclude_unset=True).items():
         setattr(membro, campo, valor)
     db.flush()
@@ -195,12 +220,18 @@ def atualizar(
 def remover(
     membro_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
 ) -> None:
     """Tira a pessoa do projeto. NÃO apaga a conta dela nem o que ela auditou.
 
     O histórico vive nas auditorias assinadas e na trilha, que têm vida própria
     — sair de um projeto não pode reescrever o que já foi decidido nele.
+
+    NEM A SI MESMO: ver `_exigir_que_nao_seja_voce`. Sair sozinho é a versão
+    irreversível do mesmo erro — depois de fora, é outra pessoa que tem de
+    trazer de volta.
     """
-    lixeira.remover(db, exigir(db, ProjetoMembro, membro_id, "membro"))
+    membro = exigir(db, ProjetoMembro, membro_id, "membro")
+    _exigir_que_nao_seja_voce(membro, user)
+    lixeira.remover(db, membro)
     db.flush()

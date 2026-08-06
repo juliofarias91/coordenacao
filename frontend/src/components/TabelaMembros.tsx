@@ -17,7 +17,9 @@
  */
 import { useEffect, useState } from 'react'
 
+import { useAuth } from '@/auth/AuthContext'
 import Gaveta from '@/components/Gaveta'
+import PaginasVisiveis from '@/components/PaginasVisiveis'
 import { Campo, Erro, Vazio } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
@@ -30,11 +32,48 @@ import type { Membro, UsuarioCadastro } from '@/lib/types'
  *  portal), e `revisor`/`fornecedor` não apareceram em pedido nenhum. Os três que
  *  ficam cobrem o que foi pedido — coordinator, user, viewer — e são valores que
  *  o enum JÁ TEM. Um vocabulário novo obrigaria a manter um mapa entre os dois, e
- *  o mapa divergiria; é o que a docstring de `ProjetoMembro` já dizia. */
-export const PAPEIS_PROJETO: Array<{ valor: string; pt: string; en: string }> = [
-  { valor: 'coordenador', pt: 'Coordenador', en: 'Coordinator' },
-  { valor: 'auditor', pt: 'Usuário', en: 'User' },
-  { valor: 'leitor', pt: 'Visualizador', en: 'Viewer' },
+ *  o mapa divergiria; é o que a docstring de `ProjetoMembro` já dizia.
+ *
+ *  OS RÓTULOS MUDARAM EM 05/08/2026, A PEDIDO — `Visualizador · Colaborador ·
+ *  Gerente`, do menos para o mais, e a `dica` de cada um é o que se combinou que
+ *  ele significa. Só o rótulo: os VALORES seguem `leitor`/`auditor`/`coordenador`,
+ *  que é o que o banco guarda.
+ *
+ *  NÃO CONFUNDIR COM O PAPEL DE PLATAFORMA (`PAPEIS`, em `pages/admin/
+ *  Usuarios.tsx`: Usuário · Admin · Super admin). São duas perguntas: o que a
+ *  pessoa faz NESTE projeto, e o que ela é NA PLATAFORMA. Uma pode ser Gerente
+ *  aqui e apenas Usuário lá — e é a de lá que hoje decide o que a API deixa
+ *  fazer, porque este papel ainda não autoriza. */
+export const PAPEIS_PROJETO: Array<{
+  valor: string
+  pt: string
+  en: string
+  dica: [string, string]
+}> = [
+  {
+    valor: 'leitor',
+    pt: 'Visualizador',
+    en: 'Viewer',
+    dica: ['Só acompanha: lê o que já está publicado.', 'Follows along: reads what is published.'],
+  },
+  {
+    valor: 'auditor',
+    pt: 'Colaborador',
+    en: 'Collaborator',
+    dica: [
+      'Preenche a auditoria e cuida dos modelos do projeto.',
+      'Fills in the audit and looks after the project models.',
+    ],
+  },
+  {
+    valor: 'coordenador',
+    pt: 'Gerente',
+    en: 'Manager',
+    dica: [
+      'Conduz o projeto: publica round e responde por ele.',
+      'Runs the project: publishes rounds and answers for it.',
+    ],
+  },
 ]
 
 const ENGRENAGEM =
@@ -69,7 +108,20 @@ export default function TabelaMembros({
   onMudou: () => void
 }) {
   const { L } = useI18n()
+  const { usuario: logado } = useAuth()
+  /** QUEM a gaveta mostra. Sobrevive ao fechamento — ver o bloco que a monta. */
+  const [naGaveta, setNaGaveta] = useState<Membro | null>(null)
+  /** SE ela está aberta. `null` fecha e dispara a animação de saída. */
   const [editando, setEditando] = useState<Membro | null>(null)
+  /** Um contador de aberturas, usado como `key`: cada abertura é uma montagem
+   *  nova, e é o que zera o formulário entre uma edição e a seguinte. */
+  const [abertura, setAbertura] = useState(0)
+
+  function abrir(m: Membro) {
+    setNaGaveta(m)
+    setEditando(m)
+    setAbertura((n) => n + 1)
+  }
 
   // TABELA VAZIA NÃO EXISTE. O estado vazio dentro de um `<td colSpan>` desenhava
   // a caixa tracejada DENTRO de uma célula, com a régua de cabeçalho solta acima
@@ -136,11 +188,26 @@ export default function TabelaMembros({
                   </span>
                 </td>
                 <td className="memb-acoes-col">
+                  {/* ⚠ NINGUÉM EDITA O PRÓPRIO VÍNCULO (05/08/2026, a pedido).
+                      Trocar o próprio papel ou se remover do projeto é mexer no
+                      que decide o que se pode fazer — e o erro aqui é de
+                      desfazer caro: quem se rebaixa por engano pode não ter mais
+                      como voltar. Desabilitado e NÃO escondido, com o porquê no
+                      `title`: uma célula vazia na sua linha faz procurar o botão
+                      que sumiu. A guarda de verdade está na API. */}
                   <button
                     type="button"
                     className="memb-eng"
-                    onClick={() => setEditando(m)}
-                    title={L('Ações', 'Actions')}
+                    disabled={m.usuario_id === logado?.id}
+                    onClick={() => abrir(m)}
+                    title={
+                      m.usuario_id === logado?.id
+                        ? L(
+                            'Você não edita o seu próprio vínculo — peça a outra pessoa da coordenação.',
+                            'You cannot edit your own membership — ask someone else on the coordination team.',
+                          )
+                        : L('Ações', 'Actions')
+                    }
                     aria-label={L('Ações', 'Actions')}
                   >
                     <svg
@@ -164,9 +231,21 @@ export default function TabelaMembros({
         </table>
       </div>
 
-      {editando && (
+      {/* A GAVETA SOBREVIVE AO FECHAMENTO, e é o que permite animar a saída.
+          Antes era `{editando && <GavetaMembro …/>}`: o pai desmontava a árvore
+          no clique e não havia o que animar — a gaveta sumia num quadro.
+
+          Agora `naGaveta` guarda QUEM ela mostra e `editando` diz SE está
+          aberta. O `key` é um contador de aberturas, e não o id do membro: sem
+          ele a gaveta ficaria montada entre uma abertura e outra, e reabrir a
+          MESMA pessoa traria de volta o que se digitou e desistiu de gravar na
+          vez anterior — exatamente o que a desmontagem existia para evitar (ver
+          `Gaveta.tsx`). Com o contador, toda abertura é uma montagem nova. */}
+      {naGaveta && (
         <GavetaMembro
-          membro={editando}
+          key={abertura}
+          aberta={!!editando}
+          membro={naGaveta}
           onFechar={() => setEditando(null)}
           onMudou={() => {
             setEditando(null)
@@ -347,10 +426,14 @@ export function AdicionarMembro({
  *  da lista sem deixar rastro na tela — o rastro fica na trilha.
  */
 function GavetaMembro({
+  aberta,
   membro,
   onFechar,
   onMudou,
 }: {
+  /** Fechada, ela SEGUE MONTADA até a animação de saída terminar. Quem a
+   *  remonta a cada abertura é o `key` no chamador. */
+  aberta: boolean
   membro: Membro
   onFechar: () => void
   onMudou: () => void
@@ -361,12 +444,29 @@ function GavetaMembro({
   const [erro, setErro] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
+  /** As telas escondidas — da CONTA, não deste vínculo. Ver o bloco no corpo. */
+  const [ocultas, setOcultas] = useState<string[]>(membro.usuario_paginas_ocultas)
+
+  /** Mexeram nos interruptores? Compara CONJUNTOS, não as listas: o componente
+   *  acrescenta no fim e "Ocultar todas" reordena, então duas listas com o mesmo
+   *  conteúdo em ordens diferentes significam "ninguém mudou nada". */
+  const mudouAsPaginas =
+    ocultas.length !== membro.usuario_paginas_ocultas.length ||
+    ocultas.some((r) => !membro.usuario_paginas_ocultas.includes(r))
 
   async function salvar() {
     setErro(null)
     setSalvando(true)
     try {
+      // DUAS GRAVAÇÕES, porque são duas entidades: o vínculo (papel e equipe
+      // NESTE projeto) e a conta (as telas, que valem em todos). O vínculo vai
+      // primeiro — é o assunto da tela, e se a segunda falhar o que se veio
+      // fazer já está gravado.
       await api.membros.atualizar(membro.id, { equipe: equipe.trim() || null, papel })
+      // Só quando mudou: sem isto, abrir a gaveta e salvar sem tocar nos
+      // interruptores escreveria na conta de quem não se veio editar — e a
+      // trilha registraria uma alteração que ninguém fez.
+      if (mudouAsPaginas) await api.usuarios.definirPaginas(membro.usuario_id, ocultas)
       onMudou()
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : String(e))
@@ -390,7 +490,7 @@ function GavetaMembro({
 
   return (
     <Gaveta
-      aberta
+      aberta={aberta}
       titulo={membro.usuario_nome ?? membro.usuario_login ?? L('Membro', 'Member')}
       sub={membro.projeto_codigo ?? undefined}
       onFechar={onFechar}
@@ -421,8 +521,18 @@ function GavetaMembro({
               {L(p.pt, p.en)}
             </option>
           ))}
+          {/* O PAPEL ANTIGO, se a linha tiver um valor fora dos três. Sem esta
+              opção o `select` abriria no primeiro item e SALVAR trocaria o papel
+              da pessoa sem ninguém ter escolhido isso. */}
+          {!PAPEIS_PROJETO.some((p) => p.valor === papel) && <option value={papel}>{papel}</option>}
         </select>
       </Campo>
+      {/* O que o papel escolhido significa, sob o campo e só o dele: listar os
+          três obriga a procurar qual é o que importa. */}
+      {(() => {
+        const p = PAPEIS_PROJETO.find((x) => x.valor === papel)
+        return p ? <p className="hint">{L(...p.dica)}</p> : null
+      })()}
 
       {/* ⚠ O AVISO É OBRIGATÓRIO ENQUANTO O PAPEL NÃO AUTORIZAR. A tela oferece
           "Visualizador", e quem escolhe isso acredita ter restringido alguém —
@@ -435,6 +545,27 @@ function GavetaMembro({
           'The role records what was agreed on the project and does NOT restrict access yet: what blocks today is the person’s organization permission. To actually remove access, change their role under member management.',
         )}
       </p>
+
+      {/* OS INTERRUPTORES DE PÁGINA, aqui também (05/08/2026, a pedido).
+          O componente é o mesmo da gaveta de conta — ver `PaginasVisiveis`.
+
+          ⚠ MAS O DADO É DA CONTA, NÃO DESTE VÍNCULO, e o aviso abaixo diz isso
+          com todas as letras. As telas visíveis moram em `usuario.permissoes`;
+          desligar uma aqui esconde a tela para essa pessoa em TODOS os projetos.
+          Fazer por projeto exigiria uma coluna por (projeto, pessoa) — migration
+          —, e isso está fora do que se pediu.
+
+          Sem esse aviso, a gaveta mentiria por contexto: tudo mais nela (papel,
+          equipe) é por projeto, e quem lê de cima para baixo conclui que estes
+          interruptores também são. */}
+      <PaginasVisiveis ocultas={ocultas} onMudar={setOcultas}>
+        <p className="hint">
+          {L(
+            'Estas telas são da CONTA da pessoa: o que se desligar aqui vale em todos os projetos, não só neste. E não é permissão — esconde o item do menu; quem barra a API é o papel dela na organização.',
+            'These screens belong to the person’s ACCOUNT: whatever you switch off here applies to every project, not just this one. And it is not a permission — it hides the menu item; what blocks the API is their organization role.',
+          )}
+        </p>
+      </PaginasVisiveis>
 
       <div className="memb-remover">
         {confirmando ? (
