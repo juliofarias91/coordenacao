@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 from app.schemas.comum import ESCRITA, Identificado
 
@@ -76,6 +76,12 @@ class ProjetoOut(Identificado):
     data_inicio: date | None
     data_prevista: date | None
     data_conclusao: date | None
+    # SÓ DE LEITURA AQUI, e é a decisão central da 0019. `ProjetoUpdate` NÃO tem
+    # `areas`: um PATCH manda a lista inteira, e da lista inteira não se deduz o
+    # ATO — trocar 'COLO1' por 'TORRE 1' chega igual a apagar uma e criar outra,
+    # e as duas coisas fazem coisas opostas com as auditorias que já existem na
+    # área. Quem escreve são as rotas `/projetos/{id}/areas`, que nomeiam o ato.
+    areas: list[str]
 
     # Excluído da serialização: é o objeto do relacionamento, e quem lê a API
     # quer o nome, não o registro inteiro aninhado em toda listagem.
@@ -91,3 +97,54 @@ class ProjetoOut(Identificado):
         `cliente_id`.
         """
         return getattr(self.cliente, "nome", None)
+
+
+# ------------------------------------------------------------------ áreas
+#
+# O NOME É A IDENTIDADE (migration 0019): é ele que está em `disciplina.areas` e
+# em `auditoria.area`. Daí o padrão ser restritivo — o nome vira coluna da matriz
+# e segmento de conversa ("a auditoria da COLO2"), e um nome com vírgula
+# atravessaria o `join(', ')` que a tabela de disciplinas usa para listá-las.
+NOME_AREA = r"^[A-Za-z0-9][A-Za-z0-9 ._-]*$"
+
+
+def normalizar_area(nome: str) -> str:
+    """Espaços das pontas fora e os do meio colapsados.
+
+    'COLO 1' e 'COLO  1' são o mesmo setor escrito duas vezes, e o segundo só se
+    distingue do primeiro contando espaços na tela. Mora aqui, e não no serviço,
+    porque roda ANTES do `pattern` — que exige começar por letra ou dígito e
+    recusaria um nome colado de outro lugar com espaço na frente. Quem compara
+    nomes (`services/areas.py`) importa esta.
+    """
+    return " ".join(nome.split())
+
+
+class AreaEscrita(BaseModel):
+    model_config = ESCRITA
+
+    nome: str = Field(
+        min_length=1,
+        max_length=40,
+        pattern=NOME_AREA,
+        description="O setor da obra: ADMIN, COLO1, SITE, UTLS…",
+    )
+
+    @field_validator("nome", mode="before")
+    @classmethod
+    def _normalizar(cls, v: object) -> object:
+        return normalizar_area(v) if isinstance(v, str) else v
+
+
+class AreaOut(BaseModel):
+    """Uma área e O QUE DEPENDE DELA.
+
+    Os dois contadores existem para a tela poder avisar ANTES do clique. Sem
+    eles, remover uma área é um botão que às vezes some com a coluna da matriz e
+    às vezes devolve um 409 — e quem coordena não tem como saber qual dos dois
+    antes de tentar.
+    """
+
+    nome: str
+    disciplinas: int = Field(description="Quantas disciplinas declaram auditar esta área.")
+    auditorias: int = Field(description="Quantas auditorias já existem nela. > 0 impede remover.")

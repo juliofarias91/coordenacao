@@ -263,56 +263,60 @@ classes Tailwind (`text-foreground font-semibold`, `bg-*/10`) que não existem
 neste projeto. As regras estão acima, no vocabulário daqui; o kit era o
 andaime. Recuperável no histórico: `git log -- ui-kit-export/`.
 
-## Módulo de auditoria de arquivos (portado do Auditer)
+## O módulo de auditoria de ARQUIVOS foi REMOVIDO (07/08/2026, a pedido)
 
-`Configuração › Nomenclaturas & padrões` tem quatro sub-abas, de **duas
-origens**, e elas convivem porque respondem a perguntas diferentes:
+`Configuração › Nomenclaturas & padrões` tinha quatro sub-abas, de duas origens.
+**Sobrou uma:** `Padrão do projeto` — a que fala com o backend, vale para o time,
+gera penalidade, notificação e trilha, e audita o **modelo** entregue. Ela é hoje
+a seção inteira (`pages/configuracao/Nomenclaturas.tsx`; o invólucro que
+desenhava o `Segmented` saiu junto, porque segmento de um item é botão que não
+faz nada).
 
-- **Padrão do projeto** — backend. Vale para o time, gera penalidade,
-  notificação e trilha. Audita o **modelo** entregue.
-- **Auditoria de arquivos · Padrões avançados · Palavras aceitas** — vieram do
-  `auditer/` e rodam 100% no navegador, sem tocar na API. Auditam a **pasta**:
-  PDF de spec, planilha de controle, relatório.
+**Saíram `Auditoria de arquivos`, `Padrões avançados` e `Palavras aceitas`, e com
+elas O SISTEMA INTEIRO** — não só as telas. Elas vieram do `auditer/`, rodavam
+100% no navegador sem tocar na API, e auditavam a **pasta** (PDF de spec,
+planilha de controle, relatório) em vez do modelo.
 
-O que só existe aqui: separador por bloco e segmento tipado (data/número/
-texto), duplicidade por **conteúdo** (SHA-256 — a cópia salva com outro nome),
-higiene de nome e ortografia de planilha (Hunspell/wasm, pt-BR + inglês).
+**O que foi apagado, para quem for procurar:**
 
-**Regras que já custaram caro — não reverta:**
-- `src/lib/auditer/*.js` e `src/workers/spell.worker.js` são **JavaScript de
-  propósito**: vieram inteiros do Auditer, sem uma linha alterada. Os tipos
-  entram por `.d.ts` ao lado — não há `allowJs`. Antes de mexer neles, rode
-  `npm test` (suíte de nomenclatura, 28 casos: mês 13, 29/02 em ano não
-  bissexto, extensão dupla, duplicidade).
-- O alias `hunspell-asm → dist/cjs/index.js` no `vite.config.ts`. O build ESM
-  importa um arquivo CommonJS e o interop do Vite entrega um namespace no
-  lugar da função (`runtimeModule is not a function`).
-- As três abas entram por **lazy import**. Estaticamente, o SheetJS vai para o
-  chunk principal e o bundle inicial pula de 290 kB para 814 kB — toda a
-  plataforma pagando pelo peso de uma aba.
-- Os dicionários (5,7 MB) **não são fonte**: o `scripts/copy-dict.mjs` os gera
-  no `npm install` a partir de `dictionary-pt`/`dictionary-en`. Ficam em
-  `public/dictionaries/`, fora do bundle, e são lidos por `fetch` no worker.
-- Uma palavra só é erro quando falha nos **dois** idiomas, e todo token em
-  CAPS é ignorado — nas planilhas do ACC, CAPS é sigla/código, nunca prosa.
-  Auditar CAPS gerava mais de 600 falsos positivos numa planilha só.
+| Saiu | O que era |
+|---|---|
+| `src/lib/auditer/` | o motor: padrões, excel, hash, report, storage, spell |
+| `src/workers/spell.worker.js` | o corretor ortográfico em WebAssembly |
+| `src/pages/configuracao/nomenclatura/` | as três telas + `Dropzone`, `EditorSegmento`, `ResultadoArquivo`, `estado.ts` |
+| `scripts/copy-dict.mjs` · `public/dictionaries/` | os dicionários (5,7 MB), gerados no `npm install` |
+| `scripts/naming.test.mjs` | **a única suíte de teste do frontend** (28 casos) |
+| `xlsx` · `hunspell-asm` · `dictionary-pt` · `dictionary-en` | as quatro dependências que só ele usava |
 
-**O app `auditer/` foi aposentado em 28/07/2026.** Ele não tinha uma linha de
-lógica que a plataforma já não tivesse: os seis arquivos do motor e o worker
-eram byte a byte idênticos aos de `src/lib/auditer/` — a única diferença em
-todo o conjunto era um `../` que virou `../../`, porque o arquivo desceu um
-nível de pasta. O que restava era casca: `package.json`, Dockerfile, nginx e
-uma UI que já havia sido reimplementada no sistema visual da plataforma.
+E os ajustes que existiam por causa delas: o `postinstall` do `package.json`, o
+`test:web` da raiz, o `worker: { format: 'es' }` e o alias
+`hunspell-asm → dist/cjs/index.js` do `vite.config.ts`, o `overrides` do
+`.eslintrc.cjs` (não há mais JavaScript em `src/`), o `COPY scripts` **dos dois
+Dockerfiles** e o bloco `AUDITORIA DE ARQUIVOS` do `app.css` (285 linhas).
 
-Recuperável no histórico deste repositório: `git log -- auditer/`, e o conteúdo
-de qualquer arquivo com `git show <commit>:auditer/<caminho>`. O histórico git
-original e o zip de backup ficavam em `referencias/` e **foram apagados em
-30/07/2026** — eles guardavam a proveniência (autoria e evolução do app antes de
-ser trazido), não código, e o código está aqui.
+**O QUE SE PERDEU EM CAPACIDADE, e não tem equivalente no servidor:** padrão com
+separador por bloco e segmento tipado (data/número/texto), duplicidade por
+**conteúdo** (SHA-256 — a cópia salva com outro nome), higiene de nome e
+ortografia de planilha (pt-BR + inglês). Nada disso existe do lado da API. O
+validador de nomenclatura da Fase 3 continua inteiro — ele é outra coisa, audita
+o modelo contra o padrão do projeto.
 
-Uma diferença de comportamento ficou, e é de propósito: o Auditer rodava sem
-login e a aba equivalente exige autenticação. Quem auditava pasta sem ter
-conta na plataforma passa a precisar de uma.
+**Consequências operacionais:** o bundle inicial caiu de ~470 kB + 511 kB (a aba)
++ 746 kB (o worker) para **457 kB, chunk único** — e não há mais aviso de chunk
+acima de 500 kB. O `npm install` deixou de ter passo de geração. E **o frontend
+ficou sem teste automatizado**: o CI dele é `lint` + `build`, e era assim antes
+também (o `npm test` nunca esteve no workflow).
+
+**Recuperável no histórico:** `git log -- frontend/src/lib/auditer/`,
+`git log -- frontend/src/pages/configuracao/nomenclatura/`, e o app original em
+`git log -- auditer/`. As regras que custaram caro (o interop CommonJS do
+hunspell, o CAPS ignorado na ortografia, os casos de borda de data) estão nos
+comentários daqueles arquivos, no histórico — não foram reescritas aqui porque
+não descrevem mais nada que exista.
+
+**O app `auditer/` já havia sido aposentado em 28/07/2026** — ele era casca em
+volta do mesmo motor. O histórico git original e o zip de backup ficavam em
+`referencias/` e foram apagados em 30/07/2026.
 
 ## Acesso: login, usuários e senha (30/07/2026)
 
@@ -665,8 +669,8 @@ Ao continuar:
   `rotaProjeto`, e os quatro caminhos que abrem projeto — card da home, resultado
   de busca, troca de projeto no breadcrumb e a própria função — passaram a
   omitir o segundo argumento em vez de repetir a string. A **criação** é a
-  exceção e continua indo para `ficha`: o projeto nasceu com código e nome, e o
-  resto se preenche com ele aberto na frente.
+  exceção e continua indo para a ficha — hoje `configuracao/ficha`: o projeto
+  nasceu com código e nome, e o resto se preenche com ele aberto na frente.
 - **A sidebar é contextual em TRÊS áreas** (`frontend/src/layout/nav.ts`):
   `ITENS_ADMIN` sob `/admin`, `ITENS_PROJETO` dentro de um projeto,
   `ITENS_GLOBAIS` no resto. Tela nova entra numa das três — na global se a API
@@ -755,16 +759,119 @@ mexendo nisto?". `test_estado_continua_fora_do_alcance_do_plano` tranca isso.
   gaveta escolhe MODELO porque é como a coordenação pensa; a auditoria pertence a
   uma VERSÃO porque é ela que muda entre rounds. `/versoes/{id}/auditar` continua
   existindo para quem precisa apontar uma versão específica.
-- **A configuração do projeto é uma PÁGINA COM ABAS, não uma área.** Chegou a
-  ter sidebar própria e voltou às abas em 29/07/2026: as seções são o cadastro
-  de um projeto, feito de uma vez e em sequência, e trocar a barra a cada seção
-  fazia perder de vista em que projeto se estava — além de deixar a área
+- **A configuração do projeto é uma PÁGINA COM PAINEL, não uma área.** Chegou a
+  ter sidebar própria em 29/07/2026 e não tem mais: as seções são o cadastro
+  de um projeto, feito de uma vez e em sequência, e trocar a barra DO APP a cada
+  seção fazia perder de vista em que projeto se estava — além de deixar a área
   indistinguível do painel administrativo. **São TRÊS áreas contextuais**
   (global, projeto, admin), não quatro; não existe `escopo: 'config'`.
+  **A FILEIRA DE ABAS VIROU `.pgsplit` EM 07/08/2026, a pedido — e isto não
+  desfaz o de cima, desfaz a FORMA dele.** O que se recusou em 29/07 foi a
+  configuração virar ÁREA, com sidebar substituindo a do projeto; o painel é da
+  PÁGINA, nasce abaixo do breadcrumb, e a barra do projeto fica inteira à
+  esquerda dele — é o terceiro caminho, e é o previsto para navegação de segundo
+  nível. As abas eram oito e ocupavam a linha inteira: a última ficava a mais de
+  mil pixels da primeira, e a fileira era a primeira coisa da página, empurrando
+  o formulário para baixo. Uma coluna de sete lê-se de uma olhada e não cresce
+  para o lado quando a nona seção aparecer.
+  O painel é o **mesmo da auditoria** — 300px, os dois cabeçalhos de 48px na
+  mesma linha, busca no do painel, recolher no do conteúdo, recolher DESMONTA.
+  Duas telas com painel de página que se desenhassem diferente seriam duas
+  invenções onde cabe uma. **Isto não mexe na régua "tela de trabalho × tela
+  pontual":** o `.pgsplit` é chrome de navegação, e as seções continuam sendo
+  `.card`/`.editor` dentro do `.pgbody`.
+  **A seção ativa é tinta e peso, sem fundo e SEM SUBLINHADO.** O traço de accent
+  era a exceção prevista para uma fileira HORIZONTAL, onde tinta sozinha não
+  distingue; numa coluna ele vira risco a mais. Junto dele foi embora um
+  sublinhado que ninguém escolheu: `.aba` era um `<a>` e nunca declarou
+  `text-decoration`, e como não há regra global de `a` neste projeto as oito
+  viviam riscadas por baixo, ativas ou não. **`.pgitem` declara `none`** — quem
+  criar painel novo herda a correção. As classes `.abas`/`.aba` foram apagadas:
+  a configuração era a única consumidora.
+- **OS TRÊS DOCUMENTOS DO PROJETO VIRARAM ABAS DA CONFIGURAÇÃO** (07/08/2026, a
+  pedido). `Ficha do projeto`, `PEB · diretrizes` e `BIM Mandate` saíram do grupo
+  *Projeto* da barra, que ficou com `Configurações · Biblioteca de critérios ·
+  Modelos · Membros`. Eram quatro linhas seguidas dizendo a mesma coisa em quatro
+  graus — quem é a obra, o rumo que a equipe define, a exigência que vem de fora,
+  e os ajustes —, e as quatro se preenchem JUNTAS, uma vez, quando o projeto
+  nasce. A barra do projeto é o que se usa todo dia.
+  As oito seções ficam na ordem de quem monta um projeto do zero, e cada uma
+  depende das anteriores: `ficha · peb · mandate · fluxo · areas · projetistas ·
+  nomenclaturas · disciplinas`. **A ficha é a primeira e é o destino de
+  `configuracao` sem seção** (era `projetistas`). As quatro primeiras dizem o que
+  foi COMBINADO na obra; só depois delas começa o que se preenche.
+  **Os RÓTULOS de duas seções mudaram em 07/08/2026, a pedido, e as ROTAS não:**
+  `PEB · diretrizes` → **Diretrizes** (rota segue `peb`) e `Áreas` →
+  **Setorização** (rota segue `areas`). Rota está em link salvo e no histórico, e
+  renomeá-la não compraria nada. **`Setorização` é o assunto; `área` continua
+  sendo a ENTIDADE** — é o que `projeto.areas`, `disciplina.areas` e
+  `auditoria.area` guardam, é como a aba de Disciplinas fala e é o nome da coluna
+  da matriz. Trocar a palavra na tela sem trocá-la no domínio deixaria as duas
+  metades do produto falando línguas diferentes.
+  **As rotas antigas redirecionam** — `/<projeto>/ficha`, `/peb` e `/mandate`
+  estão em link salvo e no histórico. E as três **saíram de `PAGINAS_OCULTAVEIS`**
+  (`models/enums.py` + `nav.ts`, trancados por `test_contrato.py`): o vocabulário
+  do que se esconde de uma conta é o das TELAS DA BARRA, e aba não é tela da
+  barra — quem as esconde agora esconde `configuracao`, como já valia para
+  Disciplinas e Projetistas.
+- **O PEB PERDEU AS TRÊS ABAS E VIROU `Diretrizes`** (07/08/2026, a pedido).
+  Sobrou uma, e por isso o `Segmented` saiu junto — segmento de um item é botão
+  que não faz nada. Para onde foram as outras duas:
+  - **`Fluxo da auditoria` → seção própria** (`configuracao/Fluxo.tsx`, rota
+    `fluxo`). Ele é ESTÁTICO — o processo contratado, igual em todo projeto, sem
+    nada a ler do banco nem onde digitar — e estava escondido atrás de um
+    segmento ao lado de duas abas que gravavam. Fica com os documentos, não com o
+    que se cadastra.
+  - **`Dados & setorização` → a grade de imagens foi para `Setorização`**, que é
+    onde os setores são DEFINIDOS. As duas diziam respeito à mesma coisa em telas
+    diferentes: uma definia o setor, a outra mostrava o desenho dele, e quem
+    acrescentava um setor tinha de trocar de seção para dizer o que ele é.
+    **O bloco "Dados do projeto" NÃO foi junto e não deve voltar:** era código,
+    nome, cliente e coordenação só de leitura — os mesmos cinco campos que a
+    Ficha edita, três seções acima.
+  - **A grade lê a lista DA TELA, não `projeto.areas`.** É a mesma lista, mas a
+    da tela muda no instante em que se acrescenta ou renomeia uma linha; pelo
+    provider ela ficaria um passo atrás até o `recarregar()` responder, e
+    acrescentar um setor sem ver onde pôr a imagem dele é o que a junção veio
+    desfazer.
+- ⚠ **RENOMEAR ÁREA PASSOU A CASCATEAR PARA A IMAGEM DO SETOR** (`services/
+  areas.py`). O `standard` de tipo `setorizacao` é a TERCEIRA cópia do nome, ao
+  lado de `disciplina.areas` e `auditoria.area`, e não estava na cascata — o
+  defeito é anterior, e ficava invisível porque definir a área e ver a imagem
+  eram seções diferentes. Com as duas na mesma tela, renomear uma linha fazia a
+  imagem sumir da grade logo abaixo, no mesmo segundo.
+  **`remover` NÃO apaga a imagem, e isso é decisão:** a grade varre as áreas do
+  projeto, então o órfão não aparece em tela nenhuma, e se a área voltar com o
+  mesmo nome a imagem volta com ela. Apagá-la seria destruir um arquivo no S3
+  dentro de um ato que a tela confirma como "tirar o setor da lista". Os dois
+  lados estão trancados em `test_areas.py`.
+- **`Convidar cliente` SAIU DA CONFIGURAÇÃO** (07/08/2026, a pedido) e virou o
+  recorte **`Portal do cliente` de `Membros do projeto`**. A tela NÃO foi
+  apagada: `pages/configuracao/Cliente.tsx` continua sendo quem desenha, e é
+  `MembrosProjeto` que a monta — apagá-la deixaria o portal do cliente (Fase 4)
+  sem porta nenhuma na interface, e ela é o único lugar que lista, cria, revoga e
+  ajusta o que o cliente enxerga. As sete que ficaram respondem COMO A OBRA É
+  AUDITADA e se preenchem uma vez, quando o projeto nasce; convidar cliente é dar
+  ACESSO, se faz a qualquer momento, e é a mesma pergunta que a tela de membros
+  já responde — quem enxerga este projeto.
+  **Ele fica separado das equipes por um traço** (`.pgsep`) porque os itens de
+  cima saem dos DADOS e este é fixo, e **só aparece para `admin_cadastro`**: as
+  quatro rotas de convite do portal exigem essa permissão, e recorte que só sabe
+  responder 403 anuncia um poder que a conta não tem. Note que isto é MENOS que
+  o botão de convite ao lado, que também vale para quem coordena o projeto.
+  **A rota antiga redireciona com `?portal=1`** — sem o parâmetro, quem clicasse
+  num link salvo de convidar cliente cairia na lista de equipes e concluiria que
+  a tela sumiu. É parâmetro de busca e não rota própria porque os outros recortes
+  daquela barra saem dos dados e não têm endereço.
+  **O `.hint` de `ConvidarPessoa` foi junto** — ele mandava para
+  `Configuração › Cliente` e agora manda para o recorte. Ponteiro que aponta
+  para onde a coisa não está mais é pior que ponteiro nenhum: manda procurar.
 - **A FICHA diz QUEM É a obra; a CONFIGURAÇÃO diz COMO ela é auditada.** A aba
-  `Configuração › Projeto` foi removida em 30/07/2026 quando `pages/Ficha.tsx`
+  `Configuração › Projeto` foi removida em 30/07/2026, quando `pages/Ficha.tsx`
   entrou na barra: as duas editavam os mesmos cinco campos, e duas telas para o
-  mesmo dado divergem na primeira mudança. A rota antiga redireciona.
+  mesmo dado divergem na primeira mudança. **Ela voltou a ser aba em 07/08** — o
+  que não desfaz nada, porque o que se removeu foi a SEGUNDA tela, não o lugar:
+  continua havendo uma só, e ela é a ficha.
   A ficha **salva no blur, campo por campo** — sem botão e sem rascunho, como
   as planilhas de auditoria. E é **card, não full-bleed**: preenche-se uma vez,
   então é tela pontual pela régua da seção "Sistema visual".
@@ -775,7 +882,11 @@ mexendo nisto?". `test_estado_continua_fora_do_alcance_do_plano` tranca isso.
   antes, informação que não existe.
 - **O layout de página dividida** (`.pgsplit`) é o padrão para navegação de
   SEGUNDO nível: quando a escolha é entre visões de uma mesma tela, ela vai
-  num painel da página, não na barra do app. **O único uso é a auditoria.**
+  num painel da página, não na barra do app. **São três usos** — a auditoria
+  (disciplina › modelo), Membros do projeto (equipes + o portal do cliente) e,
+  desde 07/08/2026, a configuração do projeto. O que os três têm em comum é a
+  razão, não a aparência: em todos há CONTEXTO A PERDER se a barra do app for
+  trocada, porque nos três se está dentro de um projeto.
 - **`Configurações` da conta é a QUARTA área contextual** (`ITENS_CONTA` em
   `nav.ts`, `escopo: 'conta'`, 31/07/2026, a pedido). Eram quatro `.editor`
   empilhados num rolo só — para trocar a senha passava-se por dados pessoais,
@@ -784,7 +895,7 @@ mexendo nisto?". `test_estado_continua_fora_do_alcance_do_plano` tranca isso.
   **A diferença que decide entre painel de página e área contextual não é
   estética, é se HÁ CONTEXTO A PERDER:** trocar a barra dentro de um projeto
   apaga da tela em que projeto se está, e é isso que mantém a configuração DO
-  PROJETO como página com abas. Em `/configuracoes` não há projeto — quem entra
+  PROJETO como página com painel. Em `/configuracoes` não há projeto — quem entra
   saiu do trabalho para cuidar da conta, como quem entra em `/admin` —, então
   não sobra contexto para a barra apagar. Continua não existindo
   `escopo: 'config'`; o que passou a existir é `'conta'`.
@@ -871,6 +982,52 @@ motivo: a tela mostrava um código onde a coordenação fala um nome.
   escolher um tom que falha no escuro ou para um daltônico. A aba
   `Configuração › Cores` saiu porque a cor passou a ser mostrada AO LADO da
   disciplina, não porque virou editável.
+
+## As ÁREAS são do projeto (0019)
+
+Os setores da obra — ADMIN, COLO1..5, SITE, UTLS no CPQ11. Eles existiam em dois
+lugares e não eram definidos em nenhum: um `text[]` por disciplina (desde a 0001)
+e uma lista CHAPADA no front (`AREAS_SUGERIDAS`, em `configuracao/Disciplinas.tsx`)
+com os oito setores do CPQ11 — quem cadastrava outra obra marcava COLO1..5 porque
+era o que a tela oferecia. Agora a área nasce em `Configurações do projeto ›
+Áreas` e a disciplina **marca** quais audita.
+
+- **`text[]` no projeto, e NÃO tabela.** É o precedente de `disciplina.areas`, e
+  a razão é a mesma: a área não tem atributo nenhum além do nome — não tem
+  responsável, prazo nem cor (a cor é da macrodisciplina). Uma tabela daria id, e
+  id obrigaria `disciplina.areas` e `auditoria.area` — que guardam o NOME — a
+  virar chave estrangeira. Quando a área ganhar dado próprio, ela vira entidade.
+- **O BACKFILL É A METADE QUE NÃO PODE FALTAR.** A coluna nasce com a UNIÃO do
+  que as disciplinas já declaravam. Vazia, ela deixaria a aba de disciplinas sem
+  o que marcar e a matriz modelo × área sem colunas — o que estava disperso é
+  exatamente a lista que se queria ter. O importador YAML faz a mesma união
+  (`scripts/onboarding.py`), e `test_producao` tranca isso.
+- **NÃO existe `areas` em `ProjetoUpdate`, e é a decisão central.** Cada ato tem
+  rota própria: `POST`, `PATCH` e `DELETE` em `/projetos/{id}/areas`. Da lista
+  pronta não se deduz o ato — `['ADMIN','TORRE 1']` no lugar de
+  `['ADMIN','COLO1']` chega igual se alguém renomeou e se alguém apagou uma e
+  criou outra, e as duas coisas fazem coisas OPOSTAS com a auditoria que já está
+  preenchida lá dentro.
+- **Renomear CASCATEIA** para `disciplina.areas` e `auditoria.area`
+  (`services/areas.py`). Sem isso, renomear seria o mesmo que apagar: a auditoria
+  de LOD 400/500 continuaria gravada com o nome antigo, sumiria da matriz (que
+  passa a varrer o novo) e não haveria tela por onde reencontrá-la.
+- **Remover RECUSA (409) se houver auditoria na área**, e sai das disciplinas
+  quando não houver. Auditoria é o dado de origem; sumir com a área de uma que já
+  tem linha preenchida deixaria o trabalho no banco e fora de toda tela. Já a
+  disciplina apontando para área que o projeto não define é coluna fantasma na
+  matriz — e não haveria mais onde tirá-la. A tela mostra os dois contadores por
+  linha para avisar ANTES do clique.
+- **A comparação é insensível a CAIXA e o espaço do meio é colapsado.** 'Colo1' e
+  'COLO1' seriam duas colunas na matriz para o mesmo lugar da obra, que é o
+  defeito que isto veio resolver. Renomear só a caixa continua permitido — é
+  justamente a correção que se quer fazer. A disciplina grava a caixa DO PROJETO,
+  não a do pedido.
+- **A grade de imagens dos setores lê `projeto.areas`**, não mais a união das
+  disciplinas: um setor previsto que nenhuma disciplina auditasse ainda não tinha
+  onde receber imagem. Ela era a aba `Dados & setorização` do PEB e desde
+  07/08/2026 vive na própria seção `Setorização` — que é esta, a que define as
+  áreas. Renomear uma área **cascateia para a imagem** desde então.
 
 ## Auditoria geral: a planilha dentro do sistema
 

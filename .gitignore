@@ -40,12 +40,6 @@ storage/
 *.rvt
 !docs/**/*.ifc
 
-# Dicionários do corretor ortográfico (5,7 MB). Não são fonte: o
-# `scripts/copy-dict.mjs` os gera no `npm install` a partir dos pacotes
-# `dictionary-pt` e `dictionary-en`.
-public/dictionaries/
-frontend/public/dictionaries/
-
 # Material de referência: vídeos de instrução (287 MB) e o histórico git do
 # Auditer preservado antes da reorganização. Nada aqui é código — mas as notas
 # em texto são pequenas e valem versionar (o link da planilha base, por ex.).

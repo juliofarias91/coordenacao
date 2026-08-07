@@ -81,6 +81,19 @@ export type Projeto = Base & {
    *  de fato: no mesmo campo, o atraso seria apagado pela própria atualização. */
   data_prevista: string | null
   data_conclusao: string | null
+  /** OS SETORES DA OBRA (migration 0019): ADMIN, COLO1…, e a definição de onde
+   *  a disciplina tira as que audita. SÓ DE LEITURA — `atualizar` não os grava.
+   *  Quem escreve é `api.projetos.areas`, que nomeia cada ato. */
+  areas: string[]
+}
+
+/** Uma área E O QUE DEPENDE DELA. Os contadores existem para a tela avisar
+ *  ANTES do clique: remover uma área com auditoria dentro é 409, e sem o número
+ *  na tela isso só se descobre tentando. */
+export type Area = {
+  nome: string
+  disciplinas: number
+  auditorias: number
 }
 
 export type Contato = Base & {

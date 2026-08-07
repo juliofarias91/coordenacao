@@ -242,6 +242,12 @@ def test_importa_o_projeto_inteiro(importado, db: Session) -> None:
     assert disc.areas == ["ADMIN", "COLO1"]
     assert disc.projetista_id is not None
 
+    # AS ÁREAS SOBEM PARA O PROJETO (migration 0019). O YAML as declara na
+    # disciplina que as audita — que é como a coordenação pensa —, e a definição
+    # passou a morar no projeto. Sem esta subida, um projeto importado nasceria
+    # com disciplinas apontando para áreas que ele não define.
+    assert projeto.areas == ["ADMIN", "COLO1"]
+
 
 @requer_banco
 def test_criterio_canonico_entra_em_dois_checklists(importado, db: Session) -> None:

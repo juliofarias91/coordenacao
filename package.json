@@ -11,7 +11,6 @@
     "parar": "node scripts/dev.mjs --parar",
     "build": "npm --prefix frontend run build",
     "lint": "npm --prefix frontend run lint",
-    "test:web": "npm --prefix frontend test",
     "test:api": "backend/.venv/Scripts/python.exe -m pytest -q"
   }
 }

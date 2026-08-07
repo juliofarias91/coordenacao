@@ -12,8 +12,9 @@ import Recorte from '@/pages/auditoria/Recorte'
 import BimMandate from '@/pages/BimMandate'
 import Cadastro from '@/pages/Cadastro'
 import Configuracao from '@/pages/configuracao'
-import CfgCliente from '@/pages/configuracao/Cliente'
+import CfgAreas from '@/pages/configuracao/Areas'
 import CfgDisciplinas from '@/pages/configuracao/Disciplinas'
+import CfgFluxo from '@/pages/configuracao/Fluxo'
 import CfgNomenclaturas from '@/pages/configuracao/Nomenclaturas'
 import CfgProjetistas from '@/pages/configuracao/Projetistas'
 import Configuracoes from '@/pages/Configuracoes'
@@ -46,7 +47,9 @@ import RetornoSSO from '@/pages/RetornoSSO'
 import EscopoProjeto, { RotaLegada } from '@/projeto/EscopoProjeto'
 import { ProjetoProvider } from '@/projeto/ProjetoContext'
 
-/** A política entra por LAZY IMPORT, como as abas do auditer.
+/** A política entra por LAZY IMPORT — hoje o ÚNICO desta aplicação, desde que o
+ *  módulo de auditoria de arquivos saiu (07/08/2026) e levou junto as três abas
+ *  que carregavam o SheetJS sob demanda.
  *
  *  É a única tela de texto corrido da plataforma — alguns milhares de palavras
  *  em dois idiomas — e é visitada uma vez, ou nenhuma. Estaticamente, esse
@@ -222,10 +225,15 @@ export default function App() {
               <Route path="modelos/:modeloId" element={<ModeloView />} />
               <Route path="painel" element={<Navigate to="../modelos" replace />} />
               <Route path="kpis" element={<Kpis />} />
-              {/* A ficha cadastral — a casa dos dados do projeto. Substituiu a
-                  aba `configuracao/projeto`, que editava os mesmos campos; o
-                  endereço antigo redireciona logo abaixo. */}
-              <Route path="ficha" element={<Ficha />} />
+              {/* OS TRÊS DOCUMENTOS DO PROJETO viraram abas da Configuração em
+                  07/08/2026 (a pedido) e ficam logo abaixo, dentro dela. Estes
+                  três endereços continuam existindo porque estão em link salvo e
+                  no histórico — e `ficha` tinha ainda um segundo dono, o
+                  redirecionamento de `configuracao/projeto`, que agora aponta
+                  para o novo lugar. */}
+              <Route path="ficha" element={<Navigate to="../configuracao/ficha" replace />} />
+              <Route path="peb" element={<Navigate to="../configuracao/peb" replace />} />
+              <Route path="mandate" element={<Navigate to="../configuracao/mandate" replace />} />
               {/* AUDITORIA — um item de menu por recorte, e o painel de dentro
                   da página listando disciplina › modelo. `Auditoria` é o
                   esqueleto (painel + os dois cabeçalhos alinhados) e tudo abaixo
@@ -246,18 +254,35 @@ export default function App() {
                 <Route index element={null} />
               </Route>
               <Route path="relatorios" element={<Relatorios />} />
-              {/* CONFIGURAÇÃO DO PROJETO — uma PÁGINA COM ABAS, não uma área.
-                  Chegou a ter sidebar própria e voltou às abas em 29/07/2026: as
-                  seis seções são o cadastro de um projeto, feito de uma vez, e
-                  trocar a barra a cada seção fazia perder de vista em que
-                  projeto se estava. As rotas ficaram — a aba é um `NavLink`, e é
-                  por isso que o endereço continua dizendo em que seção se está. */}
+              {/* CONFIGURAÇÃO DO PROJETO — uma PÁGINA COM PAINEL, não uma área.
+                  Chegou a ter sidebar própria em 29/07/2026 e não tem mais: as
+                  seções são o cadastro de um projeto, feito de uma vez, e trocar
+                  a barra DO APP a cada uma fazia perder de vista em que projeto
+                  se estava. Em 07/08 a fileira de abas virou um painel de PÁGINA
+                  (`.pgsplit`, o mesmo da auditoria), que é outra coisa: a barra
+                  do projeto continua inteira à esquerda dele. As rotas ficaram —
+                  o item é um `NavLink`, e é por isso que o endereço continua
+                  dizendo em que seção se está. */}
               <Route path="configuracao" element={<Configuracao />}>
-                <Route index element={<Navigate to="projetistas" replace />} />
-                {/* A aba `projeto` virou a Ficha, na barra do projeto. O
-                    endereço antigo continua chegando lá — ele está em link
-                    salvo e no histórico de quem já usava a plataforma. */}
-                <Route path="projeto" element={<Navigate to="../../ficha" replace />} />
+                {/* A FICHA É A PRIMEIRA ABA e o destino de `configuracao` sem
+                    seção (07/08/2026): ela diz QUEM É a obra, e é o que se
+                    preenche antes de definir como auditá-la. Era `projetistas`,
+                    que passou a ser a quinta de sete. */}
+                <Route index element={<Navigate to="ficha" replace />} />
+                {/* A aba `projeto` virou a Ficha em 30/07/2026 — as duas
+                    editavam os mesmos cinco campos. Ela morou um tempo na barra
+                    do projeto e voltou para cá como aba; o endereço mais antigo
+                    de todos continua chegando ao lugar certo. */}
+                <Route path="projeto" element={<Navigate to="../ficha" replace />} />
+                <Route path="ficha" element={<Ficha />} />
+                <Route path="peb" element={<Peb />} />
+                <Route path="mandate" element={<BimMandate />} />
+                {/* O FLUXO ERA A TERCEIRA ABA DO PEB e virou seção em
+                    07/08/2026, a pedido. Ele é estático — o processo contratado,
+                    igual em todo projeto — e estava escondido atrás de um
+                    segmento ao lado de duas abas que gravavam. */}
+                <Route path="fluxo" element={<CfgFluxo />} />
+                <Route path="areas" element={<CfgAreas />} />
                 <Route path="disciplinas" element={<CfgDisciplinas />} />
                 <Route path="projetistas" element={<CfgProjetistas />} />
                 <Route path="nomenclaturas" element={<CfgNomenclaturas />} />
@@ -266,14 +291,27 @@ export default function App() {
                     redireciona em vez de sumir: ela está no histórico de quem já
                     usava e possivelmente em algum link colado. */}
                 <Route path="cores" element={<Navigate to="../disciplinas" replace />} />
-                <Route path="cliente" element={<CfgCliente />} />
+                {/* `Convidar cliente` saiu da configuração em 07/08/2026 e virou
+                    o recorte `Portal do cliente` de `Membros do projeto` — a
+                    mesma pergunta que aquela tela responde, quem enxerga este
+                    projeto. A TELA NÃO FOI APAGADA: `configuracao/Cliente.tsx`
+                    continua sendo quem desenha, e é ela que `MembrosProjeto`
+                    monta.
+
+                    `../..` sobe DOIS níveis de ROTA (o filho `cliente` e o pai
+                    `configuracao`), chegando ao layout do projeto — `../membros`
+                    daqui seria `configuracao/membros`, que não existe. E o
+                    `?portal=1` é o que faz o link antigo abrir no recorte certo
+                    em vez de na lista de equipes. */}
+                <Route
+                  path="cliente"
+                  element={<Navigate to="../../membros?portal=1" replace />}
+                />
               </Route>
               <Route path="criterios" element={<Criterios />} />
               {/* Quem participa DESTE projeto — outra pergunta que `/membros`,
                   que é o cadastro de contas da organização. */}
               <Route path="membros" element={<MembrosProjeto />} />
-              <Route path="peb" element={<Peb />} />
-              <Route path="mandate" element={<BimMandate />} />
             </Route>
 
             {/* Os links salvos antes da mudança. Precisam vir DEPOIS das rotas

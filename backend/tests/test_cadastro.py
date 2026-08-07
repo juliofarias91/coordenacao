@@ -234,7 +234,9 @@ def test_codigo_da_disciplina_deriva_de_disc_e_sub(
             "disc": "strc",
             "sub": "steel",
             "checklists": ["ifc", "lod400"],
-            "areas": ["COLO1", "COLO2"],
+            # Sem `areas`: elas passaram a sair da lista do projeto (0019), e
+            # marcar uma que ele não define é 409. O que se testa aqui é o código
+            # derivado — as regras de área estão em `test_areas.py`.
         },
     )
     assert r.status_code == 201, r.text

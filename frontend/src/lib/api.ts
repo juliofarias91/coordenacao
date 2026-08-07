@@ -243,6 +243,29 @@ export const api = {
     /** Manda para a LIXEIRA — não apaga. O projeto é o pai de disciplina,
      *  modelo e auditoria; volta inteiro em `/lixeira`. */
     remover: (id: string) => requisitar<void>(`/projetos/${id}`, { method: 'DELETE' }),
+
+    /** AS ÁREAS DO PROJETO (migration 0019) — os setores da obra.
+     *
+     *  CADA OPERAÇÃO TEM ROTA PRÓPRIA, e não há um "gravar a lista": renomear
+     *  cascateia para `disciplina.areas` e `auditoria.area`, que guardam o NOME,
+     *  e da lista pronta o servidor não teria como distinguir um rename de um
+     *  "apaguei uma e criei outra". As três de escrita devolvem a lista nova. */
+    areas: {
+      listar: (projetoId: string) => requisitar<T.Area[]>(`/projetos/${projetoId}/areas`),
+      criar: (projetoId: string, nome: string) =>
+        escrever<string[]>(`/projetos/${projetoId}/areas`, 'POST', { nome }),
+      renomear: (projetoId: string, de: string, para: string) =>
+        escrever<string[]>(
+          `/projetos/${projetoId}/areas/${encodeURIComponent(de)}`,
+          'PATCH',
+          { nome: para },
+        ),
+      /** 409 se houver auditoria na área — a mensagem diz quantas. */
+      remover: (projetoId: string, nome: string) =>
+        requisitar<void>(`/projetos/${projetoId}/areas/${encodeURIComponent(nome)}`, {
+          method: 'DELETE',
+        }),
+    },
   },
 
   // ------------------------------------------------------------- empresas

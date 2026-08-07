@@ -229,16 +229,22 @@ export default function ConvidarPessoa({
       {/* A OUTRA METADE DA PERGUNTA "convidar quem?" (07/08/2026). Esta gaveta
           traz gente para DENTRO da plataforma, como membro. Convidar o CLIENTE —
           link de leitura, sem conta, com visibilidade campo a campo — é outra
-          coisa e mora em `Configuração › Cliente`.
+          coisa.
 
           O ponteiro existe porque este botão substituiu, no rodapé da barra, o
           antigo convite de portal: quem o usava para isso precisa saber para
           onde ele foi. É a mesma gentileza que aquele painel fazia ao contrário,
-          mandando para `Membros do projeto` quem procurava membro de time. */}
+          mandando para `Membros do projeto` quem procurava membro de time.
+
+          ⚠ O DESTINO MUDOU NO MESMO DIA: era `Configuração › Cliente` e passou a
+          ser o recorte `Portal do cliente` DESTA tela, quando a configuração
+          virou painel. O texto acompanha — um ponteiro que aponta para onde a
+          coisa não está mais é pior do que ponteiro nenhum, porque manda
+          procurar. */}
       <p className="hint" style={{ marginBottom: 0 }}>
         {L(
-          'Para dar ao CLIENTE um link de leitura do painel, sem conta na plataforma, use Configuração › Cliente.',
-          'To give the CLIENT a read-only link to the panel, with no platform account, use Project setup › Client.',
+          'Para dar ao CLIENTE um link de leitura do painel, sem conta na plataforma, use Membros do projeto › Portal do cliente.',
+          'To give the CLIENT a read-only link to the panel, with no platform account, use Project members › Client portal.',
         )}
       </p>
     </Gaveta>

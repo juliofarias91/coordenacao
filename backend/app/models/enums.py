@@ -215,11 +215,15 @@ def paginas_ocultas(permissoes: Iterable[str]) -> list[str]:
 # corresponde a tela nenhuma — invisível na gaveta, que desenha só as telas que
 # conhece, e sem caminho pela interface para tirá-la. `test_contrato.py` confere
 # que os dois lados batem: ele LÊ o `nav.ts`.
+# `ficha`, `peb` e `mandate` SAÍRAM em 07/08/2026, a pedido: as três viraram
+# abas de `Configurações do projeto` e deixaram de ser entradas do menu. Quem as
+# esconde agora esconde `configuracao`, como já acontecia com Disciplinas,
+# Projetistas e Nomenclaturas — o vocabulário é o das TELAS DA BARRA, e aba não
+# é tela da barra. Contas que tenham `oculta:ficha` gravado de antes não quebram:
+# a entrada não corresponde a tela nenhuma e é simplesmente ignorada ao desenhar
+# a gaveta; ela sai da coluna no primeiro salvamento das páginas dessa conta.
 PAGINAS_OCULTAVEIS = (
     "kpis",
-    "ficha",
-    "peb",
-    "mandate",
     "configuracao",
     "criterios",
     "modelos",
