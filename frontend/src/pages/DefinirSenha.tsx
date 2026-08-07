@@ -20,6 +20,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import AuthLayout from '@/auth/AuthLayout'
 import CampoSenha from '@/auth/CampoSenha'
+import RequisitosSenha from '@/auth/RequisitosSenha'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import { problemaDaSenha } from '@/lib/senha'
@@ -149,21 +150,33 @@ export default function DefinirSenha() {
       <form className="auth-campos" onSubmit={submeter}>
         {erro && <div className="erro">{erro}</div>}
 
-        <CampoSenha
-          id="senha"
-          rotulo={L('Nova senha', 'New password')}
-          valor={senha}
-          onChange={setSenha}
-          autoComplete="new-password"
-          autoFocus
-        />
+        <div>
+          <CampoSenha
+            id="senha"
+            rotulo={L('Nova senha', 'New password')}
+            valor={senha}
+            onChange={setSenha}
+            autoComplete="new-password"
+            autoFocus
+          />
+          {/* O checklist ao vivo entrou em 05/08/2026, junto da exigência de
+              composição. A regra estava só no `.hint` lá embaixo, em prosa, e
+              era conferida depois de enviar — quem errasse descobria por uma
+              frase de erro no topo, um problema por vez. */}
+          <RequisitosSenha senha={senha} />
+        </div>
         <CampoSenha
           id="repetida"
-          rotulo={L('Repita a senha', 'Repeat the password')}
+          rotulo={L('Confirmar senha', 'Confirm password')}
           valor={repetida}
           onChange={setRepetida}
           autoComplete="new-password"
         />
+        {repetida && senha !== repetida && (
+          <p className="hint" style={{ marginTop: -6 }}>
+            {L('As duas senhas ainda não conferem.', 'The two passwords do not match yet.')}
+          </p>
+        )}
 
         <button className="btn pri block" type="submit" disabled={salvando}>
           {salvando
@@ -173,10 +186,15 @@ export default function DefinirSenha() {
               : L('Redefinir senha', 'Reset password')}
         </button>
 
+        {/* O QUE SOBROU DA PROSA é o que o checklist NÃO diz: o que acontece com
+            a senha depois de gravada. O mínimo saiu daqui porque agora ele é uma
+            das quatro linhas acima — dizê-lo nos dois lugares é o começo de os
+            dois divergirem. `convite.senha_minima` continua vindo do servidor e
+            é o que esta tela usaria se um dia os dois números discordassem. */}
         <p className="hint" style={{ marginTop: 4 }}>
           {L(
-            `Pelo menos ${convite.senha_minima} caracteres. Ela é guardada só como hash Argon2 — nem a SPBIM consegue lê-la.`,
-            `At least ${convite.senha_minima} characters. It is stored only as an Argon2 hash — not even SPBIM can read it.`,
+            'Ela é guardada só como hash Argon2 — nem a SPBIM consegue lê-la.',
+            'It is stored only as an Argon2 hash — not even SPBIM can read it.',
           )}
         </p>
       </form>

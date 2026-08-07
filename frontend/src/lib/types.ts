@@ -140,6 +140,70 @@ export type ConviteSenha = {
   senha_minima: number
 }
 
+/** O que a tela de entrada sabe antes de haver sessão (`GET /auth/config`).
+ *
+ *  Não diz QUAL organização aceita cadastro: isso depende do código que a pessoa
+ *  digita, e a tela só descobre ao enviá-lo. Responder aqui transformaria a rota
+ *  pública numa lista de tenants da plataforma. */
+export type ConfigPublica = {
+  /** Há provedor OIDC ligado e configurado. */
+  sso: boolean
+  /** Nome do provedor, para o rótulo do botão ('Google', 'Autodesk', 'SSO'). */
+  sso_rotulo: string
+  senha_minima: number
+}
+
+/** CONVITE DE EQUIPE — trazer alguém para um PROJETO (migration 0018).
+ *
+ *  Não confundir com `Convite`/`ConviteCriado`, logo abaixo, que são o convite
+ *  do PORTAL DO CLIENTE: aquele dá leitura por token a quem nem conta tem aqui;
+ *  este traz alguém para dentro, como membro. Os dois são convites, e é por isso
+ *  que os dois se chamam assim — o que difere é para onde. */
+export type ConviteEquipe = {
+  id: string
+  created_at: string
+  updated_at: string
+  org_id: string
+  projeto_id: string
+  /** Nulo = LINK ABERTO; preenchido = travado neste endereço. É o que decide se
+   *  o convite é de uso único. */
+  email: string | null
+  papel: string
+  equipe: string | null
+  /** Validade do LINK (3 dias). NÃO é o prazo de acesso. */
+  expira_em: string
+  /** Até quando a pessoa terá acesso ao projeto. Nulo = sem prazo. */
+  acesso_expira_em: string | null
+  aceito_em: string | null
+  aceito_por: string | null
+}
+
+/** A resposta de quem CRIA o convite. O token existe aqui e em lugar nenhum
+ *  mais — a listagem não o traz de volta, de propósito. */
+export type ConviteEquipeCriado = {
+  convite: ConviteEquipe
+  token: string
+  /** Já montado pelo servidor: `/convite/<token>`. */
+  caminho: string
+}
+
+/** O que a tela PÚBLICA de convite mostra antes do aceite — o `invite_preview`
+ *  da plataforma de origem. Existe para que "este convite venceu" apareça ANTES
+ *  de a pessoa criar uma conta, e não depois. */
+export type ConvitePrevia = {
+  projeto_nome: string
+  projeto_codigo: string
+  organizacao: string
+  papel: string
+  equipe: string | null
+  /** Preenchido só no convite travado. A tela de cadastro usa para preencher E
+   *  TRAVAR o campo de e-mail. */
+  email: string | null
+  expira_em: string
+  acesso_expira_em: string | null
+  ja_e_membro: boolean
+}
+
 /** A resposta de quem GERA o link. O token só existe aqui, uma vez. */
 export type ConviteCriado = {
   token: string

@@ -19,6 +19,7 @@ from app.api.v1 import (
     auth,
     automacao,
     clientes,
+    convites_equipe,
     criterios,
     disciplinas,
     empresas,
@@ -55,6 +56,9 @@ api_router.include_router(standards.router)
 api_router.include_router(disciplinas.router)
 api_router.include_router(criterios.router)
 api_router.include_router(membros.router)
+# Convite de equipe — vizinho de membros de propósito: os dois montam a
+# equipe de um projeto, e a mesma guarda de coordenação vale nos dois.
+api_router.include_router(convites_equipe.router)
 
 # Fase 2 — execução
 api_router.include_router(modelos.router)

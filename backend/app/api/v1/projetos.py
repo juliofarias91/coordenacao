@@ -16,7 +16,13 @@ from app.core.pagination import Page, ParamsPagina, aplicar_cursor, montar_pagin
 from app.models import Projeto
 from app.schemas.projeto import ProjetoCreate, ProjetoOut, ProjetoUpdate
 from app.services import lixeira
-from app.services.escopo import conflito, exigir_projeto, ja_existe
+from app.services.escopo import (
+    conflito,
+    exigir_projeto,
+    exigir_projeto_do_usuario,
+    ja_existe,
+    projetos_visiveis,
+)
 
 router = APIRouter(prefix="/projetos", tags=["projetos"])
 
@@ -25,9 +31,20 @@ router = APIRouter(prefix="/projetos", tags=["projetos"])
 def listar(
     params: ParamsPagina = Depends(),
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+    user: CurrentUser = Depends(requer_permissao("ver_painel")),
 ) -> Page[ProjetoOut]:
-    stmt = aplicar_cursor(select(Projeto), Projeto, params)
+    """Os projetos DESTA PESSOA — não os da organização (06/08/2026, a pedido).
+
+    Até aqui `ver_painel` bastava para ver todos, e foi por isso que uma conta
+    criada pela tela de cadastro entrou e encontrou o CPQ11 na home sem ninguém
+    a ter vinculado. Quem tem `admin_cadastro` continua vendo tudo: é quem cria
+    projeto e vincula gente, e precisa enxergar o que ainda não tem ninguém.
+
+    O FILTRO ENTRA ANTES DO CURSOR, e a ordem importa: aplicado depois, a
+    paginação contaria as linhas invisíveis e devolveria páginas curtas — ou
+    vazias, com `next` apontando para a seguinte.
+    """
+    stmt = aplicar_cursor(projetos_visiveis(select(Projeto), user), Projeto, params)
     return montar_pagina(
         list(db.execute(stmt).scalars()), params, ProjetoOut.model_validate
     )
@@ -57,9 +74,11 @@ def criar(
 def obter(
     projeto_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+    user: CurrentUser = Depends(requer_permissao("ver_painel")),
 ) -> ProjetoOut:
-    return ProjetoOut.model_validate(exigir_projeto(db, projeto_id))
+    """Filtrar só a LISTA seria esconder, não proteger: o id vai na URL, e quem
+    não é membro abriria o projeto digitando `/projetos/<id>` na barra."""
+    return ProjetoOut.model_validate(exigir_projeto_do_usuario(db, projeto_id, user))
 
 
 @router.patch("/{projeto_id}", response_model=ProjetoOut)

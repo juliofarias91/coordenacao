@@ -51,7 +51,57 @@ def test_senha_curta_devolve_422_com_o_campo_e_a_mensagem(
     detalhe = r.json()["detail"]
     assert isinstance(detalhe, list)
     assert detalhe[0]["loc"] == ["body", "senha"]
-    assert "at least" in detalhe[0]["msg"]
+    assert "pelo menos 10 caracteres" in detalhe[0]["msg"]
+
+
+@requer_banco
+def test_senha_fraca_lista_TUDO_o_que_falta_de_uma_vez(
+    autenticado: TestClient, cenario: Cenario
+) -> None:
+    """Uma resposta, todos os problemas — e é por isso que a regra é um validador
+    só (`validar_senha`, em `schemas/usuario.py`) e não quatro `Field`.
+
+    Levantar no primeiro faria quem digitou dez letras acrescentar um número,
+    reenviar, e só então descobrir que falta caractere especial. Três viagens
+    para uma regra que a tela já mostra inteira em quatro linhas.
+    """
+    r = autenticado.put(
+        f"{API}/usuarios/{cenario.admin.id}/senha", json={"senha": "abcdefghijkl"}
+    )
+    assert r.status_code == 422, r.text
+
+    msg = r.json()["detail"][0]["msg"]
+    assert "um número" in msg
+    assert "um caractere especial" in msg
+    # O comprimento está OK nesta senha, então não pode ser cobrado junto.
+    assert "caracteres" not in msg.replace("um caractere especial", "")
+
+
+@requer_banco
+def test_senha_de_antes_da_regra_continua_entrando(
+    client: TestClient, db: Session, cenario: Cenario
+) -> None:
+    """A composição vale na ESCRITA, nunca na leitura.
+
+    Contas gravadas antes de 05/08/2026 têm senha sem número ou sem especial, e
+    conferir a regra no login trancaria todas elas de uma vez — numa tela que não
+    tem como explicar o que houve, e cujo único caminho de saída ("esqueci minha
+    senha") depende de um admin gerar o link. A regra alcança essas contas no dia
+    em que a senha for trocada, que é quando há uma tela para explicá-la.
+    """
+    login = f"antiga-{uuid.uuid4().hex[:8]}@spbim.com.br"
+    db.add(
+        Usuario(
+            org_id=cenario.org.id,
+            login=login,
+            senha_hash=hash_password("so-letras-e-hifens"),
+            papel=PapelUsuario.AUDITOR,
+        )
+    )
+    db.commit()
+
+    r = client.post(f"{API}/auth/login", json={"login": login, "senha": "so-letras-e-hifens"})
+    assert r.status_code == 200, r.text
 
 
 # ================================================= o rastro da senha
@@ -59,7 +109,7 @@ def test_senha_curta_devolve_422_com_o_campo_e_a_mensagem(
 def test_trocar_senha_entra_na_trilha(autenticado: TestClient, cenario: Cenario) -> None:
     r = autenticado.put(
         f"{API}/usuarios/{cenario.admin.id}/senha",
-        json={"senha": "uma-senha-bem-mais-longa"},
+        json={"senha": "uma-senha-bem-mais-longa-1"},
     )
     assert r.status_code == 204, r.text
 

@@ -108,6 +108,18 @@ export default function AbaOrganizacao() {
           )}
         </p>
 
+        {/* NÃO HÁ INTERRUPTOR DE CADASTRO AQUI (06/08/2026, a pedido). Ele
+            existiu entre as migrations 0016 e 0017 e saiu: criar conta não tem
+            trava. Quem controla o acesso de verdade é o VÍNCULO DE PROJETO, em
+            `/projetos/:id/membros` — uma conta recém-criada não alcança modelo,
+            auditoria nem relatório enquanto ninguém a vincular. */}
+        <p className="hint">
+          {L(
+            'Qualquer pessoa pode criar a própria conta nesta plataforma. Ela nasce como LEITOR e sem projeto nenhum — quem libera o acesso a um projeto é quem o coordena, na aba Membros do projeto.',
+            'Anyone can create their own account on this platform. The account starts as READER with no projects at all — access to a project is granted by whoever coordinates it, on the project’s Members tab.',
+          )}
+        </p>
+
         <div className="eact">
           <button className="btn pri" onClick={salvar} disabled={salvando || !nome.trim()}>
             {salvando ? L('Salvando…', 'Saving…') : L('Salvar', 'Save')}

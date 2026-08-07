@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import uuid
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
@@ -15,6 +16,45 @@ from app.models.enums import (
 from app.schemas.comum import ESCRITA, Identificado
 
 SENHA_MINIMA = 10
+
+# A COMPOSIÇÃO, ao lado do comprimento (05/08/2026). O mínimo de 10 continua o
+# que era; o que entrou foi exigir letra, número e caractere especial — as
+# quatro linhas do checklist que a tela de cadastro mostra enquanto se digita.
+#
+# `[^\W\d_]` é "letra" com unicode ligado: `[a-z]` recusaria uma senha em que a
+# única letra fosse acentuada, e quem escolhe senha em português escolhe.
+# Especial é o complemento — não-alfanumérico, com o `_` incluído à força
+# porque `\w` o considera palavra.
+_LETRA = re.compile(r"[^\W\d_]", re.UNICODE)
+_NUMERO = re.compile(r"\d")
+_ESPECIAL = re.compile(r"[\W_]", re.UNICODE)
+
+
+def validar_senha(valor: str) -> str:
+    """A regra inteira, num lugar só — e ela DIZ TUDO O QUE FALTA de uma vez.
+
+    Levantar no primeiro problema faria quem digitou `abcdefghij` descobrir que
+    falta número, acrescentar um, e só então descobrir que falta especial. A
+    tela já mostra o checklist ao vivo; esta é a rede de baixo, para quem chama
+    a API direto.
+
+    ⚠ VALE NA ESCRITA, NUNCA NA LEITURA. Nenhuma senha já gravada é reconferida
+    — quem tem uma de antes desta regra continua entrando com ela, e só esbarra
+    aqui no dia em que for trocá-la. Conferir no login trancaria contas legítimas
+    numa tela que não tem como explicar o que houve.
+    """
+    faltando: list[str] = []
+    if len(valor) < SENHA_MINIMA:
+        faltando.append(f"pelo menos {SENHA_MINIMA} caracteres")
+    if not _LETRA.search(valor):
+        faltando.append("uma letra")
+    if not _NUMERO.search(valor):
+        faltando.append("um número")
+    if not _ESPECIAL.search(valor):
+        faltando.append("um caractere especial")
+    if faltando:
+        raise ValueError("a senha precisa de " + ", ".join(faltando))
+    return valor
 
 
 def _validar_permissoes(valor: list[str]) -> list[str]:
@@ -58,9 +98,11 @@ class UsuarioCreate(BaseModel):
     nome: str | None = Field(default=None, max_length=200)
     senha: str | None = Field(
         default=None,
-        min_length=SENHA_MINIMA,
         max_length=200,
-        description="Omita para um usuário que só entra por SSO.",
+        description=(
+            f"Mínimo {SENHA_MINIMA} caracteres, com letra, número e caractere "
+            "especial. Omita para um usuário que só entra por SSO."
+        ),
     )
     papel: PapelUsuario
     empresa_id: uuid.UUID | None = None
@@ -75,6 +117,14 @@ class UsuarioCreate(BaseModel):
     @classmethod
     def permissoes_validas(cls, v: list[str]) -> list[str]:
         return _validar_permissoes(v)
+
+    @field_validator("senha")
+    @classmethod
+    def senha_forte(cls, v: str | None) -> str | None:
+        # `None` PASSA, e é o ponto: usuário só de SSO não tem senha, e exigir
+        # composição de um campo ausente barraria justamente quem o omite de
+        # propósito. O que não passa é senha fraca escrita de fato.
+        return None if v is None else validar_senha(v)
 
 
 class UsuarioUpdate(BaseModel):
@@ -119,7 +169,12 @@ class PaginasUpdate(BaseModel):
 class SenhaUpdate(BaseModel):
     model_config = ESCRITA
 
-    senha: str = Field(min_length=SENHA_MINIMA, max_length=200)
+    senha: str = Field(max_length=200)
+
+    @field_validator("senha")
+    @classmethod
+    def senha_forte(cls, v: str) -> str:
+        return validar_senha(v)
 
 
 class UsuarioOut(Identificado):

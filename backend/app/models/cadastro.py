@@ -35,6 +35,10 @@ class Organizacao(TimestampMixin, Base):
     id: Mapped[uuid.UUID] = uuid_pk()
     nome: Mapped[str] = mapped_column(Text, nullable=False)
     slug: Mapped[str | None] = mapped_column(Text, unique=True)
+    # Não há coluna de cadastro aqui. `cadastro_aberto` existiu entre as
+    # migrations 0016 e 0017 e saiu a pedido: criar conta não tem trava, e o
+    # tenant de destino é a organização mais antiga. Ver
+    # `services/cadastro_aberto.py`.
 
     projetos: Mapped[list[Projeto]] = relationship(back_populates="organizacao")
 
@@ -368,6 +372,14 @@ class ProjetoMembro(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     # Por que esta pessoa está no projeto: 'coordenação de estruturas',
     # 'auditoria 4D'. Texto livre porque é combinado de contrato, não enum.
     funcao: Mapped[str | None] = mapped_column(Text)
+    # ATÉ QUANDO o acesso vale (migration 0018). Nulo = sem prazo.
+    #
+    # É o terceiro dos três prazos do convite, e o único que AUTORIZA: o aceite
+    # copia `convite_equipe.acesso_expira_em` para cá, e `services/escopo.py`
+    # nega o projeto a membro vencido. Sem essa checatura na autorização, a data
+    # escolhida no convite seria enfeite — é o erro que a especificação de
+    # origem mais insiste em não repetir.
+    expira_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # A que GRUPO ela pertence: COORDENAÇÃO, INOVAÇÃO, COMERCIAL (migration
     # 0014). Não é `funcao` — aquilo é o que a pessoa FAZ, isto é com quem ela
     # anda, e um modelador e um auditor podem estar na mesma equipe. Fica aqui e
@@ -378,3 +390,57 @@ class ProjetoMembro(OrgMixin, TimestampMixin, RemovivelMixin, Base):
 
     projeto: Mapped[Projeto] = relationship()
     usuario: Mapped[Usuario] = relationship()
+
+
+class ConviteEquipe(OrgMixin, TimestampMixin, Base):
+    """Convite de uma pessoa para um PROJETO (migration 0018).
+
+    Portado do `invites` da VDCity. O nome não é `convite` nem `convite_projeto`
+    porque `ConviteCliente` já existe e é outra coisa: aquele é o acesso do
+    CLIENTE ao portal, por token de leitura e vida longa, para quem nem conta
+    tem aqui. Este traz alguém PARA DENTRO da plataforma, como membro.
+
+    DOIS FLUXOS NUMA TABELA SÓ, e quem os separa é `email`:
+
+    - **preenchido** — convite travado naquele endereço. Só aquela pessoa
+      aceita, e o convite morre no primeiro aceite (uso único).
+    - **nulo** — link aberto. Qualquer pessoa logada que o abrir entra, e ele
+      continua valendo até `expira_em`.
+
+    ⚠ ESSA ASSIMETRIA É DELIBERADA (a "armadilha 1" da especificação, decidida em
+    07/08/2026). Na origem TODO link continua reutilizável depois do aceite, o
+    que é uma janela de vazamento sem contrapartida quando o convite já é de uma
+    pessoa só. E o link aberto perde a razão de existir se morrer no primeiro
+    uso: o caso real dele é mandar um no grupo da disciplina e a equipe inteira
+    entrar.
+    """
+
+    __tablename__ = "convite_equipe"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    projeto_id: Mapped[uuid.UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("projeto.id", ondelete="CASCADE"), nullable=False
+    )
+    # Nulo = link aberto. Ver a docstring.
+    email: Mapped[str | None] = mapped_column(Text)
+    papel: Mapped[PapelUsuario] = mapped_column(
+        pg_enum(PapelUsuario, "papel_usuario"), nullable=False
+    )
+    equipe: Mapped[str | None] = mapped_column(Text)
+    # Só o SHA-256 — o valor em claro existe uma vez, na resposta de quem criou.
+    token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    # PRAZO 1 — do LINK. Segurança: link vazado para de funcionar.
+    expira_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # PRAZO 2 — do ACESSO. Copiado para `projeto_membro.expira_em` no aceite.
+    acesso_expira_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # A linha FICA depois do aceite: é o que responde "por qual convite esta
+    # pessoa entrou", e é o que torna o convite por e-mail de uso único.
+    aceito_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    aceito_por: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("usuario.id", ondelete="SET NULL")
+    )
+    criado_por: Mapped[uuid.UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("usuario.id", ondelete="SET NULL")
+    )
+
+    projeto: Mapped[Projeto] = relationship()

@@ -223,12 +223,38 @@ OIDC_ENABLED=true
 OIDC_ISSUER=https://pilyrmvxytuwoiwjxgdv.supabase.co/auth/v1
 OIDC_CLIENT_ID=<client id>
 OIDC_CLIENT_SECRET=<client secret>
-OIDC_REDIRECT_URI=https://<seu-dominio>/api/v1/auth/oidc/callback
+OIDC_REDIRECT_URI=https://<seu-dominio>/entrar/sso
 ```
 
-**SSO autentica, não provisiona.** O usuário precisa existir na plataforma
-antes de entrar — é o que impede qualquer conta do provedor de virar acesso.
-O primeiro login casa por `oidc_sub`, ou por e-mail se for a primeira vez.
+⚠ **O redirect aponta para a TELA, não para a API** (05/08/2026). Quem chega ao
+`redirect_uri` é o navegador, redirecionado pelo provedor, e
+`GET /auth/oidc/callback` responde JSON — apontá-lo para a API mostrava uma
+página de JSON cru no fim do login. A rota `/entrar/sso` (`pages/RetornoSSO.tsx`)
+lê o `code` e faz a chamada ela mesma.
+
+**SSO autentica, e provisiona SOB DUAS CONDIÇÕES** (05/08/2026, a pedido). A
+regra era "autentica, não provisiona": quem não existisse levava 403, e era o
+que impedia qualquer conta do provedor de virar acesso. O primeiro login casa
+por `oidc_sub`, ou por e-mail se for a primeira vez — isso não mudou.
+
+O que mudou é o que acontece quando não casa com ninguém. Antes, 403 sempre;
+**agora a conta é criada, sem condição nenhuma** (06/08/2026, a pedido). As duas
+travas que houve — o código da organização no `state` e o interruptor
+`cadastro_aberto` — saíram nas migrations 0016→0017.
+
+⚠ **Encare o alcance disto:** qualquer conta do provedor vira uma conta de leitor
+aqui. Com `OIDC_ISSUER` apontando para o Google, "qualquer conta do provedor" é
+qualquer pessoa com Gmail. O que limita o estrago não é mais a porta:
+
+- a conta nasce **LEITOR**, o papel menos privilegiado;
+- e **sem vínculo de projeto** — sem `projeto_membro`, ela não alcança modelo,
+  auditoria nem relatório até alguém que coordena vinculá-la.
+
+**Entrar e cadastrar-se pelo provedor são o mesmo pedido**: os dois botões mandam
+a mesma requisição e nada no `state` diz de qual tela vieram. Se um dia isso não
+servir, o lugar de apertar é `PAPEL_DE_ENTRADA` ou uma lista de domínios de
+e-mail permitidos — em `services/cadastro_aberto.py`, o mesmo módulo do cadastro
+por formulário, para as duas portas não divergirem.
 
 ### Por que a autorização não vai para o Supabase
 

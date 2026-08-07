@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
 from app.models import Modelo
 from app.services import exports
-from app.services.escopo import exigir, exigir_projeto
+from app.services.escopo import exigir, exigir_projeto_do_usuario
 
 router = APIRouter(tags=["exports"])
 
@@ -60,9 +60,9 @@ def relatorio_pdf(
 def controle_xlsx(
     projeto_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("gerar_relatorio")),
+    user: CurrentUser = Depends(requer_permissao("gerar_relatorio")),
 ) -> Response:
-    projeto = exigir_projeto(db, projeto_id)
+    projeto = exigir_projeto_do_usuario(db, projeto_id, user)
     try:
         xlsx = exports.controle_xlsx(db, projeto_id)
     except ValueError as exc:

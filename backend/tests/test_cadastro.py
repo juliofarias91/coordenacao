@@ -130,7 +130,7 @@ def test_criar_usuario_nao_devolve_hash_de_senha(autenticado: TestClient) -> Non
         json={
             "login": "ana@t2b.com",
             "nome": "Ana Torres",
-            "senha": "uma-senha-longa-o-bastante",
+            "senha": "uma-senha-longa-o-bastante-1",
             "papel": "auditor",
             "permissoes": ["ver_painel", "executar"],
         },

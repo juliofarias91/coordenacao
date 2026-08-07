@@ -165,6 +165,31 @@ export const api = {
       body: JSON.stringify({ login, senha, org: org ?? null }),
     }),
 
+  /** Criar a PRÓPRIA conta (05/08/2026).
+   *
+   *  SEM ORGANIZAÇÃO no corpo (06/08/2026): quem a resolve é o servidor, pela
+   *  única que estiver com `cadastro_aberto` ligado. O cliente não a informa e
+   *  não pode — se pudesse, o destino da conta viria de um formulário público. */
+  cadastro: (corpo: { login: string; senha: string; nome?: string }) =>
+    escrever<Sessao>('/auth/cadastro', 'POST', corpo),
+
+  /** O que a tela de entrada precisa saber ANTES de haver sessão — hoje, se há
+   *  provedor de SSO configurado e como ele se chama. É o que faz o botão do
+   *  Google não ser desenhado num servidor que não tem provedor. */
+  configPublica: () =>
+    requisitar<T.ConfigPublica>('/auth/config'),
+
+  /** SSO/OIDC — as duas pontas do mesmo redirecionamento.
+   *
+   *  `iniciar` devolve a URL do provedor; `concluir` troca o `code` que ele
+   *  devolve pela sessão. O passo do meio acontece fora daqui, no navegador. */
+  sso: {
+    iniciar: () =>
+      requisitar<{ authorization_url: string; state: string }>('/auth/oidc/login'),
+    concluir: (code: string, state: string) =>
+      requisitar<Sessao>(`/auth/oidc/callback${qs({ code, state })}`),
+  },
+
   me: () => requisitar<Usuario>('/auth/me'),
 
   /** Encerra as sessões desta conta no SERVIDOR. Sem esta chamada, "Sair" era
@@ -513,6 +538,38 @@ export const api = {
     atualizar: (id: string, corpo: Record<string, unknown>) =>
       escrever<T.Membro>(`/membros/${id}`, 'PATCH', corpo),
     remover: (id: string) => requisitar<void>(`/membros/${id}`, { method: 'DELETE' }),
+  },
+
+  /** CONVITE DE EQUIPE — trazer alguém para o projeto (migration 0018).
+   *
+   *  ⚠ `convitesDeEquipe` e `convites` são coisas DIFERENTES, e os caminhos
+   *  também: o bloco `convites`, logo abaixo, é o portal do CLIENTE — token de
+   *  leitura, sem conta. Este traz alguém para DENTRO da plataforma, como
+   *  membro.
+   *
+   *  (O caminho do outro não é citado aqui de propósito: o
+   *  `test_toda_rota_chamada_pelo_cliente_existe_na_api` extrai TODO literal
+   *  entre crases deste arquivo, sem distinguir comentário de código — um
+   *  caminho escrito numa explicação vira "rota chamada" e quebra a suíte.) */
+  convitesDeEquipe: {
+    listar: (projetoId: string) =>
+      requisitar<T.ConviteEquipe[]>(`/projetos/${projetoId}/convites-de-equipe`),
+    /** Devolve o token UMA vez. Guardá-lo além do momento de copiar desfaz o
+     *  motivo de a coluna do banco ser um hash. */
+    criar: (projetoId: string, corpo: Record<string, unknown>) =>
+      escrever<T.ConviteEquipeCriado>(
+        `/projetos/${projetoId}/convites-de-equipe`,
+        'POST',
+        corpo,
+      ),
+    revogar: (id: string) =>
+      requisitar<void>(`/convites-de-equipe/${id}`, { method: 'DELETE' }),
+    /** PÚBLICA: confere o convite sem consumi-lo, para a tela se apresentar
+     *  antes de a pessoa criar conta. */
+    previa: (token: string) => requisitar<T.ConvitePrevia>(`/convites-de-equipe/${token}`),
+    /** Exige sessão. Troca o token pelo vínculo. */
+    aceitar: (token: string) =>
+      escrever<T.ConvitePrevia>(`/convites-de-equipe/${token}/aceitar`, 'POST', {}),
   },
 
   convites: {

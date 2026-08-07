@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
 from app.services import kpis as servico
-from app.services.escopo import exigir_projeto
+from app.services.escopo import exigir_projeto_do_usuario
 
 router = APIRouter(tags=["kpis"])
 
@@ -68,9 +68,9 @@ class PlacarOut(BaseModel):
 def kpis(
     projeto_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+    user: CurrentUser = Depends(requer_permissao("ver_painel")),
 ) -> KPIsOut:
-    exigir_projeto(db, projeto_id)
+    exigir_projeto_do_usuario(db, projeto_id, user)
     dados = servico.calcular(db, projeto_id)
     return KPIsOut(
         **{k: v for k, v in vars(dados).items() if not isinstance(v, list)},
@@ -88,10 +88,10 @@ def kpis(
 def scorecard(
     projeto_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+    user: CurrentUser = Depends(requer_permissao("ver_painel")),
 ) -> PlacarOut:
     """Placar de conformidade por fornecedor, do melhor para o pior."""
-    exigir_projeto(db, projeto_id)
+    exigir_projeto_do_usuario(db, projeto_id, user)
     linhas = servico.placar(db, projeto_id)
     return PlacarOut(
         projeto_id=projeto_id,

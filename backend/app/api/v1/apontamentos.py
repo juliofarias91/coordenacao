@@ -21,7 +21,7 @@ from app.core.pagination import Page, ParamsPagina, aplicar_cursor, montar_pagin
 from app.models import Apontamento, Empresa, Modelo
 from app.schemas.comum import ESCRITA, Identificado
 from app.services import aps, lixeira
-from app.services.escopo import conflito, exigir, exigir_projeto
+from app.services.escopo import conflito, exigir, exigir_projeto_do_usuario
 
 router = APIRouter(tags=["apontamentos"])
 
@@ -112,7 +112,7 @@ def criar(
     db: Session = Depends(get_tenant_db),
     user: CurrentUser = Depends(requer_permissao("executar")),
 ) -> ApontamentoOut:
-    exigir_projeto(db, payload.projeto_id)
+    exigir_projeto_do_usuario(db, payload.projeto_id, user)
     if payload.modelo_id:
         exigir(db, Modelo, payload.modelo_id, "modelo")
     if payload.responsavel_id:

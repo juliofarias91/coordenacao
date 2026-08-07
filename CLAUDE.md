@@ -316,6 +316,133 @@ conta na plataforma passa a precisar de uma.
 
 ## Acesso: login, usuários e senha (30/07/2026)
 
+**A PORTA DEIXOU DE SER SÓ O CONVITE** (05/08/2026, a pedido): entraram o
+cadastro de conta própria (`/cadastro`) e a entrada pelo Google. Isto REVERTE
+"o acesso é só por convite do admin", que estava escrito aqui e em três outros
+lugares — mas a reversão é condicionada, e as condições são o recurso. O porquê
+longo está em `services/cadastro_aberto.py`; o resumo:
+
+**O CÓDIGO DA ORGANIZAÇÃO SAIU EM 06/08/2026, a pedido.** Ele durou um dia: era
+um campo obrigatório com o slug do tenant, e era o que dizia onde a conta
+nascia. Saiu porque ninguém ia usá-lo — e um campo obrigatório cuja resposta
+quem chega não tem trava o formulário na primeira linha. `POST /auth/cadastro`
+recebe **nome, e-mail e senha, e nada mais**; `oidc_login` voltou a carregar só
+o verifier no `state`.
+
+**O INTERRUPTOR SAIU NO MESMO DIA (migration 0017, a pedido).** Ele existiu entre
+a 0016 e a 0017 e nascia DESLIGADO — o que fazia `POST /auth/cadastro` responder
+*"peça um convite a quem administra"* a quem ERA quem administra. **Hoje não há
+trava nenhuma:** quem quiser cria a conta e entra.
+
+- **O DESTINO É A ORGANIZAÇÃO MAIS ANTIGA** (`organizacao_do_cadastro`), e o
+  `ORDER BY created_at` não é enfeite. As duas alternativas óbvias quebram no
+  banco real: "a única que existir" recusaria tudo enquanto houver a segunda
+  linha lá (`org-2347b538`, resíduo de teste de 30/07), e "a primeira que vier"
+  cairia dentro dela em parte das execuções — SELECT sem ordenação não promete
+  ordem. A mais antiga acerta porque a primeira organização provisionada é a da
+  própria SPBIM.
+- ⚠ **RISCO CONHECIDO, e é o preço do que se pediu:** com um SEGUNDO tenant de
+  verdade, toda conta criada por conta própria continuará nascendo no primeiro,
+  em silêncio. Não sobrou nada na requisição que diga outro destino. Cadastro por
+  tenant exigiria um sinal novo (subdomínio, ou o código de volta), e é decisão
+  de produto.
+- **Não existe organização padrão em `.env`**, e não deve passar a existir:
+  seria uma segunda fonte de verdade para a mesma decisão.
+- **O cadastro NÃO cria organização.** Criar tenant continua sendo
+  provisionamento e continua saindo do seed — se uma rota pública pudesse criar,
+  nada impediria mil deles.
+- **O QUE CONTROLA O ACESSO AGORA É O VÍNCULO DE PROJETO**, não a porta — e isso
+  passou a ser verdade só em 06/08/2026, ver logo abaixo. É onde apertar se um
+  dia o cadastro aberto incomodar, junto com `PAPEL_DE_ENTRADA`. Não reponha um
+  interruptor por tenant.
+
+**O VÍNCULO DE PROJETO PASSOU A LIMITAR O QUE SE ENXERGA** (06/08/2026, a
+pedido). Isto **corrige uma afirmação que eu fiz errado**: cheguei a escrever que
+uma conta recém-criada "não alcança modelo, auditoria nem relatório enquanto
+ninguém a vincular", e era falso — `ver_painel` sozinho listava TODO projeto da
+organização. Foi o que fez uma conta nova entrar e encontrar o CPQ11 na home.
+
+- **`exigir_projeto_do_usuario` e `projetos_visiveis`**, em `services/escopo.py`,
+  são o ponto único. Quem tem `admin_cadastro` vê tudo — é quem cria projeto e
+  vincula gente, e precisa enxergar o que ainda não tem ninguém dentro.
+- **ISTO NÃO CONTRADIZ `test_participacao_nao_e_permissao`**, e a distinção é a
+  decisão: vínculo **LIMITA alcance** e **nunca concede poder**. Ser coordenador
+  em `projeto_membro` continua não valendo `admin_cadastro`. As duas regras
+  apontam em direções opostas e por isso convivem — "o que posso fazer?" é
+  permissão, "sobre quais projetos?" é vínculo.
+- **A LISTA E AS SUB-ROTAS, não só a lista.** Filtrar só `GET /projetos` seria
+  esconder: o id vai na URL e `/projetos/<id>/painel` abriria do mesmo jeito. A
+  guarda entra nas 12 chamadas cuja permissão não é `admin_cadastro`; as que já
+  exigem essa permissão não precisam, porque ela ignora o vínculo.
+- **404, nunca 403**, como o resto de `escopo.py`: "proibido" confirmaria que o
+  projeto existe a quem só tem o id.
+- **`portal.py` ficou de fora de propósito** — é autenticado por token do
+  cliente, não tem `CurrentUser`, e continua usando `exigir_projeto`.
+- ⚠ **Consequência para papéis não-admin:** auditor e revisor sem vínculo passam
+  a não ver projeto nenhum. Hoje isso não regride nada (todas as contas do banco,
+  menos as de leitor, têm `admin_cadastro`), mas conta nova de auditor exige
+  vincular antes de ela ver qualquer coisa.
+
+**A ENGRENAGEM DE MEMBROS SÓ APARECE PARA `admin_cadastro`**
+(`components/TabelaMembros.tsx`). A gaveta dela edita papel, equipe e os
+interruptores de `PaginasVisiveis` — que decidem QUE TELAS a outra pessoa vê. Um
+visualizador recém-cadastrado a via em toda linha. A API já recusava (403), mas
+botão que só sabe falhar anuncia um poder que não existe; a coluna "Ações" some
+junto, e o `AdicionarMembro` também. **Isto é esconder, não proteger** — quem
+protege é o `requer_permissao` de cada rota.
+- **A CONTA NASCE SEM VÍNCULO DE PROJETO** (06/08/2026, a pedido): quem liga a
+  pessoa a um projeto é o gerente dele, em `projeto_membro`. Cadastrar-se
+  responde "esta pessoa existe na organização"; o vínculo responde "esta pessoa
+  trabalha neste projeto". O atalho tentador — pôr a conta nova em todos os
+  projetos, ou no primeiro, para ela "já ver alguma coisa" — daria a um
+  desconhecido os modelos e as auditorias de um cliente real. Home vazia é o
+  certo, e o subtítulo da tela de cadastro avisa que ela vem.
+  `test_conta_nova_nao_entra_em_projeto_nenhum` tranca isso.
+- **A conta nasce LEITOR**, o papel menos privilegiado, com `permissoes` VAZIA
+  (que significa "usa o padrão do papel", e é o que a faz acompanhar uma
+  promoção). Sem trava alguma antes dela, este é o PRIMEIRO limite que existe
+  entre um desconhecido e a plataforma — não o segundo.
+- **O SSO passa pelo MESMO módulo, e agora sem condição nenhuma.**
+  `oidc_callback` chama `organizacao_do_cadastro` como a rota de cadastro chama.
+  Consequência a encarar de frente: **qualquer conta Google do mundo vira uma
+  conta de leitor aqui.** O que limita o estrago é o papel de entrada e a
+  ausência de vínculo de projeto.
+- **ENTRAR E CADASTRAR PELO PROVEDOR SÃO O MESMO PEDIDO**, e não há como
+  separá-los: os dois botões mandam a mesma requisição e nada no `state` diz de
+  qual tela o clique veio. Separá-los exigiria inventar um sinal para viajar
+  assinado ali — ou seja, repor o que saiu.
+
+**O `OIDC_REDIRECT_URI` APONTA PARA A TELA (`/entrar/sso`), NÃO PARA A API.**
+Quem chega ao redirect é o NAVEGADOR, e `GET /auth/oidc/callback` responde JSON —
+apontá-lo para a API mostrava uma página de JSON cru no fim do login.
+`pages/RetornoSSO.tsx` lê o `code` e faz a chamada ela mesma; o `useRef` ali é
+contra o StrictMode gastar o `code`, que é de uso único. **Entrar com o Google é
+só configuração** (`.env.example` tem o passo a passo): o cliente OIDC é genérico
+desde a Fase 0, e quem descobre o nome do provedor é `GET /auth/config`, a partir
+do `OIDC_ISSUER`. Escrever "Google" no React obrigaria a mexer em código no dia
+em que a decisão aberta nº 2 for resolvida a favor da Autodesk.
+
+**A SENHA GANHOU COMPOSIÇÃO** (05/08/2026): além dos 10 caracteres, letra,
+número e caractere especial. `SENHA_MINIMA` **não mudou** — o print de referência
+pedia 8, e baixar o mínimo para ganhar composição troca uma proteção por outra.
+- **A regra é UM validador (`validar_senha`), não quatro `Field`**, e diz tudo o
+  que falta de uma vez. Levantar no primeiro faria quem digitou dez letras
+  acrescentar um número, reenviar, e só então descobrir que falta um especial.
+- **Ela vale na ESCRITA, nunca na leitura.** Nenhuma senha gravada é reconferida:
+  conferir no login trancaria de uma vez toda conta anterior à regra, numa tela
+  que não tem como explicar o que houve. `test_senha_de_antes_da_regra_continua_entrando`
+  tranca isso.
+- **`[^\W\d_]` e não `[a-z]`** para "letra": quem escolhe senha em português
+  escolhe com acento, e `[a-z]` recusaria uma senha cuja única letra fosse `ã`.
+- **O checklist ao vivo (`auth/RequisitosSenha.tsx`) é o retorno**, e substituiu
+  a prosa que contava a regra uma vez e a conferia depois de enviar. **O verde
+  entra só no item CUMPRIDO** — o pendente é `--ink-3`, nunca vermelho: vermelho
+  nos quatro faria toda senha começar como quatro erros, e um campo que ninguém
+  tocou não errou nada.
+- As duas cópias da regra são trancadas por
+  `test_composicao_da_senha_igual_no_front_e_no_back`, que compara as EXPRESSÕES
+  e não os rótulos.
+
 **Senha não se digita para outra pessoa.** Dar acesso é
 `POST /usuarios/{id}/convite` → link de uso único → a pessoa escolhe a própria em
 `/definir-senha/:token`. O campo de senha no editor de usuários continua lá, mas
@@ -354,11 +481,19 @@ tabela (`token_acesso`, migration 0010); o tipo sai de haver ou não `senha_hash
 **Três superfícies, e elas não se misturam** — a régua está na seção
 AUTENTICAÇÃO do `app.css`, com o porquê de cada valor:
 
-- **`.auth`** (login, definir-senha) — escura SEMPRE, com glows de accent.
-  **É a única tela onde a regra 2 cede**, porque é a única sem dado com que a cor
-  possa competir e sem tema a seguir. Não leve a permissão para outra tela. A
-  paleta é local ao seletor, e é isso que faz `.f`/`.btn`/`.hint` valerem lá
-  dentro sem estilo próprio.
+- **`.auth`** (login, cadastro, definir-senha, retorno do SSO) — escura SEMPRE,
+  com glows de accent. **É a única tela onde a regra 2 cede**, porque é a única
+  sem dado com que a cor possa competir e sem tema a seguir. Não leve a
+  permissão para outra tela. A paleta é local ao seletor, e é isso que faz
+  `.f`/`.btn`/`.hint` valerem lá dentro sem estilo próprio.
+  **A cor cede DUAS vezes ali, e a segunda é o "G" do Google** (`auth/BotaoSSO`):
+  quatro cores que não são estado nem decoração, e sim MARCA — redesenhá-lo em
+  `currentColor` para "respeitar o sistema" produziria um G cinza que não é o do
+  Google e que as diretrizes do provedor não permitem. Provedor desconhecido cai
+  num cadeado neutro, que é quando não há marca a respeitar.
+  **`.auth-sso` usa a superfície dos CAMPOS, não a de um `.btn`**: opaco, ele
+  recortaria um retângulo sólido sobre o glow bem no meio de dois campos
+  translúcidos que o deixam passar.
 - **`.telacheia` + `.avisocard`** — segue o tema. É o "Carregando…" da
   reidratação (aparece para quem JÁ entrou; escuro piscaria preto) e os estados
   do portal do cliente. Chamavam-se `.login*`, nome que mentia.
@@ -367,7 +502,9 @@ AUTENTICAÇÃO do `app.css`, com o porquê de cada valor:
   navegador.
 
 **Do VDCity não veio:** a marca gráfica (o tetraedro é deles; aqui não há símbolo
-até haver logotipo), o cadastro aberto, o login social e o MFA/TOTP.
+até haver logotipo) e o MFA/TOTP. **O cadastro aberto e o login social estavam
+nesta lista e saíram dela em 05/08/2026, a pedido** — ver o topo desta seção
+para as condições que a reversão manteve.
 
 **Sem SMTP, a entrega é o link copiado pelo admin.** `POST /auth/senha/esqueci`
 cria o token e notifica os admins pelo PAPEL (`NotifTipo.ACESSO`), para o pedido
@@ -377,6 +514,15 @@ canal entra em `esqueci_a_senha` e o resto não muda.
 **Ainda não existe, e é decisão em aberto:** limite de tentativas no login
 (cada tentativa paga um Argon2, então é vetor de DoS além de brute force),
 registro de falha de login, e exigir a senha atual ao trocar a própria.
+**O LIMITE NO CADASTRO É A PENDÊNCIA MAIS AFIADA DA LISTA** (06/08/2026).
+`POST /auth/cadastro` é público e não tem limite, pela mesma razão que o login
+não tem — mas a razão mudou de peso. Enquanto houve interruptor (migrations 0016
+a 0017), a rota respondia 404 rápido em toda organização e quase não tinha
+superfície; agora ela CRIA CONTA para quem pedir, e um laço trivial enche a
+tabela `usuario` do tenant. **Confirmação de e-mail também não existe** — sem
+SMTP não há como enviá-la, e é por isso que o cadastro devolve sessão em vez de
+mandar confirmar; junto do cadastro sem trava, isso significa que **nada prova
+que quem se cadastrou é dono do e-mail que digitou**.
 
 ## Importação de planilha — PONTE PROVISÓRIA (30/07/2026)
 
@@ -886,10 +1032,14 @@ categorias de elemento**, para STRC.
   sem seção nenhuma. Três faixas numa planilha de dezessete linhas dividem em
   três o que se lê de uma vez. Recorte novo só entra nesse conjunto se a planilha
   DELE tiver a coluna ELEMENT.
-- **`projeto_membro` registra participação e NÃO autoriza** (migration 0004).
-  Quem decide continua sendo `requer_permissao` sobre as permissões de
-  organização. `tests/test_membros.py::test_participacao_nao_e_permissao`
-  existe para que ligar as duas coisas seja uma decisão, não um acidente.
+- **`projeto_membro` registra participação e NÃO CONCEDE poder** (migration
+  0004). Quem decide o que se PODE FAZER continua sendo `requer_permissao` sobre
+  as permissões de organização, e `test_participacao_nao_e_permissao` existe
+  para que ligar as duas coisas seja uma decisão, não um acidente.
+  **Mas desde 06/08/2026 ele LIMITA o alcance:** quem não é membro não enxerga o
+  projeto (`exigir_projeto_do_usuario`, em `services/escopo.py`). As duas regras
+  apontam em direções opostas e por isso convivem — participar nunca amplia o
+  que se pode fazer; não participar restringe sobre o quê. Ver a seção "Acesso".
 - `backend/app/api/v1/` tem o padrão de rota (permissão via `requer_permissao`, sessão via `get_tenant_db`, 404 via `services/escopo.py`).
 - `backend/app/services/auditoria.py` concentra as regras da execução — leia antes de mexer em estado de round.
 - `backend/app/services/automacao/executor.py` tem o registro de verificadores: para automatizar um critério novo, acrescente uma entrada em `VERIFICADORES` ou dê a ele um `parametro_esperado`.
