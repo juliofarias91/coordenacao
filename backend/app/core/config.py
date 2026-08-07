@@ -77,22 +77,37 @@ class Settings(BaseSettings):
     oidc_redirect_uri: str = ""
     oidc_scopes: str = "openid profile email"
 
-    # --- E-mail (EmailJS pela API REST) -------------------------------------
-    # ⚠ O ENVIO É DO SERVIDOR, e não do navegador, e isto NÃO é preferência de
-    # arquitetura: o link de redefinição É a credencial. `POST
-    # /auth/senha/esqueci` é público e anônimo — se ele devolvesse o token para
-    # o front mandar por EmailJS, qualquer pessoa pediria a redefinição de
-    # qualquer e-mail e receberia de volta a chave da conta. O token não pode
-    # sair do servidor a não ser dentro do e-mail.
+    # --- E-mail (SMTP) ------------------------------------------------------
+    # ⚠ TODO E-MAIL SAI DO SERVIDOR (07/08/2026). Antes o convite saía do
+    # NAVEGADOR por EmailJS e só a redefinição de senha vinha daqui — dois
+    # caminhos, duas configurações, e a chave pública do EmailJS no bundle.
     #
-    # Por isso a chave PRIVADA (`emailjs_private_key`): a API REST do EmailJS
-    # exige-a em chamada fora do navegador, e é ela que autoriza o envio. Ela
-    # nunca vai para o bundle.
-    emailjs_service: str = ""
-    emailjs_public_key: str = ""
-    emailjs_private_key: str = ""
-    emailjs_template_senha: str = ""
-    emailjs_template_convite: str = ""
+    # A razão de a redefinição nunca ter podido sair do navegador continua
+    # valendo e é o que decidiu o resto: o link É a credencial da conta, e
+    # `/auth/senha/esqueci` é rota pública e anônima. Se ela devolvesse o token
+    # para o front despachar, bastaria pedir a redefinição do e-mail de um
+    # coordenador para tomar a conta dele. Com SMTP, o convite passa a seguir a
+    # mesma regra sem custo nenhum — o token já está no servidor.
+    #
+    # ⚠ NÃO É "o e-mail do Supabase". O sistema de e-mail deles é do Supabase
+    # AUTH, sobre `auth.users`, e esta plataforma tem identidade própria (ver
+    # `docs/SUPABASE.md`). Ele não teria como mandar um link com o NOSSO token.
+    # Mesmo adotando Supabase Auth seria preciso um SMTP: o remetente embutido
+    # deles é limitado e não serve para produção.
+    #
+    # Genérico de propósito: qualquer provedor com SMTP serve (Resend, Zoho,
+    # Brevo, Google Workspace). Trocar de provedor é trocar estas linhas.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    # De quem o e-mail parece vir. Muitos provedores EXIGEM que este endereço
+    # seja de um domínio verificado na conta — senão a mensagem é recusada ou
+    # cai em spam.
+    smtp_remetente: str = ""
+    smtp_remetente_nome: str = "SPBIM Coordenação"
+    # 587 = STARTTLS (o normal); 465 = SSL direto. Em 465 ligue esta.
+    smtp_ssl: bool = False
 
     # A URL pública da aplicação, para montar o link que vai no e-mail. O
     # servidor não tem como adivinhá-la: ele responde em :8000 atrás de proxy, e

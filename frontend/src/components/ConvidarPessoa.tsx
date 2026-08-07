@@ -39,7 +39,6 @@ import { PAPEIS_PROJETO } from '@/components/TabelaMembros'
 import { Campo, Erro } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
-import { enviarConvite } from '@/services/email'
 
 export default function ConvidarPessoa({
   projetoId,
@@ -103,26 +102,20 @@ export default function ConvidarPessoa({
         return
       }
 
-      // ⚠ O E-MAIL É DISPARADO E ESQUECIDO, e o convite NUNCA depende dele. É
-      // regra da origem e vale aqui igual: o link já existe e já está na tela,
-      // então uma falha de envio vira aviso, não erro. Quem convidou copia e
-      // manda por outro caminho.
-      enviarConvite({
-        para: email.trim(),
-        projeto: projetoNome,
-        link: url,
-        papel,
-        convidadoPor: '',
-      })
-        .then(() => setAviso(L('Convite enviado por e-mail.', 'Invitation e-mailed.')))
-        .catch(() =>
-          setAviso(
-            L(
-              'Não deu para enviar o e-mail — copie o link abaixo e mande você mesmo.',
-              'Could not send the e-mail — copy the link below and send it yourself.',
+      // ⚠ O E-MAIL SAI DO SERVIDOR desde 07/08/2026 — a tela só relata. Antes
+      // ela mesma chamava o EmailJS, e isso significava a chave pública no
+      // bundle e duas configurações de e-mail para manter.
+      //
+      // O convite NUNCA depende do envio: o link já está na tela, e
+      // `email_enviado: false` vira instrução ("copie e mande"), não erro.
+      setAviso(
+        r.email_enviado
+          ? L('Convite enviado por e-mail.', 'Invitation e-mailed.')
+          : L(
+              'Convite criado, mas o e-mail não saiu — copie o link abaixo e mande você mesmo.',
+              'Invitation created, but the e-mail did not go out — copy the link below and send it yourself.',
             ),
-          ),
-        )
+      )
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : String(e))
     } finally {
