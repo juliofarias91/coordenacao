@@ -92,7 +92,11 @@ export function iniciais(nome: string | null, login: string | null): string {
   return (primeira + ultima).toUpperCase() || '?'
 }
 
-function rotuloPapel(papel: string, L: (pt: string, en: string) => string): string {
+/** O rótulo do papel, na língua da pessoa. EXPORTADA porque três lugares
+ *  precisam dizer a mesma palavra: a tabela, a gaveta de convite e o e-mail que
+ *  ela dispara. Três cópias divergiriam no dia em que um rótulo mudasse — e o
+ *  e-mail é o único dos três que ninguém relê depois de enviado. */
+export function rotuloPapel(papel: string, L: (pt: string, en: string) => string): string {
   const achado = PAPEIS_PROJETO.find((p) => p.valor === papel)
   return achado ? L(achado.pt, achado.en) : papel
 }

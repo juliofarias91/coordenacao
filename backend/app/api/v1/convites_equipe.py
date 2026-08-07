@@ -35,6 +35,7 @@ from app.schemas.convite import (
     ConvitePreviaOut,
 )
 from app.services import convite_equipe
+from app.services import email as correio
 from app.services.escopo import exigir_coordenacao_do_projeto
 
 router = APIRouter(tags=["convites-de-equipe"])
@@ -73,9 +74,33 @@ def criar(
         acesso_expira_em=payload.acesso_expira_em,
         criado_por=user.id,
     )
+
+    # O E-MAIL SAI DAQUI DESDE 07/08/2026 — antes era o navegador, por EmailJS.
+    # Com SMTP não há razão para o token viajar até o front só para voltar num
+    # e-mail: ele já está nesta função. Ver `services/email.py`.
+    #
+    # SÓ QUANDO HÁ DESTINATÁRIO: link aberto não tem para quem mandar, e é o
+    # caso de quem vai colar o link num grupo.
+    #
+    # ⚠ O ENVIO NÃO PODE DERRUBAR A CRIAÇÃO. O convite já existe e o link já vai
+    # na resposta; uma falha de SMTP vira `email_enviado: false`, e a tela diz
+    # "copie o link e mande você mesmo". Levantar aqui apagaria um convite
+    # perfeitamente válido por causa do servidor de e-mail de outra pessoa.
+    enviado = False
+    if convite.email:
+        quem = db.get(Usuario, user.id)
+        enviado = correio.enviar_convite(
+            para=convite.email,
+            projeto=f"{projeto.codigo} · {projeto.nome}",
+            papel=convite.papel.value,
+            convidado_por=(quem.nome or quem.login) if quem else "",
+            token=token,
+        )
+
     return ConviteEquipeCriadoOut(
         convite=ConviteEquipeOut.model_validate(convite),
         token=token,
+        email_enviado=enviado,
         # ⚠ O LINK LEVA À TELA DE CADASTRO, e não a uma tela de aceite
         # (07/08/2026, a pedido). Quem recebe um convite quase nunca tem conta
         # aqui — mandá-lo a uma tela intermediária que só faz avisar "clique
