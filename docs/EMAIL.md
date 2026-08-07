@@ -45,29 +45,31 @@ olhar quando um e-mail não chegar.
 
 ### 1. Escolher um provedor de SMTP
 
-**A SPBIM JÁ TEM UMA CONTA, e ela é o caminho curto** (descoberto em 07/08/2026).
-É a mesma que a VDCity usa: um SMTP em `xmailer.com.br`, na porta **465**, com
-usuário de um endereço `@company.spbim.com.br`. Os valores estão no painel do
-**Supabase da VDCity** → *Authentication → Emails → SMTP Settings*.
+**A SPBIM JÁ TEM O SEU** (resolvido em 07/08/2026): um SMTP em
+`smtp1.xmailer.com.br`, porta **465**, com a conta de serviço
+`no-reply@spbim.com.br`. Autenticação e remetente conferidos.
 
-⚠ **A senha NÃO dá para ler ali** — o Supabase avisa que não a mostra. Peça a
-quem configurou (o usuário aparece no mesmo painel) ou pegue no painel do próprio
-provedor.
+⚠ **CONTA DE SERVIÇO, NÃO A CAIXA DE UMA PESSOA.** A primeira tentativa usou o
+e-mail de um colaborador — o que a VDCity usa — e foi recusada com
+`435 Unable to authenticate at present`. Mesmo que tivesse funcionado, seria a
+escolha errada: a plataforma passaria a guardar uma credencial capaz de **ler a
+correspondência** de alguém, e a troca de senha dessa pessoa derrubaria o envio.
+Se um dia alguém propuser voltar a um endereço pessoal, é isto que se responde.
+
+⚠ **O SMTP do painel do Supabase NÃO é este.** Aquele serve ao **Supabase Auth**,
+que esta plataforma não usa (ver a seção acima). Preencher lá e não aqui não faz
+e-mail nenhum sair — quem envia lê as variáveis do `.env`/do ambiente.
 
 ⚠ **465 exige `SMTP_SSL=true`.** Com `false` o handshake falha com uma mensagem
 sobre *"wrong version number"*, que não menciona porta nenhuma e manda quem lê
 procurar no lugar errado.
 
-Duas coisas a encarar antes de adotá-la, porque a conta passa a ser **de duas
-plataformas**:
+⚠ **A senha tem `#`, então vai entre aspas no `.env`.** Sem elas, um espaço antes
+do `#` transforma o resto da linha em comentário e a senha chega truncada — com
+um erro de autenticação que não explica nada. O `verificar_email` imprime o
+tamanho da senha carregada; confira que bate.
 
-- **O limite de envio é compartilhado.** Volume da Coordenação consome a cota da
-  VDCity, e uma suspensão por abuso derruba as duas de uma vez.
-- **O usuário é o endereço de uma PESSOA.** No dia em que essa caixa mudar, as
-  duas plataformas param juntas. Uma conta de serviço resolveria, e é conversa
-  para ter com quem administra o provedor — não bloqueia nada hoje.
-
-Se um dia precisar de conta própria, qualquer provedor serve — o código é
+Se um dia precisar de outra conta, qualquer provedor serve — o código é
 genérico:
 
 | Provedor | Nota |
@@ -84,10 +86,19 @@ cujo `From` não seja de domínio verificado na conta — ou entrega direto no s
 Verifique `spbim.com.br` (ou o domínio que for usar) no painel do provedor, com
 os registros SPF/DKIM que ele indicar, antes de testar.
 
-**Na conta que já existe isto está meio resolvido, e meio não:** ela manda como
-`noreply@vdcity.io`, então aceita remetente de domínio diferente do usuário —
-mas não se sabe QUAIS domínios. Se `--enviar` for recusado, o `From` que sempre
-funciona é o próprio `SMTP_USER`.
+**Na conta da SPBIM isto está conferido:** o servidor aceita como remetente tanto
+`no-reply@spbim.com.br` quanto `noreply@spbim.com.br` (o painel do Supabase usa a
+segunda grafia, sem hífen). O `.env` usa a **primeira, igual ao usuário que
+autentica** — remetente igual a quem autenticou nunca depende de um alias
+configurado no provedor.
+
+Isso foi testado indo até o `MAIL FROM` e abortando com `RSET` antes do `DATA`:
+o servidor diz se aceita o remetente **sem que nada seja entregue**. Vale lembrar
+para a próxima vez que a pergunta aparecer — não é preciso mandar e-mail de
+verdade para descobrir se o `From` passa.
+
+⚠ Aceitar o remetente **não é** ter SPF/DKIM publicados. Se a mensagem chegar no
+spam, é isso que falta no DNS de `spbim.com.br`.
 
 ### 3. Preencher o `.env` da raiz
 
