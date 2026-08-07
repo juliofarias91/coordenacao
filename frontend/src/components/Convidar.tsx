@@ -14,11 +14,16 @@
  *  cliente, que é o caso raro.
  *
  *  ⚠ O CONVITE DO PORTAL NÃO SE PERDEU, e é por isso que a troca é barata: ele
- *  já tinha casa própria e MAIS COMPLETA em `Configuração › Cliente`, que lista,
- *  cria, revoga e ajusta o que o cliente enxerga. Este botão era um atalho para
- *  a metade daquilo. O `.hint` no fim da gaveta aponta para lá — a mesma
- *  gentileza que este painel fazia ao contrário, quando mandava quem procurava
- *  membro de time para `Membros do projeto`.
+ *  já tinha casa própria e MAIS COMPLETA, que lista, cria, revoga e ajusta o que
+ *  o cliente enxerga. Este botão era um atalho para a metade daquilo. O `.hint`
+ *  no fim da gaveta aponta para lá — a mesma gentileza que este painel fazia ao
+ *  contrário, quando mandava quem procurava membro de time para
+ *  `Membros do projeto`.
+ *
+ *  ESSA CASA MUDOU DE ENDEREÇO NO MESMO DIA: era a aba `Configuração › Cliente`
+ *  e virou o recorte `Portal do cliente` de `Membros do projeto`, quando a
+ *  configuração deixou de ter abas. O componente que desenha é o mesmo
+ *  (`pages/configuracao/Cliente.tsx`) — mudou quem o monta.
  *
  *  ═══ QUEM VÊ O BOTÃO
  *

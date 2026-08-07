@@ -359,9 +359,13 @@ de atualização — e é.
 
 ### 5. O que é gerado não se versiona
 
-`backend/static/`, `node_modules/`, `frontend/public/dictionaries/`,
-`backend/.venv/` e o `dist/` estão no `.gitignore`. Se algum deles aparecer no
-`git status`, alguma coisa está errada — não force o commit.
+`backend/static/`, `node_modules/`, `backend/.venv/` e o `dist/` estão no
+`.gitignore`. Se algum deles aparecer no `git status`, alguma coisa está errada
+— não force o commit.
+
+(`frontend/public/dictionaries/` esteve nesta lista até 07/08/2026: eram os
+dicionários do corretor ortográfico, gerados no `npm install`. O módulo que os
+usava foi removido, e a linha saiu do `.gitignore` junto.)
 
 ---
 

@@ -370,6 +370,20 @@ def importar(db: Session, definicao: dict[str, Any], rel: Relatorio) -> Projeto:
             rel.atualizou("disciplina")
         disciplinas[codigo] = disc
 
+    # AS ÁREAS DO PROJETO (migration 0019). Depois das disciplinas, e não junto
+    # dos outros campos do projeto, porque saem delas: o YAML declara a área na
+    # disciplina que a audita, e o projeto passou a ser onde a lista é DEFINIDA.
+    # É a mesma união que a migration fez com o dado que já existia — sem isto,
+    # importar um projeto o deixaria com disciplinas apontando para áreas que o
+    # projeto não define, que é exatamente o estado que a 0019 veio desfazer.
+    # `areas:` no bloco `projeto` acrescenta setores que ainda não têm disciplina.
+    declaradas = {a for d in disciplinas.values() for a in d.areas}
+    declaradas.update(proj_def.get("areas", []))
+    if (ordenadas := sorted(declaradas)) != sorted(projeto.areas):
+        projeto.areas = ordenadas
+        rel.atualizou("projeto")
+    db.flush()
+
     # ---------------------------------------------------------------- modelos
     for mod_def in definicao.get("modelos", []):
         codigo = mod_def["codigo"].upper()

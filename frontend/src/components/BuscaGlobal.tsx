@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { useI18n } from '@/i18n'
 import { api } from '@/lib/api'
+import { normalizar } from '@/lib/texto'
 import { rotaProjeto, useProjeto } from '@/projeto/ProjetoContext'
 
 type Achado = {
@@ -38,18 +39,6 @@ const ROTULO_TIPO: Record<Achado['tipo'], [string, string]> = {
   cliente: ['Cliente', 'Client'],
   modelo: ['Modelo', 'Model'],
   criterio: ['Critério', 'Criterion'],
-}
-
-/** Acentuação e caixa fora do caminho: quem digita "criterio" quer achar
- *  "Critério". */
-function normalizar(s: string): string {
-  // O intervalo é U+0300–U+036F: os diacríticos que o `normalize('NFD')`
-  // separa da letra. Removendo-os, "critério" e "criterio" viram a mesma
-  // coisa — e quem digita rápido não põe acento.
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
 }
 
 export default function BuscaGlobal() {

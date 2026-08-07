@@ -39,13 +39,51 @@ SENHA = "uma-senha-boa-1!"
 
 
 @pytest.fixture
-def contas(db: Session) -> Iterator[list[str]]:
+def alguma_organizacao(db: Session) -> Iterator[None]:
+    """GARANTE QUE EXISTE UMA ORGANIZAÇÃO — o CI roda contra um banco VAZIO.
+
+    `organizacao_do_cadastro` escolhe a MAIS ANTIGA do banco e levanta
+    `SemOrganizacao` (503) quando não há nenhuma. Este arquivo nasceu validado
+    contra o banco onde o piloto mora, que sempre tem uma; num Postgres
+    recém-criado os oito testes que chamam `POST /auth/cadastro` respondiam
+    *"a plataforma ainda não tem organização configurada"*, e o recurso inteiro
+    parecia quebrado quando o que faltava era instalação.
+
+    O `cenario` NÃO resolve isto, e é por isso que existe um fixture próprio: ele
+    não é usado por estes testes, e mesmo que fosse a organização dele nasceria
+    AGORA — a escolhida é a mais antiga, não a do teste.
+
+    ELE SÓ CRIA QUANDO O BANCO ESTÁ VAZIO, e é o que mantém o comportamento no
+    banco de verdade: lá a organização da SPBIM é mais antiga, segue sendo a
+    escolhida, e este fixture não acrescenta linha nenhuma — nem a limpeza dele
+    roda. É a mesma preocupação do `contas` logo abaixo, que existe para não
+    deixar conta órfã no tenant real.
+    """
+    if db.execute(select(Organizacao.id).limit(1)).scalar_one_or_none() is not None:
+        yield
+        return
+
+    org = Organizacao(nome="Organização de teste", slug=f"org-ci-{uuid.uuid4().hex[:8]}")
+    db.add(org)
+    db.commit()
+    yield
+    db.execute(delete(Organizacao).where(Organizacao.id == org.id))
+    db.commit()
+
+
+@pytest.fixture
+def contas(db: Session, alguma_organizacao: None) -> Iterator[list[str]]:
     """Os logins criados pelo teste, apagados na saída.
 
     Devolve uma LISTA que o teste vai enchendo, em vez de apagar por padrão de
     nome: um `LIKE 'novo-%'` alcançaria conta de gente de verdade no dia em que
     alguém se chamasse assim, e este arquivo roda contra o banco onde o piloto
     mora.
+
+    ELE PEDE `alguma_organizacao` PELA ORDEM, e não por precisar do valor: o
+    pytest finaliza na ordem inversa da montagem, então pedi-lo aqui garante que
+    a organização nasce ANTES das contas e morre DEPOIS delas. Ao contrário, o
+    DELETE da organização esbarraria na FK das contas que ainda estivessem lá.
     """
     criados: list[str] = []
     yield criados

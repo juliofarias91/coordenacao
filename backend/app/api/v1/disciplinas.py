@@ -20,6 +20,7 @@ from app.core.pagination import Page, ParamsPagina, aplicar_cursor, montar_pagin
 from app.models import Disciplina, Empresa, Standard
 from app.models.enums import MacroDisc
 from app.schemas.disciplina import DisciplinaCreate, DisciplinaOut, DisciplinaUpdate
+from app.services.areas import exigir_definidas
 from app.services.escopo import conflito, exigir, exigir_projeto, ja_existe
 
 router = APIRouter(prefix="/disciplinas", tags=["disciplinas"])
@@ -69,8 +70,13 @@ def criar(
     db: Session = Depends(get_tenant_db),
     user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
 ) -> DisciplinaOut:
-    exigir_projeto(db, payload.projeto_id)
+    projeto = exigir_projeto(db, payload.projeto_id)
     _validar_referencias(db, payload.projetista_id, payload.nomenclatura_id)
+    # AS ÁREAS SAEM DA LISTA DO PROJETO (migration 0019) — a disciplina MARCA,
+    # não inventa. Antes eram texto livre alimentado por uma lista chapada no
+    # front, e a matriz modelo × área é montada varrendo estes arrays: dois
+    # jeitos de escrever o mesmo setor viravam duas colunas.
+    areas = exigir_definidas(projeto, payload.areas)
 
     codigo = _codigo(payload.disc, payload.sub)
     if ja_existe(
@@ -84,9 +90,12 @@ def criar(
     disciplina = Disciplina(
         org_id=user.org_id,
         codigo=codigo,
-        **payload.model_dump(exclude={"disc", "sub"}),
+        **payload.model_dump(exclude={"disc", "sub", "areas"}),
         disc=payload.disc.upper(),
         sub=payload.sub.upper(),
+        # As resolvidas, não as que vieram: quem manda 'colo1' está falando da
+        # COLO1 do projeto, e gravar a caixa do pedido recriaria a divergência.
+        areas=areas,
     )
     db.add(disciplina)
     db.flush()
@@ -113,6 +122,13 @@ def atualizar(
     dados = payload.model_dump(exclude_unset=True)
 
     _validar_referencias(db, dados.get("projetista_id"), dados.get("nomenclatura_id"))
+
+    # Só quando `areas` vem no corpo: `exclude_unset` já garante que campo
+    # ausente é "não mexa", e resolver a lista de quem não a mandou faria um
+    # PATCH de nomenclatura falhar por causa de uma área herdada de antes da
+    # 0019 que ninguém definiu.
+    if "areas" in dados:
+        dados["areas"] = exigir_definidas(exigir_projeto(db, disciplina.projeto_id), dados["areas"])
 
     if "disc" in dados:
         dados["disc"] = dados["disc"].upper()

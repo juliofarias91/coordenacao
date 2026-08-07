@@ -19,8 +19,27 @@
  *  na gaveta, em `TabelaMembros`. `projeto_membro` registra participação; quem
  *  autoriza é a permissão de organização. Esconder isso faria alguém pôr um
  *  visualizador e esperar que ele deixasse de publicar rounds.
+ *
+ *  ═══ O PORTAL DO CLIENTE VIROU UM RECORTE DAQUI (07/08/2026, a pedido)
+ *
+ *  Ele era a aba `Convidar cliente` da configuração do projeto, e saiu de lá
+ *  quando aquela tela virou painel. A configuração responde COMO A OBRA É
+ *  AUDITADA e se preenche uma vez, quando o projeto nasce; convidar cliente é
+ *  dar ACESSO, se faz a qualquer momento e é a MESMA pergunta que esta tela já
+ *  responde — quem enxerga este projeto. O cliente é o de fora que só lê.
+ *
+ *  ELE FICA SEPARADO DAS EQUIPES por um traço, e não misturado a elas: os itens
+ *  de cima saem dos DADOS (as equipes que existem nos vínculos) e este é fixo.
+ *  Uma lista em que um item é navegação e os outros são agrupamento precisa dizer
+ *  qual é qual.
+ *
+ *  E ELE SÓ APARECE PARA `admin_cadastro` — não para quem coordena, que é a
+ *  conta do botão de convite ao lado. As quatro rotas de convite do portal
+ *  exigem essa permissão (`api/v1/portal.py`); um recorte que só sabe responder
+ *  403 anuncia um poder que a conta não tem.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthContext'
 import ConvidarPessoa from '@/components/ConvidarPessoa'
@@ -29,6 +48,7 @@ import { Erro } from '@/components/ui'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { Membro } from '@/lib/types'
+import AbaCliente from '@/pages/configuracao/Cliente'
 import { useProjeto } from '@/projeto/ProjetoContext'
 
 const TODAS = '__todas__'
@@ -36,6 +56,10 @@ const TODAS = '__todas__'
  *  vínculo pode nascer antes de alguém decidir a equipe, e escondê-lo faria a
  *  soma dos grupos não fechar com o total. */
 const SEM_EQUIPE = '__sem__'
+/** O recorte do portal. Ele não é uma equipe, e por isso não entra na contagem
+ *  nem é filtrado pela busca de membros — quem digita um nome de pessoa está
+ *  procurando pessoa, e ver o portal sumir da lista pareceria defeito. */
+const PORTAL = '__portal__'
 
 const LUPA = 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3'
 
@@ -46,8 +70,27 @@ export default function MembrosProjeto() {
   const [membros, setMembros] = useState<Membro[]>([])
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(true)
-  const [aberta, setAberta] = useState<string>(TODAS)
   const [busca, setBusca] = useState('')
+
+  /** Quem administra o cadastro é quem enxerga o portal — a mesma conta que as
+   *  quatro rotas de convite exigem. */
+  const admin = pode('admin_cadastro')
+
+  /** `?portal=1` É O QUE FAZ O LINK ANTIGO CHEGAR NO LUGAR CERTO. A rota
+   *  `configuracao/cliente` redireciona para cá, e sem o parâmetro ela cairia em
+   *  "Todas as equipes" — quem clicou num link de convidar cliente veria uma
+   *  tabela de gente e concluiria que a tela sumiu.
+   *
+   *  É PARÂMETRO DE BUSCA E NÃO ROTA PRÓPRIA porque os outros recortes desta
+   *  barra saem dos dados (as equipes) e não têm endereço: dar rota só a este
+   *  faria um item da lista se comportar diferente dos vizinhos. Lido UMA VEZ, no
+   *  estado inicial — depois disso quem manda é o clique, e reagir à URL faria o
+   *  recorte voltar sozinho ao portal a cada re-render.
+   *
+   *  A guarda de permissão está aqui também, e não só no item: sem ela o
+   *  parâmetro colado na URL abriria uma tela que só sabe responder 403. */
+  const [params] = useSearchParams()
+  const [aberta, setAberta] = useState<string>(params.get('portal') && admin ? PORTAL : TODAS)
   /** A gaveta de CONVITE — o ÚNICO caminho para pôr gente neste projeto desde
    *  07/08/2026. Ela cobre os dois casos: quem já tem conta abre o link e entra
    *  direto; quem não tem cria a conta pelo mesmo link. */
@@ -58,8 +101,7 @@ export default function MembrosProjeto() {
    *  feita aqui de novo, e não passada de lá, porque os dois botões do cabeçalho
    *  ficam FORA da tabela, no painel. */
   const montaEquipe =
-    pode('admin_cadastro') ||
-    membros.some((m) => m.usuario_id === usuario?.id && m.papel === 'coordenador')
+    admin || membros.some((m) => m.usuario_id === usuario?.id && m.papel === 'coordenador')
 
   const carregar = useCallback(async () => {
     if (!projeto) return
@@ -117,8 +159,11 @@ export default function MembrosProjeto() {
 
   if (!projeto) return <p className="hint">{L('Carregando…', 'Loading…')}</p>
 
-  const rotuloAtual =
-    aberta === TODAS
+  const noPortal = aberta === PORTAL
+
+  const rotuloAtual = noPortal
+    ? L('Portal do cliente', 'Client portal')
+    : aberta === TODAS
       ? L('Todas as equipes', 'All teams')
       : aberta === SEM_EQUIPE
         ? L('Sem equipe', 'No team')
@@ -216,19 +261,44 @@ export default function MembrosProjeto() {
               {L('Ninguém neste projeto ainda.', 'Nobody on this project yet.')}
             </span>
           )}
+
+          {/* O TRAÇO separa o que sai dos dados do que é fixo — ver o cabeçalho
+              do arquivo. Ele é irmão dos itens, e não um contêiner em volta
+              deles: um `<div>` agrupando quebraria o `gap` da coluna. */}
+          {admin && (
+            <>
+              <span className="pgsep" aria-hidden="true" />
+              <div className={`pgitem pgpai${noPortal ? ' on' : ''}`}>
+                <button type="button" className="pgrotulo" onClick={() => setAberta(PORTAL)}>
+                  {L('Portal do cliente', 'Client portal')}
+                </button>
+              </div>
+            </>
+          )}
         </nav>
       </aside>
 
       <section className="pgmain">
         <div className="pghead">
           <span>{rotuloAtual}</span>
-          <span className="co">
-            · {visiveis.length} {L('pessoa(s)', 'person(s)')}
-          </span>
+          {/* A contagem é de PESSOAS, e no portal não há pessoa nenhuma para
+              contar — os convites são links, e quantos existem a própria tela
+              mostra. Deixá-la escreveria "· 0 pessoa(s)" ao lado do portal. */}
+          {!noPortal && (
+            <span className="co">
+              · {visiveis.length} {L('pessoa(s)', 'person(s)')}
+            </span>
+          )}
         </div>
         <div className="pgbody">
-          <Erro mensagem={erro} />
-          {carregando ? (
+          {/* O erro é o da LISTA DE MEMBROS, e no portal não há lista nenhuma na
+              tela — deixá-lo aqui penduraria uma falha de carregar gente por
+              cima dos convites, que carregam por outro caminho e têm o `Erro`
+              deles lá dentro. */}
+          {!noPortal && <Erro mensagem={erro} />}
+          {noPortal ? (
+            <AbaCliente />
+          ) : carregando ? (
             <p className="hint">{L('Carregando…', 'Loading…')}</p>
           ) : (
             <TabelaMembros membros={visiveis} onMudou={carregar} />

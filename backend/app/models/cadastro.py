@@ -106,6 +106,21 @@ class Projeto(OrgMixin, TimestampMixin, RemovivelMixin, Base):
     data_prevista: Mapped[date | None] = mapped_column(Date)
     data_conclusao: Mapped[date | None] = mapped_column(Date)
 
+    # --- os setores da obra (migration 0019) ------------------------------
+    # ADMIN, COLO1..5, SITE, UTLS no CPQ11. A DEFINIÇÃO mora aqui; a disciplina
+    # MARCA quais audita, em `Disciplina.areas`, e é esse array que a matriz
+    # modelo × área varre. Antes só existia o de lá, alimentado por uma lista
+    # chapada no front — dois projetos com o mesmo setor escrito de dois jeitos
+    # viravam duas colunas na matriz.
+    #
+    # `text[]` e não tabela: a área não tem atributo nenhum além do nome, e uma
+    # tabela obrigaria `disciplina.areas` e `auditoria.area` — que guardam o
+    # nome — a virar chave estrangeira. Quem cuida de acrescentar, renomear (com
+    # cascata) e remover é `services/areas.py`.
+    areas: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'")
+    )
+
     organizacao: Mapped[Organizacao] = relationship(back_populates="projetos")
     cliente: Mapped[Cliente | None] = relationship(back_populates="projetos")
     disciplinas: Mapped[list[Disciplina]] = relationship(back_populates="projeto")

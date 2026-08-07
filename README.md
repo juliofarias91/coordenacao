@@ -41,19 +41,17 @@ spbim-auditoria/
 │   ├── scripts/        seed e importador de projeto (onboarding)
 │   └── tests/
 ├── frontend/           React + TypeScript (Vite)
-│   ├── scripts/        copy-dict (dicionários) e a suíte de nomenclatura
+│   ├── scripts/        gera_favicon
 │   └── src/
 │       ├── auth/       sessão
 │       ├── components/ gráficos e peças de UI
 │       ├── i18n/       PT/EN
 │       ├── layout/     shell e navegação
 │       ├── lib/        cliente HTTP
-│       │   └── auditer/  motor de nomenclatura e corretor (portado, JS)
 │       ├── pages/      telas
 │       │   └── admin/    organização, projetos e usuários
 │       ├── styles/     tokens e sistema visual (ver CLAUDE.md)
-│       ├── theme/      claro/escuro
-│       └── workers/    corretor ortográfico (Hunspell/WebAssembly)
+│       └── theme/      claro/escuro
 ├── infra/
 │   ├── postgres/       init SQL (papel de aplicação e RLS)
 │   └── backup/         dump, espelho do bucket, restauração e verificação
@@ -117,16 +115,23 @@ O `-Unico` existe para conferir o que de fato vai para produção: é o mesmo
 arranjo da imagem, numa porta só. No dia a dia vale o outro, porque o Vite
 troca o módulo editado sem recarregar a página.
 
-O **Auditer** foi aposentado em 28/07/2026. O motor dele (nomenclatura,
-duplicidade por SHA-256, corretor Hunspell) vive em `frontend/src/lib/auditer/`
-e `src/workers/` — byte a byte o mesmo código, sem uma linha alterada — e as
-telas viraram três sub-abas de *Configuração › Nomenclaturas & padrões*.
-Manter o app separado significava manter dois deploys, dois `package.json` e
-duas cópias do mesmo motor para entregar o que a plataforma já entrega. O
-código segue recuperável no histórico deste repositório
-(`git log -- auditer/`); o histórico git original e o zip de backup ficavam em
-`referencias/` e foram apagados em 30/07/2026 — guardavam a proveniência, não o
-código.
+O **Auditer** foi aposentado em 28/07/2026 e o motor dele passou a viver dentro
+da plataforma, como três sub-abas de *Configuração › Nomenclaturas & padrões*.
+**Em 07/08/2026, a pedido, o módulo inteiro foi removido** — as três telas, o
+motor em `src/lib/auditer/`, o corretor ortográfico, os dicionários e as quatro
+dependências que só ele usava. Sobrou `Padrão do projeto`, que é a que fala com
+o backend: ela audita o MODELO entregue, contra o padrão do projeto, e é o que o
+validador da Fase 3 consome.
+
+O que saiu junto e não tem equivalente no servidor: padrão com separador por
+bloco e segmento tipado, duplicidade por conteúdo (SHA-256), higiene de nome e
+ortografia de planilha. Ver a seção correspondente no `CLAUDE.md` para a lista
+completa e para o porquê de cada ajuste de build que caiu junto.
+
+Tudo recuperável no histórico deste repositório
+(`git log -- frontend/src/lib/auditer/` e `git log -- auditer/`); o histórico git
+original e o zip de backup ficavam em `referencias/` e foram apagados em
+30/07/2026 — guardavam a proveniência, não o código.
 
 ---
 

@@ -43,8 +43,15 @@ const CHECKLISTS: Array<[ChecklistTipo, string, string]> = [
   ['lod500', 'LOD 500', 'LOD 500'],
 ]
 
-// Setores do CPQ11 (especificação, seção 2.1). Editáveis por projeto no campo.
-const AREAS_SUGERIDAS = ['ADMIN', 'COLO1', 'COLO2', 'COLO3', 'COLO4', 'COLO5', 'SITE', 'UTLS']
+/** AS ÁREAS SAEM DO PROJETO (migration 0019), não mais de uma lista aqui.
+ *
+ *  Havia um `AREAS_SUGERIDAS` chapado neste arquivo com os oito setores do CPQ11
+ *  — ADMIN, COLO1..5, SITE, UTLS. Era o que a tela oferecia em TODO projeto:
+ *  quem cadastrava a estrutura de outra obra marcava COLO1..5 porque não havia
+ *  outra coisa para marcar, e a matriz modelo × área saía com as colunas do
+ *  projeto errado. Agora a lista é a do projeto, definida em `Configurações do
+ *  projeto › Setorização` (a seção chamou-se `Áreas` até 07/08/2026; a rota
+ *  segue `areas`, e a ENTIDADE segue sendo "área"), e esta tela só MARCA. */
 
 type Rascunho = {
   id?: string
@@ -238,11 +245,23 @@ export default function AbaDisciplinas() {
             />
           </Campo>
           <Campo rotulo={L('Áreas auditadas', 'Audited areas')} largo>
-            <Chips
-              opcoes={AREAS_SUGERIDAS.map((a) => [a, a] as [string, string])}
-              valor={rascunho.areas}
-              onChange={(areas) => setRascunho({ ...rascunho, areas })}
-            />
+            {projeto.areas.length === 0 ? (
+              // A instrução JUNTO DO CAMPO, e não um campo vazio sem explicação:
+              // sem áreas no projeto não há o que marcar, e quem chega aqui
+              // primeiro precisa saber para onde ir.
+              <p className="hint" style={{ margin: 0 }}>
+                {L(
+                  'Este projeto ainda não tem áreas. Defina-as na seção Setorização e elas aparecem aqui para marcar.',
+                  'This project has no areas yet. Define them under Sectorization and they show up here to pick.',
+                )}
+              </p>
+            ) : (
+              <Chips
+                opcoes={projeto.areas.map((a) => [a, a] as [string, string])}
+                valor={rascunho.areas}
+                onChange={(areas) => setRascunho({ ...rascunho, areas })}
+              />
+            )}
           </Campo>
         </Editor>
       )}

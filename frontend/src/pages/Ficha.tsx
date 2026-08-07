@@ -1,10 +1,14 @@
 /** Ficha cadastral do projeto — quem é a obra, não como ela é auditada.
  *
- *  ELA É A CASA DOS DADOS DO PROJETO, e por isso a aba `Configuração › Projeto`
- *  deixou de existir: as duas editavam exatamente os mesmos cinco campos, e duas
- *  telas para o mesmo dado divergem na primeira mudança. O que ficou em
- *  Configuração são as seções que definem COMO auditar — disciplinas,
- *  projetistas, nomenclaturas, cores e cliente.
+ *  ELA É A CASA DOS DADOS DO PROJETO, e a única: a aba `Configuração › Projeto`
+ *  deixou de existir em 30/07/2026 porque as duas editavam exatamente os mesmos
+ *  cinco campos, e duas telas para o mesmo dado divergem na primeira mudança.
+ *
+ *  DESDE 07/08/2026 ELA É A PRIMEIRA ABA DA CONFIGURAÇÃO, a pedido — não mais um
+ *  item da barra do projeto. A tela é a mesma; o que mudou é a vizinhança, e ela
+ *  faz sentido: ficha, PEB, mandate, áreas, projetistas, nomenclatura e
+ *  disciplinas são o que se preenche UMA VEZ, em sequência, quando o projeto
+ *  nasce. A barra do projeto ficou com o que se usa todo dia.
  *
  *  MODELO: a `FichaSection` do VDCity. O que veio de lá é a ESTRUTURA — nome
  *  editável no cabeçalho com a situação à direita, duas colunas rotuladas, campos

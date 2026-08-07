@@ -92,8 +92,6 @@ const IC = {
     'M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z',
   folha: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5',
   ajustes: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
-  prancheta:
-    'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 12h6M9 16h6',
   elo: 'M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71',
   pessoas:
     'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
@@ -116,21 +114,11 @@ const IC = {
   checklist: 'M9 6h12M9 12h12M9 18h12M3 6l1.5 1.5L7 4M3 12l1.5 1.5L7 10M3 18l1.5 1.5L7 16',
   relogio: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2',
 
-  // OS TRÊS DOCUMENTOS DO PROJETO, e o que separa um do outro é O AUTOR
-  // (01/08/2026, a pedido). A ficha e o PEB dividiam a MESMA prancheta, e o
-  // mandate usava o escudo que a Organização também usa — três itens seguidos e
-  // dois desenhos, o que anula o motivo de haver ícone.
-  //
-  //   prancheta  Ficha do projeto — o cadastro da obra, os dados dela
-  //   bussola    PEB · diretrizes — o RUMO que a própria equipe define
-  //   folhaSelo  BIM Mandate      — o documento que vem de FORA e prevalece
-  //
-  // A bússola no PEB e não outro papel: ele é o único dos três que diz PARA
-  // ONDE se vai, e desenhar um terceiro documento manteria o problema que a
-  // troca veio resolver.
-  bussola:
-    'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z',
-  folhaSelo: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 14l2 2 4-4',
+  // OS TRÊS DOCUMENTOS DO PROJETO tinham ícone próprio aqui — prancheta para a
+  // Ficha, bússola para o PEB, folha com selo para o Mandate (01/08/2026). Eles
+  // saíram junto com os itens, em 07/08/2026: as três telas viraram ABAS de
+  // `Configurações do projeto`, e aba se distingue pelo rótulo, não por desenho.
+  // Recuperável em `git log -- frontend/src/layout/nav.ts`.
 } as const
 
 /** Os recortes de auditoria — a fonte de verdade de quais existem.
@@ -329,44 +317,20 @@ export const ITENS_PROJETO: ItemNav[] = [
   },
 
   // Projeto: o que se define uma vez e passa a valer para todos os rounds.
-  // A ordem é a de quem monta um projeto do zero — as diretrizes primeiro, a
-  // configuração em seguida, e os modelos só depois de haver disciplina para
-  // classificá-los.
-  {
-    // A FICHA ENCABEÇA O GRUPO, logo abaixo de KPIs: é a identidade da obra, e
-    // vem antes de qualquer coisa que se defina sobre ela. Ela é a casa dos
-    // dados do projeto — a aba `Configuração › Projeto` foi removida quando
-    // esta entrou, porque as duas editavam os mesmos cinco campos.
-    rota: 'ficha',
-    pt: 'Ficha do projeto',
-    en: 'Project record',
-    path: IC.prancheta,
-    grupo: 'projeto',
-    escopo: 'projeto',
-    fase: 1,
-  },
-  {
-    rota: 'peb',
-    pt: 'PEB · diretrizes',
-    en: 'BEP · guidelines',
-    path: IC.bussola,
-    grupo: 'projeto',
-    escopo: 'projeto',
-    fase: 1,
-  },
-  {
-    // Logo abaixo do PEB, e não dentro dele: são documentos de autores
-    // diferentes. O mandate é o que o CLIENTE exige; o PEB é como a equipe se
-    // propõe a atender. Quando discordam, prevalece o mandate — e para isso
-    // ele precisa estar registrado à parte.
-    rota: 'mandate',
-    pt: 'BIM Mandate',
-    en: 'BIM Mandate',
-    path: IC.folhaSelo,
-    grupo: 'projeto',
-    escopo: 'projeto',
-    fase: 1,
-  },
+  //
+  // OS TRÊS DOCUMENTOS SAÍRAM DAQUI EM 07/08/2026, a pedido: Ficha do projeto,
+  // PEB · diretrizes e BIM Mandate viraram seções de `Configurações do projeto`
+  // (que no mesmo dia trocou a fileira de abas por um painel, e em que o PEB
+  // passou a se chamar só `Diretrizes`).
+  // Eram quatro linhas seguidas dizendo a mesma coisa em quatro graus — a
+  // identidade da obra, o rumo que a equipe define, a exigência que vem de fora,
+  // e os ajustes —, e as quatro se preenchem juntas, uma vez, quando o projeto
+  // nasce. A barra do projeto é o que se usa TODO DIA; o que se preenche uma vez
+  // e se relê de vez em quando cabe atrás de um clique.
+  //
+  // As ROTAS continuam existindo (`configuracao/ficha`, `/peb`, `/mandate`) e as
+  // antigas redirecionam — elas estão em link salvo e no histórico de quem já
+  // usava a plataforma. Ver `App.tsx`.
   {
     rota: 'configuracao',
     pt: 'Configurações do projeto',

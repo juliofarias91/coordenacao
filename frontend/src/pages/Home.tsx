@@ -192,8 +192,10 @@ export default function Home() {
       // `await`, a corrida é a mesma: a ficha monta antes de a lista voltar.
       await recarregarProjetos()
       // Direto para a ficha: o projeto nasceu com o mínimo, e o resto se
-      // preenche com ele aberto na frente.
-      navigate(rotaProjeto(criado.id, 'ficha'))
+      // preenche com ele aberto na frente. Ela virou a primeira aba da
+      // configuração em 07/08/2026 — e é onde a sequência de preenchimento
+      // começa, com PEB, mandate, áreas e disciplinas na mesma fileira.
+      navigate(rotaProjeto(criado.id, 'configuracao/ficha'))
     } catch (e) {
       setErroNovo(e instanceof ApiError ? e.message : String(e))
     } finally {
