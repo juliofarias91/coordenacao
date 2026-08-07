@@ -45,7 +45,30 @@ olhar quando um e-mail não chegar.
 
 ### 1. Escolher um provedor de SMTP
 
-Qualquer um serve — o código é genérico. Alguns com plano gratuito utilizável:
+**A SPBIM JÁ TEM UMA CONTA, e ela é o caminho curto** (descoberto em 07/08/2026).
+É a mesma que a VDCity usa: um SMTP em `xmailer.com.br`, na porta **465**, com
+usuário de um endereço `@company.spbim.com.br`. Os valores estão no painel do
+**Supabase da VDCity** → *Authentication → Emails → SMTP Settings*.
+
+⚠ **A senha NÃO dá para ler ali** — o Supabase avisa que não a mostra. Peça a
+quem configurou (o usuário aparece no mesmo painel) ou pegue no painel do próprio
+provedor.
+
+⚠ **465 exige `SMTP_SSL=true`.** Com `false` o handshake falha com uma mensagem
+sobre *"wrong version number"*, que não menciona porta nenhuma e manda quem lê
+procurar no lugar errado.
+
+Duas coisas a encarar antes de adotá-la, porque a conta passa a ser **de duas
+plataformas**:
+
+- **O limite de envio é compartilhado.** Volume da Coordenação consome a cota da
+  VDCity, e uma suspensão por abuso derruba as duas de uma vez.
+- **O usuário é o endereço de uma PESSOA.** No dia em que essa caixa mudar, as
+  duas plataformas param juntas. Uma conta de serviço resolveria, e é conversa
+  para ter com quem administra o provedor — não bloqueia nada hoje.
+
+Se um dia precisar de conta própria, qualquer provedor serve — o código é
+genérico:
 
 | Provedor | Nota |
 |---|---|
@@ -60,6 +83,11 @@ Qualquer um serve — o código é genérico. Alguns com plano gratuito utilizá
 cujo `From` não seja de domínio verificado na conta — ou entrega direto no spam.
 Verifique `spbim.com.br` (ou o domínio que for usar) no painel do provedor, com
 os registros SPF/DKIM que ele indicar, antes de testar.
+
+**Na conta que já existe isto está meio resolvido, e meio não:** ela manda como
+`noreply@vdcity.io`, então aceita remetente de domínio diferente do usuário —
+mas não se sabe QUAIS domínios. Se `--enviar` for recusado, o `From` que sempre
+funciona é o próprio `SMTP_USER`.
 
 ### 3. Preencher o `.env` da raiz
 
