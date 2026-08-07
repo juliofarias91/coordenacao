@@ -4,6 +4,9 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+# Sobra de `pip wheel`/`python -m build` no `backend/` — é o jeito de conferir se
+# os modelos de e-mail entram mesmo no pacote (ver `app/emails/README.md`).
+build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

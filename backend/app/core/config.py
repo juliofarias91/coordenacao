@@ -77,22 +77,37 @@ class Settings(BaseSettings):
     oidc_redirect_uri: str = ""
     oidc_scopes: str = "openid profile email"
 
-    # --- E-mail (EmailJS pela API REST) -------------------------------------
-    # ⚠ O ENVIO É DO SERVIDOR, e não do navegador, e isto NÃO é preferência de
-    # arquitetura: o link de redefinição É a credencial. `POST
-    # /auth/senha/esqueci` é público e anônimo — se ele devolvesse o token para
-    # o front mandar por EmailJS, qualquer pessoa pediria a redefinição de
-    # qualquer e-mail e receberia de volta a chave da conta. O token não pode
-    # sair do servidor a não ser dentro do e-mail.
+    # --- E-mail (SMTP) ------------------------------------------------------
+    # ⚠ TODO E-MAIL SAI DO SERVIDOR (07/08/2026). Antes o convite saía do
+    # NAVEGADOR por EmailJS e só a redefinição de senha vinha daqui — dois
+    # caminhos, duas configurações, e a chave pública do EmailJS no bundle.
     #
-    # Por isso a chave PRIVADA (`emailjs_private_key`): a API REST do EmailJS
-    # exige-a em chamada fora do navegador, e é ela que autoriza o envio. Ela
-    # nunca vai para o bundle.
-    emailjs_service: str = ""
-    emailjs_public_key: str = ""
-    emailjs_private_key: str = ""
-    emailjs_template_senha: str = ""
-    emailjs_template_convite: str = ""
+    # A razão de a redefinição nunca ter podido sair do navegador continua
+    # valendo e é o que decidiu o resto: o link É a credencial da conta, e
+    # `/auth/senha/esqueci` é rota pública e anônima. Se ela devolvesse o token
+    # para o front despachar, bastaria pedir a redefinição do e-mail de um
+    # coordenador para tomar a conta dele. Com SMTP, o convite passa a seguir a
+    # mesma regra sem custo nenhum — o token já está no servidor.
+    #
+    # ⚠ NÃO É "o e-mail do Supabase". O sistema de e-mail deles é do Supabase
+    # AUTH, sobre `auth.users`, e esta plataforma tem identidade própria (ver
+    # `docs/SUPABASE.md`). Ele não teria como mandar um link com o NOSSO token.
+    # Mesmo adotando Supabase Auth seria preciso um SMTP: o remetente embutido
+    # deles é limitado e não serve para produção.
+    #
+    # Genérico de propósito: qualquer provedor com SMTP serve (Resend, Zoho,
+    # Brevo, Google Workspace). Trocar de provedor é trocar estas linhas.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    # De quem o e-mail parece vir. Muitos provedores EXIGEM que este endereço
+    # seja de um domínio verificado na conta — senão a mensagem é recusada ou
+    # cai em spam.
+    smtp_remetente: str = ""
+    smtp_remetente_nome: str = "SPBIM Coordenação"
+    # 587 = STARTTLS (o normal); 465 = SSL direto. Em 465 ligue esta.
+    smtp_ssl: bool = False
 
     # A URL pública da aplicação, para montar o link que vai no e-mail. O
     # servidor não tem como adivinhá-la: ele responde em :8000 atrás de proxy, e
@@ -241,6 +256,35 @@ class Settings(BaseSettings):
             problemas.append("APP_DEBUG ligado em produção")
         if "*" in self.cors_origin_list:
             problemas.append("CORS_ORIGINS com curinga em produção")
+
+        # NÃO É SEGREDO, e mesmo assim entra aqui: é um valor de desenvolvimento
+        # que estraga em silêncio. `app_base_url` monta o link de TODO convite e
+        # de toda redefinição de senha; apontando para localhost, cada e-mail
+        # manda a pessoa para a máquina DELA — a página não abre, ninguém
+        # entende por quê, e o remetente jura que enviou. Some com uma classe de
+        # chamado que só aparece dias depois, quando o convite já foi mandado.
+        #
+        # ⚠ SÓ VALE COM SMTP CONFIGURADO, e a condição não é preciosismo: sem
+        # e-mail nenhum sendo enviado, `app_base_url` não é lido por ninguém (o
+        # único consumidor é `services/email.py::link`). Sem esta condição, a
+        # primeira publicação DEPOIS desta guarda derrubaria a API de um
+        # ambiente que ainda não configurou e-mail — trocando "os links saem
+        # errados" por "a aplicação não sobe", que é muito pior. A guarda passa a
+        # valer no mesmo instante em que passa a ter consequência.
+        #
+        # A condição é mais FROUXA que `email.configurado()` de propósito: aqui a
+        # pergunta é "alguém pretende mandar e-mail?", e não "dá para mandar
+        # agora". Importar o serviço aqui também fecharia um ciclo — ele importa
+        # este módulo.
+        smtp_pretendido = bool(self.smtp_host and self.smtp_remetente)
+        local = "localhost" in self.app_base_url or "127.0.0.1" in self.app_base_url
+        if smtp_pretendido and local:
+            problemas.append(
+                f"APP_BASE_URL aponta para a máquina local ({self.app_base_url}) "
+                "com o SMTP configurado — todo link de convite e de redefinição "
+                "levaria a pessoa ao próprio computador dela. Use o domínio "
+                "público da aplicação."
+            )
 
         return problemas
 

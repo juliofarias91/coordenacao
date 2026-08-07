@@ -45,6 +45,22 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+# ⚠ OS MODELOS DE E-MAIL SÃO DADOS DO PACOTE, e sem esta seção eles NÃO entram
+# na imagem. O Dockerfile faz `pip install ".[bim]"` — o setuptools leva os
+# `.py` e ignora todo o resto, então `app/emails/*.html` ficaria de fora e o
+# envio morreria com `FileNotFoundError` **só em produção**: no desenvolvimento
+# a aplicação roda a partir do código-fonte, onde os arquivos existem.
+#
+# É a mesma classe de erro do `alembic/` e do `static/`, que o Dockerfile copia
+# à mão em vez de instalar.
+# ⚠ A LISTA PRECISA ALCANÇAR AS SUBPASTAS, e o primeiro padrão NÃO as alcança:
+# `emails/*.html` casa só com a raiz, e os modelos vivem em `emails/acesso/`.
+# Duas linhas explícitas em vez de `emails/**/*.html` porque o `**` recursivo
+# depende da versão do setuptools, e isto é justamente o que só quebra na
+# imagem. Pasta nova aqui, linha nova aqui.
+[tool.setuptools.package-data]
+app = ["emails/*.html", "emails/*/*.html"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

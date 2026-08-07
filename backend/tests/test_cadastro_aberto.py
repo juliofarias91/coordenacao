@@ -156,6 +156,17 @@ def test_a_conta_nasce_na_organizacao_MAIS_ANTIGA(
         assert r.status_code == 201, r.text
         assert r.json()["usuario"]["org_id"] == str(antiga.id)
     finally:
+        # A sessão pode estar abortada por uma asserção que falhou no meio, e aí
+        # toda a limpeza seria ignorada — mesmo `rollback()` de `test_membros`.
+        db.rollback()
+        # ⚠ A TRILHA ANTES DA ORGANIZAÇÃO. Cadastrar INSERE um usuário, e o
+        # `before_flush` grava a linha de trilha correspondente com o `org_id`
+        # desta organização. `trilha_auditoria.usuario_id` é `ON DELETE SET
+        # NULL`, então apagar o usuário passa limpo e engana; quem segura é o
+        # `org_id`, e o teardown morria com IntegrityError num teste que já
+        # tinha passado. É a mesma ordem de `_limpar_org` e dos outros cinco
+        # arquivos que apagam organização à mão.
+        db.execute(delete(TrilhaAuditoria).where(TrilhaAuditoria.org_id == antiga.id))
         db.execute(delete(Usuario).where(Usuario.org_id == antiga.id))
         db.execute(delete(Organizacao).where(Organizacao.id == antiga.id))
         db.commit()

@@ -8,7 +8,24 @@
 
 import type * as T from '@/lib/types'
 
-const BASE = import.meta.env.VITE_API_URL ?? '/api/v1'
+/** A raiz da API. Vazio = o proxy do Vite, que é o padrão do desenvolvimento;
+ *  preenchido = uma API em outro host.
+ *
+ *  ⚠ `||` E NÃO `??`, e a diferença derrubou o login em 07/08/2026. `??` só cai
+ *  no padrão para `null`/`undefined` — mas `VITE_API_URL=` num `.env` chega aqui
+ *  como STRING VAZIA, que não é nulo. Com `??`, BASE virava `''` e toda chamada
+ *  saía sem o prefixo de versão: 404 em tudo, a partir do login.
+ *
+ *  Enquanto não existiu `frontend/.env` a variável era `undefined` e o `??`
+ *  funcionava por acidente. O `.env.example` já dizia "vazio = usa o proxy" —
+ *  esta linha é o que torna essa frase verdadeira, e não uma armadilha para
+ *  quem copiar o exemplo.
+ *
+ *  (Os caminhos não são citados entre crases aqui, e é regra deste arquivo:
+ *  `test_toda_rota_chamada_pelo_cliente_existe_na_api` extrai TODO literal entre
+ *  crases, sem distinguir comentário de código. Um endereço escrito numa
+ *  explicação vira "rota chamada" e quebra a suíte — já aconteceu duas vezes.) */
+const BASE = import.meta.env.VITE_API_URL || '/api/v1'
 const CHAVE_TOKENS = 'spbim_tokens'
 
 export type Papel =

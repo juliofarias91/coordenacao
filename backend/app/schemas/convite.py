@@ -73,6 +73,13 @@ class ConviteEquipeCriadoOut(BaseModel):
     caminho: str = Field(
         description="Caminho da tela pública, ex.: /cadastro?convite=<token>"
     )
+    email_enviado: bool = Field(
+        default=False,
+        description=(
+            "Se o e-mail saiu. Falso quando o convite é link aberto (não há para "
+            "quem mandar), quando não há SMTP configurado, ou quando o envio falhou."
+        ),
+    )
 
 
 class ConvitePreviaOut(BaseModel):

@@ -1,0 +1,50 @@
+<!--
+  SPBIM — REDEFINIÇÃO DE SENHA.
+  Enviado por `services/email.py::enviar_redefinicao_de_senha`. Ver o README
+  desta pasta.
+
+  Serve aos DOIS tipos de link de `services/acesso.py` — o convite de primeiro
+  acesso (7 dias) e a redefinição (2 horas). O texto não distingue de propósito:
+  os dois terminam na mesma tela, escolhendo uma senha, e `{{validade}}` já diz
+  o que muda entre eles.
+
+  Variáveis:
+    {{to_email}}  e-mail de quem pediu
+    {{to_name}}   nome, ou o próprio e-mail quando a conta não tem nome
+    {{link}}      APP_BASE_URL + /definir-senha/<token>
+    {{validade}}  '2 horas'
+-->
+<div style="margin:0;padding:56px 16px;background-color:#08080b;background-image:radial-gradient(600px circle at 50% 26%,rgba(110,140,242,.20),rgba(8,8,11,0) 60%),radial-gradient(460px circle at 95% 100%,rgba(110,140,242,.10),rgba(8,8,11,0) 60%),radial-gradient(420px circle at 4% 12%,rgba(129,116,230,.12),rgba(8,8,11,0) 60%);font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;text-align:center;">
+
+  <div style="font-size:40px;font-weight:800;letter-spacing:6px;color:#ffffff;line-height:1;">SPBIM</div>
+  <div style="margin-top:14px;font-size:13px;font-weight:600;letter-spacing:.02em;color:#6e8cf2;">Coordenação BIM</div>
+
+  <div style="margin-top:40px;font-size:18px;font-weight:700;color:#ffffff;">Redefinir sua senha</div>
+
+  <p style="margin:10px auto 0;max-width:400px;font-size:14px;line-height:1.65;color:rgba(255,255,255,.6);">
+    Olá, <b style="color:#fff;">{{to_name}}</b>. Recebemos um pedido para redefinir a senha da conta
+    <b style="color:#fff;">{{to_email}}</b> na plataforma de auditoria BIM da SPBIM.
+  </p>
+
+  <div style="margin:28px 0 8px;">
+    <a href="{{link}}" style="display:inline-block;padding:18px 40px;background:rgba(110,140,242,.10);border:1px solid rgba(110,140,242,.40);border-radius:14px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:.4px;">Criar uma senha nova</a>
+  </div>
+
+  <p style="margin:18px auto 0;max-width:420px;font-size:11px;line-height:1.6;color:rgba(255,255,255,.35);word-break:break-all;">
+    Se o botão não funcionar, copie este endereço no navegador:<br />{{link}}
+  </p>
+
+  <p style="margin:22px auto 0;max-width:360px;font-size:12px;line-height:1.6;color:rgba(255,255,255,.45);">
+    O link vale por <b style="color:rgba(255,255,255,.75);">{{validade}}</b> e serve uma vez só.
+  </p>
+
+  <!-- QUEM NÃO PEDIU PRECISA SABER QUE NÃO PRECISA FAZER NADA. Sem esta frase,
+       um e-mail inesperado de redefinição parece invasão de conta. -->
+  <p style="margin:14px auto 0;max-width:360px;font-size:12px;line-height:1.6;color:rgba(255,255,255,.35);">
+    Se você não pediu isto, ignore este e-mail — sua senha atual continua valendo,
+    e nada muda até alguém abrir o link.
+  </p>
+
+  <div style="margin-top:44px;font-size:11px;color:rgba(255,255,255,.28);">© SPBIM — Construção Digital</div>
+  <div style="margin-top:4px;font-size:11px;color:rgba(255,255,255,.2);">E-mail automático — por favor, não responda.</div>
+</div>
