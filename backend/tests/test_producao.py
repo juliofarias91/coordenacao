@@ -43,6 +43,10 @@ def _config(**kw: Any) -> Settings:
         "s3_access_key": "chave-real",
         "s3_secret_key": "segredo-real",
         "cors_origins": "https://auditoria.spbim.com.br",
+        # O padrão do campo é `http://localhost:5173`, que em prod é problema —
+        # ver o teste do APP_BASE_URL abaixo. Sem esta linha o cenário "tudo
+        # certo" já nasceria com um problema e reprovaria por engano.
+        "app_base_url": "https://auditoria.spbim.com.br",
         # Zeradas de propósito: sem isto, o `.env` da raiz vaza para dentro do
         # teste. Uma DATABASE_URL preenchida lá desliga a cobrança de
         # POSTGRES_PASSWORD e o teste passa a depender da máquina em que roda.
@@ -84,6 +88,26 @@ def test_jwt_curto_tambem_reprova() -> None:
 def test_cada_segredo_de_desenvolvimento_e_apontado(campo, valor, trecho) -> None:
     problemas = _config(**{campo: valor}).problemas_de_producao()
     assert any(trecho in p for p in problemas), problemas
+
+
+@pytest.mark.parametrize(
+    "valor",
+    ["http://localhost:5173", "http://localhost:8000", "http://127.0.0.1:5173"],
+)
+def test_app_base_url_local_impede_a_aplicacao_de_subir(valor: str) -> None:
+    """O único item desta guarda que NÃO é segredo — e entra pelo mesmo motivo.
+
+    `APP_BASE_URL` monta o link de todo convite e de toda redefinição de senha.
+    No valor de desenvolvimento, cada e-mail manda quem o recebe para o
+    computador DELE: a página não abre, ninguém entende por quê, e quem convidou
+    jura que enviou. É um estrago silencioso e tardio — aparece dias depois, com
+    o convite já entregue —, que é exatamente a classe de erro que esta função
+    existe para pegar no start.
+    """
+    cfg = _config(app_base_url=valor)
+    assert any("APP_BASE_URL" in p for p in cfg.problemas_de_producao())
+    with pytest.raises(RuntimeError, match="APP_BASE_URL"):
+        verificar_producao(cfg)
 
 
 @pytest.mark.parametrize("campo", ["database_url", "app_database_url"])

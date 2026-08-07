@@ -257,6 +257,19 @@ class Settings(BaseSettings):
         if "*" in self.cors_origin_list:
             problemas.append("CORS_ORIGINS com curinga em produção")
 
+        # NÃO É SEGREDO, e mesmo assim entra aqui: é um valor de desenvolvimento
+        # que estraga em silêncio. `app_base_url` monta o link de TODO convite e
+        # de toda redefinição de senha; apontando para localhost, cada e-mail
+        # manda a pessoa para a máquina DELA — a página não abre, ninguém
+        # entende por quê, e o remetente jura que enviou. Some com uma classe de
+        # chamado que só aparece dias depois, quando o convite já foi mandado.
+        if "localhost" in self.app_base_url or "127.0.0.1" in self.app_base_url:
+            problemas.append(
+                f"APP_BASE_URL aponta para a máquina local ({self.app_base_url}) — "
+                "todo link de convite e de redefinição levaria a pessoa ao próprio "
+                "computador dela. Use o domínio público da aplicação."
+            )
+
         return problemas
 
 
