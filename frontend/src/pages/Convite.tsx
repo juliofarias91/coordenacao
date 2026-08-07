@@ -34,7 +34,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-
 
 import { useAuth } from '@/auth/AuthContext'
 import AuthLayout from '@/auth/AuthLayout'
-import { PAPEIS_PROJETO } from '@/components/TabelaMembros'
+import { rotuloPapel } from '@/components/TabelaMembros'
 import { useI18n } from '@/i18n'
 import { ApiError, api } from '@/lib/api'
 import type { ConvitePrevia } from '@/lib/types'
@@ -84,11 +84,6 @@ export function ConviteDoCadastro() {
   const [params] = useSearchParams()
   const token = params.get('convite')
   return <Navigate to={token ? `/convite/${token}` : '/'} replace />
-}
-
-function rotulo(papel: string, L: (pt: string, en: string) => string): string {
-  const achado = PAPEIS_PROJETO.find((p) => p.valor === papel)
-  return achado ? L(achado.pt, achado.en) : papel
 }
 
 type Estado =
@@ -214,7 +209,7 @@ export default function Convite() {
             {/* O RÓTULO, não o valor do banco: quem recebe o convite lê
                 "Colaborador", não "auditor". A lista vem de `PAPEIS_PROJETO`
                 para as duas telas dizerem a mesma palavra. */}
-            <strong>{rotulo(previa.papel, L)}</strong>
+            <strong>{rotuloPapel(previa.papel, L)}</strong>
           </div>
           {previa.equipe && (
             <div className="auth-conv-linha">

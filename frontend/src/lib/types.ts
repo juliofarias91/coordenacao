@@ -183,8 +183,12 @@ export type ConviteEquipe = {
 export type ConviteEquipeCriado = {
   convite: ConviteEquipe
   token: string
-  /** Já montado pelo servidor: `/convite/<token>`. */
+  /** Já montado pelo servidor: `/cadastro?convite=<token>`. */
   caminho: string
+  /** Se o e-mail saiu. Falso no link aberto (não há destinatário), sem SMTP
+   *  configurado, ou quando o envio falhou — nos três casos o link na tela
+   *  continua valendo, e é o que a gaveta manda copiar. */
+  email_enviado: boolean
 }
 
 /** O que a tela PÚBLICA de convite mostra antes do aceite — o `invite_preview`
