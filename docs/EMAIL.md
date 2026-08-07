@@ -88,11 +88,26 @@ variável de e-mail em `frontend/.env`.
 ### 4. Conferir
 
 ```
-cd backend && .venv/Scripts/python.exe -c "from app.services import email; print(email.configurado())"
+cd backend
+.venv/Scripts/python.exe -m scripts.verificar_email                     # lê o .env
+.venv/Scripts/python.exe -m scripts.verificar_email --conectar          # autentica
+.venv/Scripts/python.exe -m scripts.verificar_email --enviar voce@x.com # envia
 ```
 
-`True` significa host e remetente preenchidos — não que o provedor aceita. O
-teste real é pedir uma redefinição em `/esqueci-senha` e ver o e-mail chegar.
+São três degraus, e cada um prova uma coisa diferente — porque as três causas de
+"o e-mail não chegou" falham em momentos distintos:
+
+| Modo | Prova | Não prova |
+|---|---|---|
+| padrão | os campos estão preenchidos e coerentes (587 com SSL ligado é o engano mais comum) | nada sobre o provedor — não há rede |
+| `--conectar` | a **credencial vale**: resolve o host, cifra e autentica | que a mensagem seja aceita |
+| `--enviar` | o provedor **aceitou** a mensagem — é o único que cobre a verificação de domínio | que tenha sido entregue: confira o spam |
+
+O script sai com código 1 em qualquer problema, então serve em cron ou no CI de
+um ambiente novo.
+
+⚠ **Chegou no spam?** Falta SPF/DKIM no DNS do domínio do remetente. Aceito pelo
+provedor e entregue na caixa são coisas diferentes, e essa é a etapa 2.
 
 ## Os modelos
 
