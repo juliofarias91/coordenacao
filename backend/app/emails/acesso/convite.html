@@ -1,43 +1,18 @@
 <!--
   SPBIM — CONVITE PARA UM PROJETO.
+  Enviado por `services/email.py::enviar_convite`. Ver o README desta pasta.
 
-  NÃO SE COLA EM PAINEL NENHUM: este arquivo é lido pelo SERVIDOR, no envio, por
-  `services/email.py::enviar_convite`. Editá-lo e reiniciar a API basta.
-
-  ⚠ ELE É DADO DO PACOTE (`[tool.setuptools.package-data]`, no `pyproject.toml`).
-  Sem aquela seção o `pip install` do Dockerfile leva só os `.py` e o envio morre
-  com `FileNotFoundError` APENAS EM PRODUÇÃO — em desenvolvimento a aplicação
-  roda do código-fonte, onde o arquivo existe. Arquivo novo aqui, confira lá.
-
-  Os `{{campo}}` são trocados por `str.replace` (`_modelo`). A sintaxe ficou do
-  tempo do EmailJS, que saiu em 07/08/2026; campo que não estiver na lista abaixo
-  sobrevive como `{{isto}}` no corpo do e-mail.
-
-  Variáveis que o servidor manda:
+  Variáveis:
     {{to_email}}     e-mail de quem foi convidado
     {{project_name}} 'CPQ04 · DANTE 2' — código e nome do projeto
     {{cargo}}        o RÓTULO do papel ('Visualizador', 'Colaborador', 'Gerente')
     {{invited_by}}   nome (ou e-mail) de quem convidou
     {{link}}         a tela de cadastro já com o convite: /cadastro?convite=<token>
     {{validade}}     '3 dias'
-
-  DIFERENÇAS EM RELAÇÃO AO ORIGINAL DA VDCITY, e nenhuma é estética:
-
-  - **Sem o tetraedro.** Ele é a identidade gráfica DELES. Aqui não há símbolo
-    enquanto não houver logotipo de verdade — a mesma decisão do `Shell.tsx` e da
-    tela de login.
-  - **O accent é o da SPBIM** (#2547b0 / #6e8cf2), não o #3b82f6 do VDCity.
-  - **O PROJETO é o assunto.** Lá se convida para a plataforma; aqui se convida
-    para um PROJETO, com um papel nele. Um convite que não diga para qual projeto
-    obriga quem recebe a descobrir depois de entrar.
-  - **Sem `{{company}}`.** No VDCity é a empresa da pessoa; aqui `empresa` é o
-    fornecedor AUDITADO, e escrevê-la num convite diria a coisa errada.
-  - **O link vai também em TEXTO.** Cliente de e-mail corporativo bloqueia botão
-    com frequência, e sem essa linha o e-mail vira um beco.
 -->
 <div style="margin:0;padding:56px 16px;background-color:#08080b;background-image:radial-gradient(600px circle at 50% 26%,rgba(110,140,242,.20),rgba(8,8,11,0) 60%),radial-gradient(460px circle at 95% 100%,rgba(110,140,242,.10),rgba(8,8,11,0) 60%),radial-gradient(420px circle at 4% 12%,rgba(129,116,230,.12),rgba(8,8,11,0) 60%);font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;text-align:center;">
 
-  <!-- Wordmark, e só o wordmark. Ver a nota acima. -->
+  <!-- Wordmark, e só o wordmark. Ver o README. -->
   <div style="font-size:40px;font-weight:800;letter-spacing:6px;color:#ffffff;line-height:1;">SPBIM</div>
   <div style="margin-top:14px;font-size:13px;font-weight:600;letter-spacing:.02em;color:#6e8cf2;">Coordenação BIM</div>
 
