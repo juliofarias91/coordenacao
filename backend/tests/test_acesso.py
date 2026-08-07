@@ -27,7 +27,16 @@ from tests.conftest import API, Cenario, requer_banco
 
 pytestmark = requer_banco
 
-SENHA_NOVA = "uma-senha-novinha-longa"
+# ⚠ ELA É ESCRITA PELA API, então obedece a `validar_senha`: dez caracteres com
+# letra, NÚMERO e caractere especial (o hífen já serve de especial). Sem o `1` no
+# fim ela era só letras e hífens — passava até 05/08/2026, quando a composição
+# entrou, e desde então rendia 422 em toda rota que GRAVA senha, com os asserts
+# esperando 204/401/404.
+#
+# A de LOGIN aqui do lado (`a-senha-antiga-longa`) não tem número de propósito, e
+# não é esquecimento: a regra vale na ESCRITA, nunca na leitura — é o que
+# `test_senha_de_antes_da_regra_continua_entrando` guarda.
+SENHA_NOVA = "uma-senha-novinha-longa-1"
 
 
 def _usuario(cenario: Cenario, db: Session, *, com_senha: bool) -> Usuario:
