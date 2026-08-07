@@ -53,8 +53,13 @@ include = ["app*"]
 #
 # É a mesma classe de erro do `alembic/` e do `static/`, que o Dockerfile copia
 # à mão em vez de instalar.
+# ⚠ A LISTA PRECISA ALCANÇAR AS SUBPASTAS, e o primeiro padrão NÃO as alcança:
+# `emails/*.html` casa só com a raiz, e os modelos vivem em `emails/acesso/`.
+# Duas linhas explícitas em vez de `emails/**/*.html` porque o `**` recursivo
+# depende da versão do setuptools, e isto é justamente o que só quebra na
+# imagem. Pasta nova aqui, linha nova aqui.
 [tool.setuptools.package-data]
-app = ["emails/*.html"]
+app = ["emails/*.html", "emails/*/*.html"]
 
 [tool.ruff]
 line-length = 100

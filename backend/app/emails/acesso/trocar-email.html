@@ -1,0 +1,70 @@
+<!--
+  SPBIM — CONFIRMAR O NOVO ENDEREÇO DE E-MAIL.
+
+  ⚠ NADA ENVIA ESTE ARQUIVO AINDA. Não há rota de troca de e-mail, não há tipo
+  de token para ela (`services/acesso.py` conhece `convite` e `redefinicao`, e
+  mais nada) e não há tela de confirmação. O README desta pasta lista as quatro
+  peças que faltam.
+
+  ⚠ E LISTA A DECISÃO QUE NÃO PODE FICAR PARA DEPOIS: este e-mail vai para o
+  endereço NOVO, então sozinho ele não protege ninguém. Quem tomasse uma sessão
+  aberta trocaria o endereço e confirmaria no próprio e-mail, em silêncio. O que
+  fecha isso é um AVISO para o endereço ANTIGO, no mesmo ato. Quem implementar a
+  troca implementa os dois.
+
+  O e-mail É o login aqui (`api/v1/auth.py::login`), então trocá-lo é trocar a
+  credencial de entrada — não é um campo de perfil como o nome.
+
+  Variáveis previstas:
+    {{to_email}}   o endereço ATUAL da conta
+    {{novo_email}} o endereço pedido — e o destinatário desta mensagem
+    {{link}}       APP_BASE_URL + a tela que consome o token
+    {{validade}}   quanto o link dura
+-->
+<div style="margin:0;padding:56px 16px;background-color:#08080b;background-image:radial-gradient(600px circle at 50% 26%,rgba(110,140,242,.20),rgba(8,8,11,0) 60%),radial-gradient(460px circle at 95% 100%,rgba(110,140,242,.10),rgba(8,8,11,0) 60%),radial-gradient(420px circle at 4% 12%,rgba(129,116,230,.12),rgba(8,8,11,0) 60%);font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;text-align:center;">
+
+  <div style="font-size:40px;font-weight:800;letter-spacing:6px;color:#ffffff;line-height:1;">SPBIM</div>
+  <div style="margin-top:14px;font-size:13px;font-weight:600;letter-spacing:.02em;color:#6e8cf2;">Coordenação BIM</div>
+
+  <div style="margin-top:40px;font-size:18px;font-weight:700;color:#ffffff;">Confirme seu novo e-mail</div>
+
+  <!-- OS DOIS ENDEREÇOS, lado a lado. A referência mostra só o novo; mostrar o
+       antigo junto é o que deixa quem lê perceber que a conta trocada não é a
+       que ele pensava, ou que o pedido não partiu dele. -->
+  <p style="margin:10px auto 0;max-width:400px;font-size:14px;line-height:1.65;color:rgba(255,255,255,.6);">
+    Recebemos um pedido para trocar o e-mail de acesso da conta
+    <b style="color:#fff;">{{to_email}}</b> para
+    <b style="color:#fff;">{{novo_email}}</b>.
+  </p>
+
+  <div style="margin:28px 0 8px;">
+    <a href="{{link}}" style="display:inline-block;padding:18px 40px;background:rgba(110,140,242,.10);border:1px solid rgba(110,140,242,.40);border-radius:14px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:.4px;">Confirmar o novo e-mail</a>
+  </div>
+
+  <!-- O E-MAIL É O LOGIN, e quem confirma precisa saber disso ANTES de clicar:
+       depois da troca, a senha continua a mesma mas o endereço de entrada não. -->
+  <p style="margin:0 auto;max-width:400px;font-size:12px;line-height:1.6;color:rgba(255,255,255,.45);">
+    A partir da confirmação, é com <b style="color:rgba(255,255,255,.75);">{{novo_email}}</b>
+    que você entra na plataforma. Sua senha continua a mesma.
+  </p>
+
+  <p style="margin:18px auto 0;max-width:420px;font-size:11px;line-height:1.6;color:rgba(255,255,255,.35);word-break:break-all;">
+    Se o botão não funcionar, copie este endereço no navegador:<br />{{link}}
+  </p>
+
+  <p style="margin:22px auto 0;max-width:360px;font-size:12px;line-height:1.6;color:rgba(255,255,255,.45);">
+    O link vale por <b style="color:rgba(255,255,255,.75);">{{validade}}</b> e serve uma vez só.
+  </p>
+
+  <!-- AQUI O "IGNORE" NÃO BASTA. Nos outros dois, quem não pediu não precisa
+       fazer nada. Neste, um pedido que a pessoa não fez significa que alguém
+       está dentro da conta dela — e a saída não é ignorar, é trocar a senha. -->
+  <p style="margin:14px auto 0;max-width:400px;font-size:12px;line-height:1.6;color:rgba(255,255,255,.35);">
+    Se você não pediu esta troca, <b style="color:rgba(255,255,255,.6);">não use o link</b> —
+    e troque a senha da sua conta, porque um pedido que você não fez significa que
+    alguém mais teve acesso a ela.
+  </p>
+
+  <div style="margin-top:44px;font-size:11px;color:rgba(255,255,255,.28);">© SPBIM — Construção Digital</div>
+  <div style="margin-top:4px;font-size:11px;color:rgba(255,255,255,.2);">E-mail automático — por favor, não responda.</div>
+</div>
