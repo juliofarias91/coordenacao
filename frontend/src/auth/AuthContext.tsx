@@ -17,12 +17,7 @@ type Ctx = {
   carregando: boolean
   entrar: (login: string, senha: string, org?: string) => Promise<void>
   /** Cria a própria conta e JÁ ENTRA com ela. Ver `POST /auth/cadastro`. */
-  cadastrar: (dados: {
-    login: string
-    senha: string
-    nome?: string
-    org: string
-  }) => Promise<void>
+  cadastrar: (dados: { login: string; senha: string; nome?: string }) => Promise<void>
   /** Adota uma sessão que veio pronta de outro caminho — hoje só o retorno do
    *  SSO, que recebe os tokens de `GET /auth/oidc/callback` e não passa por
    *  `entrar` porque nunca houve senha para digitar. */
@@ -79,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const cadastrar = useCallback(
-    async (dados: { login: string; senha: string; nome?: string; org: string }) => {
+    async (dados: { login: string; senha: string; nome?: string }) => {
       aplicarSessao(await api.cadastro(dados))
     },
     [aplicarSessao],

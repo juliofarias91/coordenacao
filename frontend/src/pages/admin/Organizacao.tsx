@@ -26,8 +26,6 @@ export default function AbaOrganizacao() {
   const [resumo, setResumo] = useState<ResumoOrganizacao | null>(null)
   const [nome, setNome] = useState('')
   const [slug, setSlug] = useState('')
-  /** Se o slug acima serve de código de cadastro (migration 0016). */
-  const [aberto, setAberto] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [salvo, setSalvo] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -38,7 +36,6 @@ export default function AbaOrganizacao() {
       setResumo(r)
       setNome(r.organizacao.nome)
       setSlug(r.organizacao.slug ?? '')
-      setAberto(r.organizacao.cadastro_aberto)
     } catch (e) {
       setErro(e instanceof ApiError ? e.message : String(e))
     }
@@ -53,11 +50,7 @@ export default function AbaOrganizacao() {
     setSalvo(false)
     setSalvando(true)
     try {
-      await api.organizacao.atualizar({
-        nome,
-        slug: slug || undefined,
-        cadastro_aberto: aberto,
-      })
+      await api.organizacao.atualizar({ nome, slug: slug || undefined })
       setSalvo(true)
       await carregar()
     } catch (e) {
@@ -115,27 +108,15 @@ export default function AbaOrganizacao() {
           )}
         </p>
 
-        {/* O INTERRUPTOR DO CADASTRO ABERTO (migration 0016). Vive COLADO no
-            slug, e não numa seção própria: ele é o que decide se aquele campo
-            logo acima vira uma chave de entrada. Separá-los deixaria a decisão
-            mais perigosa da tela longe do dado de que ela depende. */}
-        <label className="linha-op">
-          <input
-            type="checkbox"
-            checked={aberto}
-            onChange={(e) => setAberto(e.target.checked)}
-          />
-          <span>
-            {L(
-              'Permitir que qualquer pessoa com este código crie a própria conta',
-              'Let anyone holding this code create their own account',
-            )}
-          </span>
-        </label>
+        {/* NÃO HÁ INTERRUPTOR DE CADASTRO AQUI (06/08/2026, a pedido). Ele
+            existiu entre as migrations 0016 e 0017 e saiu: criar conta não tem
+            trava. Quem controla o acesso de verdade é o VÍNCULO DE PROJETO, em
+            `/projetos/:id/membros` — uma conta recém-criada não alcança modelo,
+            auditoria nem relatório enquanto ninguém a vincular. */}
         <p className="hint">
           {L(
-            'Desligado, só quem recebe convite entra — o slug sozinho não vale nada. Ligado, quem souber o código cria uma conta de LEITOR nesta organização, e quem administra promove depois. O slug não é segredo: ele aparece no endereço dos convites.',
-            'Off, only invited people get in — the slug alone is worth nothing. On, anyone who knows the code creates a READER account in this organization, and an administrator promotes them later. The slug is not a secret: it appears in invitation addresses.',
+            'Qualquer pessoa pode criar a própria conta nesta plataforma. Ela nasce como LEITOR e sem projeto nenhum — quem libera o acesso a um projeto é quem o coordena, na aba Membros do projeto.',
+            'Anyone can create their own account on this platform. The account starts as READER with no projects at all — access to a project is granted by whoever coordinates it, on the project’s Members tab.',
           )}
         </p>
 

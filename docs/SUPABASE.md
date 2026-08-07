@@ -238,12 +238,23 @@ que impedia qualquer conta do provedor de virar acesso. O primeiro login casa
 por `oidc_sub`, ou por e-mail se for a primeira vez — isso não mudou.
 
 O que mudou é o que acontece quando não casa com ninguém. Antes, 403 sempre;
-agora a conta pode nascer, se **o `state` trouxer o código de uma organização**
-(só a tela de cadastro o manda; a de entrar não) **e essa organização tiver
-`cadastro_aberto` ligado** (migration 0016, desligado por padrão). Sem as duas,
-403 como antes. Quem aplica as condições é `services/cadastro_aberto.py`, o
-mesmo módulo do cadastro por formulário — duas implementações divergiriam, e a
-que esquecesse o interruptor abriria todo tenant cujo slug alguém conhecesse.
+**agora a conta é criada, sem condição nenhuma** (06/08/2026, a pedido). As duas
+travas que houve — o código da organização no `state` e o interruptor
+`cadastro_aberto` — saíram nas migrations 0016→0017.
+
+⚠ **Encare o alcance disto:** qualquer conta do provedor vira uma conta de leitor
+aqui. Com `OIDC_ISSUER` apontando para o Google, "qualquer conta do provedor" é
+qualquer pessoa com Gmail. O que limita o estrago não é mais a porta:
+
+- a conta nasce **LEITOR**, o papel menos privilegiado;
+- e **sem vínculo de projeto** — sem `projeto_membro`, ela não alcança modelo,
+  auditoria nem relatório até alguém que coordena vinculá-la.
+
+**Entrar e cadastrar-se pelo provedor são o mesmo pedido**: os dois botões mandam
+a mesma requisição e nada no `state` diz de qual tela vieram. Se um dia isso não
+servir, o lugar de apertar é `PAPEL_DE_ENTRADA` ou uma lista de domínios de
+e-mail permitidos — em `services/cadastro_aberto.py`, o mesmo módulo do cadastro
+por formulário, para as duas portas não divergirem.
 
 ### Por que a autorização não vai para o Supabase
 

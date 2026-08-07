@@ -567,9 +567,15 @@ backend já existe.
     **O "só por convite do admin" caiu a pedido em 05/08**: entraram o cadastro
     de conta própria (`/cadastro`) e a entrada pelo Google. A contradição com
     "SSO autentica, não provisiona" foi resolvida por condição, não por exceção —
-    quem se cadastra não cria organização, entra numa que já existe e que ligou
-    `cadastro_aberto`, no papel menos privilegiado. Ver a seção "Acesso" do
-    `CLAUDE.md` para as regras que não devem ser revertidas.
+    quem se cadastra não cria organização e nasce no papel menos privilegiado.
+    **Em 06/08 caíram as duas travas**, também a pedido: o código da organização
+    e o interruptor `cadastro_aberto` (migrations 0016→0017). O cadastro pede
+    nome, e-mail e senha; o destino é a organização mais antiga; e **a conta
+    nasce sem vínculo de projeto** — quem vincula é quem coordena o projeto, e é
+    aí que o controle de acesso passou a morar. Ver a seção "Acesso" do
+    `CLAUDE.md`, inclusive para o risco que sobrou (um segundo tenant receberia
+    contas no primeiro, em silêncio) e para o limite de tentativas, que virou a
+    pendência mais afiada agora que a rota cria conta para quem pedir.
 
 ### Achado no caminho, e corrigido em 30/07
 

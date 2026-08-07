@@ -21,7 +21,7 @@ from app.schemas.automacao import (
 from app.services import penalidades as ledger
 from app.services.automacao import executar_auditoria_automatica, verificadores_disponiveis
 from app.services.automacao import nomenclatura as motor_nome
-from app.services.escopo import conflito, exigir, exigir_projeto
+from app.services.escopo import conflito, exigir, exigir_projeto_do_usuario
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ def validar_nomenclatura(
     nomes. Registrar a penalidade é opt-in (`registrar: true`), e é assim que
     a ingestão do ACC chama quando um arquivo chega fora do padrão.
     """
-    exigir_projeto(db, payload.projeto_id)
+    exigir_projeto_do_usuario(db, payload.projeto_id, user)
 
     padrao = db.execute(
         select(NomenclaturaPadrao)

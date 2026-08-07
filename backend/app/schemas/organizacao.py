@@ -23,19 +23,11 @@ class OrganizacaoUpdate(BaseModel):
         pattern=r"^[a-z0-9][a-z0-9-]*$",
         description="Identificador curto em minúsculas — entra no login multi-org.",
     )
-    cadastro_aberto: bool | None = Field(
-        default=None,
-        description=(
-            "Se qualquer pessoa com este slug pode criar a própria conta. "
-            "Desligado por padrão — o slug não é segredo."
-        ),
-    )
 
 
 class OrganizacaoOut(Identificado):
     nome: str
     slug: str | None
-    cadastro_aberto: bool
 
 
 class ResumoOrganizacao(BaseModel):

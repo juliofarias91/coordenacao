@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
 from app.models.enums import ChecklistTipo
 from app.services import painel as servico
-from app.services.escopo import exigir_projeto
+from app.services.escopo import exigir_projeto_do_usuario
 
 router = APIRouter(tags=["painel"])
 
@@ -78,9 +78,9 @@ def painel(
         default=None, description="Restringe a um tipo de auditoria."
     ),
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+    user: CurrentUser = Depends(requer_permissao("ver_painel")),
 ) -> PainelOut:
-    exigir_projeto(db, projeto_id)
+    exigir_projeto_do_usuario(db, projeto_id, user)
     linhas = servico.painel_de_controle(db, projeto_id, checklist=checklist)
 
     percentuais = [x.aprovacao_pct for x in linhas if x.aprovacao_pct is not None]
@@ -112,9 +112,9 @@ def matriz(
     projeto_id: uuid.UUID,
     checklist: ChecklistTipo = Query(default=ChecklistTipo.LOD500),
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+    user: CurrentUser = Depends(requer_permissao("ver_painel")),
 ) -> MatrizOut:
     """Pivô modelo × área. O escopo de cada linha vem das áreas da disciplina."""
-    exigir_projeto(db, projeto_id)
+    exigir_projeto_do_usuario(db, projeto_id, user)
     m = servico.matriz_por_area(db, projeto_id, checklist=checklist)
     return MatrizOut(projeto_id=projeto_id, checklist=checklist, areas=m.areas, linhas=m.linhas)

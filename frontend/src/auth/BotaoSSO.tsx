@@ -18,10 +18,12 @@
  *  o do Google e que as diretrizes do provedor não permitem. Quando o issuer não
  *  for um dos conhecidos, cai no cadeado neutro — aí não há marca a respeitar.
  *
- *  `org` VIAJA ATÉ O SERVIDOR e volta assinado dentro do `state`: é ele que diz
- *  ao callback em que organização a conta PODE nascer. A tela de entrar não o
- *  manda (quem entra já existe); a de cadastro manda. Ver `oidc_login`, em
- *  `api/v1/auth.py`.
+ *  ELE NÃO CARREGA MAIS NADA (06/08/2026). Por um dia levou o código da
+ *  organização até o `state` assinado, e era isso que separava "entrar pelo
+ *  Google" de "cadastrar-se pelo Google" — a tela de entrar não mandava, a de
+ *  cadastro mandava. Sem código, os dois são o mesmo pedido, e quem responde é
+ *  o interruptor `cadastro_aberto`, no servidor. Por isso o componente é
+ *  idêntico nas duas telas e não recebe prop nenhuma além do rótulo.
  */
 import { useState } from 'react'
 
@@ -72,13 +74,10 @@ function Cadeado() {
 
 export default function BotaoSSO({
   rotulo,
-  org,
   onErro,
 }: {
   /** O nome do provedor, vindo de `/auth/config`. */
   rotulo: string
-  /** Código da organização — só na tela de cadastro. */
-  org?: string
   onErro: (mensagem: string) => void
 }) {
   const { L } = useI18n()
@@ -88,7 +87,7 @@ export default function BotaoSSO({
     onErro('')
     setIndo(true)
     try {
-      const { authorization_url } = await api.sso.iniciar(org)
+      const { authorization_url } = await api.sso.iniciar()
       // TROCA A PÁGINA, não abre popup: o fluxo do OIDC termina num
       // redirecionamento do provedor de volta para `/entrar/sso`, e popup
       // bloqueado é o modo mais comum de um login social simplesmente não

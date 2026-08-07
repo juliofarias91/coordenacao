@@ -24,28 +24,26 @@ class LoginRequest(BaseModel):
 
 
 class CadastroRequest(BaseModel):
-    """Criar a própria conta — o cadastro por CÓDIGO DA ORGANIZAÇÃO.
+    """Criar a própria conta. Nome, e-mail e senha — e mais nada.
 
-    `org` NÃO É OPCIONAL AQUI, ao contrário do login, e é a diferença que define
-    este recurso. No login o e-mail já existe em algum tenant e a senha desempata
-    qual; no cadastro não existe em nenhum, e não há o que desempatar — sem o
-    código, a conta teria de nascer numa organização escolhida pelo servidor.
-    Toda entidade da plataforma carrega `org_id`, e adivinhá-lo é como se cria
-    uma conta no tenant errado.
+    NÃO HÁ CAMPO DE ORGANIZAÇÃO (06/08/2026, a pedido). Ele existiu por um dia,
+    carregando o slug do tenant, e saiu porque ninguém vai usá-lo: um campo
+    obrigatório que quem chega não sabe responder trava o formulário inteiro na
+    primeira linha. Quem decide o destino agora é o servidor, pelo interruptor —
+    ver `services/cadastro_aberto.py::organizacao_do_cadastro`.
 
-    Ele NÃO CRIA ORGANIZAÇÃO: quem se cadastra entra numa que já existe. Criar
+    Isto NÃO CRIA ORGANIZAÇÃO: quem se cadastra entra numa que já existe. Criar
     tenant continua sendo provisionamento, e continua saindo do seed — ver a
     docstring de `api/v1/organizacao.py`.
+
+    E não cria vínculo de PROJETO: quem liga a pessoa a um projeto é o gerente
+    dele. Cadastrar-se responde "esta pessoa existe na organização"; o vínculo é
+    outra pergunta, e tem outro dono.
     """
 
     nome: str | None = Field(default=None, max_length=200)
     login: EmailStr = Field(description="E-mail, que é o login")
     senha: str = Field(max_length=200)
-    org: str = Field(
-        min_length=1,
-        max_length=60,
-        description="Código (slug) da organização que autoriza o cadastro aberto.",
-    )
 
     @field_validator("senha")
     @classmethod

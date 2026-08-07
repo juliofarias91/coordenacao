@@ -162,12 +162,30 @@ aside {
 }
 
 /* Botão de recolher: círculo saltando da borda direita. SEMPRE visível — um
-   controle que só aparece no hover não é descoberto por quem não usa mouse. */
+   controle que só aparece no hover não é descoberto por quem não usa mouse.
+
+   ⚠ ELE VIVE NA FAIXA DA TOPBAR, e o número não é estético (07/08/2026). Ele
+   salta 12px para FORA da barra, sobre o conteúdo — então onde ele cai
+   verticalmente decide sobre o que ele cai.
+
+   Estava em `top: 44px`: com 24px de altura, ia de 44 a 68. A topbar termina em
+   56 (`--h-topbar`), e é aí que começa o `.pgsplit` das telas de painel
+   (Membros, Auditoria) — que tem `background` opaco. Os 12px finais do botão
+   ficavam POR BAIXO do painel, e o círculo aparecia cortado ao meio, colado no
+   campo de busca.
+
+   `(56 - 24) / 2 = 16` o centra na faixa da topbar e o tira inteiro de cima de
+   qualquer painel. Se `--h-topbar` mudar, este valor muda junto.
+
+   O `z-index` é cinto e suspensório: o `aside` já é um contexto de empilhamento
+   acima do `main`, então em teoria bastava. Mas o custo de um painel futuro se
+   posicionar é o botão sumir de novo, e o sintoma (um controle que às vezes
+   está lá) é caro de diagnosticar. */
 .nav-toggle {
   position: absolute;
-  top: 44px;
+  top: calc((var(--h-topbar, 56px) - 24px) / 2);
   right: -12px;
-  z-index: 1;
+  z-index: var(--z-sidebar);
   width: 24px;
   height: 24px;
   display: flex;
@@ -1177,6 +1195,45 @@ main {
 .auth-acoes .btn-link:hover {
   color: var(--ink);
   text-decoration: underline;
+}
+
+/* O RESUMO DO CONVITE — o que se está aceitando, antes do botão (07/08/2026).
+
+   A tela de origem não tem isto: ela aceita sozinha no `useEffect` e
+   redireciona, e quem abre o link nunca vê para que projeto ele serve. Aqui
+   aceitar é um ato — entra-se num projeto de um cliente real, com um papel —,
+   então a tela mostra o que vai acontecer e espera um clique.
+
+   Superfície TRANSLÚCIDA como os campos, e pela mesma razão: opaca, ela
+   recortaria um retângulo sólido sobre o glow do fundo. */
+.auth-conv {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  background: rgb(255 255 255 / 0.04);
+}
+
+/* Rótulo à esquerda, valor à direita — a forma de "ficha", que se lê varrendo a
+   coluna da esquerda até achar o que se procura. */
+.auth-conv-linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.auth-conv-linha span {
+  color: var(--ink-3);
+}
+
+.auth-conv-linha strong {
+  font-weight: 650;
+  text-align: right;
+  color: var(--ink);
 }
 
 .auth-rodape {
@@ -2684,42 +2741,6 @@ td.num {
 
 .frow .full {
   grid-column: 1 / -1;
-}
-
-/* LINHA DE OPÇÃO — caixa de seleção com o rótulo AO LADO (05/08/2026).
-
-   Não havia padrão para isto: os checkboxes que existiam iam dentro de um
-   `Campo`, com o rótulo ACIMA — arranjo que serve a campo de texto e não a
-   interruptor, onde o par caixa+frase se lê como uma sentença só. Com o rótulo
-   em cima, "Diferenciar maiúsculas" fica sobre uma caixinha solta e a relação
-   entre os dois some.
-
-   O `<label>` inteiro é a área de clique, e é o que faz o alvo ser a frase e
-   não um quadrado de 13px. `align-items: flex-start` + o `margin-top` da caixa
-   alinham os dois pela PRIMEIRA LINHA do texto: centrado, um rótulo de duas
-   linhas empurraria a caixa para o meio do parágrafo. */
-.linha-op {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin-bottom: 10px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ink-2);
-  cursor: pointer;
-  transition: color var(--dur) var(--ease);
-}
-
-/* Regra 6: hover é tinta. */
-.linha-op:hover {
-  color: var(--ink);
-}
-
-.linha-op input {
-  flex: none;
-  margin-top: 2px;
-  accent-color: var(--accent);
-  cursor: pointer;
 }
 
 .eact {

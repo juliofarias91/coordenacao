@@ -87,12 +87,14 @@ export default function RetornoSSO() {
     >
       <div className="auth-campos">
         {/* O 403 do callback diz "identidade sem usuário correspondente", que é
-            verdade e não ajuda ninguém. Esta linha diz o que fazer com ela: a
-            plataforma não provisiona quem chega sem código de organização. */}
+            verdade e não ajuda ninguém. Esta linha diz o que fazer com ela.
+            Desde 06/08/2026 ela pode PROMETER que criar conta funciona — não há
+            mais trava que possa recusar depois. O caso que sobra é o provedor
+            não devolver e-mail, e aí o cadastro por senha resolve. */}
         <p className="hint" style={{ margin: 0 }}>
           {L(
-            'Se você ainda não tem conta aqui, crie uma com o código da sua organização — entrar pelo provedor reconhece quem já existe.',
-            'If you do not have an account here yet, create one with your organization code — signing in through the provider recognizes existing accounts.',
+            'Se você ainda não tem conta aqui, crie uma — leva menos de um minuto.',
+            'If you do not have an account here yet, create one — it takes less than a minute.',
           )}
         </p>
         <Link className="btn pri block" to="/cadastro">

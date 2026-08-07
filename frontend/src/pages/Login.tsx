@@ -27,9 +27,6 @@ export default function Login() {
   const [pedeOrg, setPedeOrg] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
-  /** A resposta do pedido de redefinição. É sempre a mesma frase, exista a
-   *  conta ou não — ver `POST /auth/senha/esqueci`. */
-  const [aviso, setAviso] = useState<string | null>(null)
 
   useEffect(() => {
     let ativo = true
@@ -45,7 +42,6 @@ export default function Login() {
   async function submeter(e: FormEvent) {
     e.preventDefault()
     setErro(null)
-    setAviso(null)
     setEnviando(true)
     try {
       await entrar(login, senha, org.trim() || undefined)
@@ -61,31 +57,6 @@ export default function Login() {
     }
   }
 
-  /** Pede a redefinição para o e-mail já digitado.
-   *
-   *  Reaproveita o campo em vez de abrir um segundo formulário — como faz o
-   *  VDCity, que troca a tela inteira por um modo `isResetMode`. Aqui não
-   *  precisa: quem clica acabou de tentar entrar, e o e-mail está ali. Uma tela
-   *  a mais para reler o mesmo campo é atrito puro.
-   */
-  async function pedirRedefinicao() {
-    setErro(null)
-    setAviso(null)
-    if (!login.trim()) {
-      setErro(L('Preencha o e-mail primeiro.', 'Fill in the e-mail first.'))
-      return
-    }
-    setEnviando(true)
-    try {
-      const r = await api.senha.esqueci(login.trim(), org.trim() || undefined)
-      setAviso(r.detalhe)
-    } catch (e) {
-      setErro(e instanceof ApiError ? e.message : String(e))
-    } finally {
-      setEnviando(false)
-    }
-  }
-
   return (
     <AuthLayout
       titulo={L('Bem-vindo de volta', 'Welcome back')}
@@ -93,11 +64,6 @@ export default function Login() {
     >
       <form className="auth-campos" onSubmit={submeter}>
         {erro && <div className="erro">{erro}</div>}
-        {aviso && (
-          <div className="pill ok" style={{ display: 'block', lineHeight: 1.5 }}>
-            {aviso}
-          </div>
-        )}
 
         {/* O PROVEDOR VEM ANTES DOS CAMPOS. Quem entra pelo Google não tem senha
             aqui para digitar, e pôr o botão embaixo do formulário faria essa
@@ -165,26 +131,21 @@ export default function Login() {
           {enviando ? L('Entrando…', 'Signing in…') : L('Entrar na plataforma', 'Sign in')}
         </button>
 
-        {/* A FILEIRA VOLTOU A TER OS DOIS BOTÕES DO ORIGINAL (05/08/2026), e é
-            o `space-between` que sempre esteve aqui esperando pelo segundo: ele
-            existia para manter "esqueci minha senha" encostado à esquerda como
-            no VDCity, mesmo com a direita vazia enquanto conta nova não se
-            criava. Agora se cria, e o par ocupa a linha como lá.
+        {/* ⚠ "CRIAR CONTA" SAIU DAQUI EM 07/08/2026, a pedido. Ele viveu dois
+            dias — entrou com o cadastro aberto (05/08) e saiu quando o convite
+            de equipe passou a ser a porta: conta se cria a partir de um convite,
+            e o link do convite já leva direto à tela de cadastro.
 
-            "Criar conta" é `.btn-link` e não `.btn`: quem chega nesta tela quase
-            sempre já tem conta, e dois botões preenchidos à mesma distância do
-            olho fariam a tela perguntar qual dos dois é o caminho. */}
+            Anunciar "criar conta" aqui prometeria um caminho que termina em
+            "peça um convite", e faria a tela de entrada oferecer justamente o
+            que a plataforma decidiu não oferecer.
+
+            O `space-between` FICA, como ficou antes deste botão existir: ele é o
+            que mantém "esqueci minha senha" encostado à esquerda, em vez de
+            centralizado e parecendo ação principal. */}
         <div className="auth-acoes">
-          <button
-            type="button"
-            className="btn-link"
-            onClick={pedirRedefinicao}
-            disabled={enviando}
-          >
+          <Link className="btn-link" to="/esqueci-senha">
             {L('Esqueci minha senha', 'I forgot my password')}
-          </button>
-          <Link className="btn-link" to="/cadastro">
-            {L('Criar conta', 'Create account')}
           </Link>
         </div>
       </form>

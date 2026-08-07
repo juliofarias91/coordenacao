@@ -4,13 +4,23 @@ Até a migration 0004 não havia vínculo entre usuário e projeto: o usuário
 pertencia à organização e, opcionalmente, a uma empresa. Isso respondia "quem
 tem conta" mas não "quem está no CPQ11", que é a pergunta de quem coordena.
 
-**Estas rotas NÃO autorizam nada.** Registrar alguém aqui não lhe dá acesso, e
-não estar aqui não tira. Quem decide continua sendo o `requer_permissao` de
-cada rota, sobre as permissões de organização do token. É deliberado — ver a
-docstring de `ProjetoMembro`. O que existe aqui é a lista de quem trabalha no
-projeto e o papel combinado com cada um.
+O vínculo diz duas coisas, e as duas mudaram em agosto de 2026:
 
-Ler exige `ver_painel`; mexer exige `admin_cadastro`, como o resto do cadastro.
+1. **SOBRE QUE PROJETOS a pessoa trabalha** — e desde 06/08 isso LIMITA o que ela
+   enxerga (`exigir_projeto_do_usuario`). Quem não é membro não vê o projeto.
+2. **QUEM MONTA A EQUIPE** — desde 07/08, coordenar um projeto pelo vínculo basta
+   para convidar, trocar papel e remover NELE
+   (`exigir_coordenacao_do_projeto`). É a primeira vez que `projeto_membro`
+   concede poder, e é uma reversão parcial e deliberada da migration 0004.
+
+O QUE CONTINUA VALENDO, e é o que impede isso de virar escalada: o vínculo nunca
+concede permissão de ORGANIZAÇÃO. Um coordenador de projeto não promove ninguém a
+`admin_cadastro`, não mexe em páginas visíveis (que valem em todos os projetos) e
+não cria conta. `test_participacao_nao_e_permissao` foi reescrito para trancar
+essa fronteira nova em vez da antiga.
+
+Ler exige `ver_painel` e vínculo; escrever exige coordenar o projeto — ou
+`admin_cadastro`, que continua alcançando tudo.
 """
 
 from __future__ import annotations
@@ -21,12 +31,18 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
+from app.core.deps import CurrentUser, get_current_user, get_tenant_db, requer_permissao
 from app.models import Empresa, Projeto, ProjetoMembro, Usuario
 from app.models.enums import paginas_ocultas
 from app.schemas.membro import MembroCreate, MembroOut, MembroUpdate
 from app.services import lixeira
-from app.services.escopo import conflito, exigir, exigir_projeto, ja_existe
+from app.services.escopo import (
+    conflito,
+    exigir,
+    exigir_coordenacao_do_projeto,
+    exigir_projeto_do_usuario,
+    ja_existe,
+)
 
 router = APIRouter(tags=["membros"])
 
@@ -146,9 +162,9 @@ def listar_todos(
 def listar(
     projeto_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+    user: CurrentUser = Depends(requer_permissao("ver_painel")),
 ) -> list[MembroOut]:
-    exigir_projeto(db, projeto_id)
+    exigir_projeto_do_usuario(db, projeto_id, user)
     # JOIN e não uma consulta por membro: a lista é pequena, mas N+1 numa tela
     # que abre a cada troca de projeto se acumula sem que ninguém perceba.
     linhas = db.execute(
@@ -173,9 +189,9 @@ def adicionar(
     projeto_id: uuid.UUID,
     payload: MembroCreate,
     db: Session = Depends(get_tenant_db),
-    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+    user: CurrentUser = Depends(get_current_user),
 ) -> MembroOut:
-    exigir_projeto(db, projeto_id)
+    exigir_coordenacao_do_projeto(db, projeto_id, user)
     # `exigir` passa pelo RLS: um usuário de outra organização simplesmente não
     # existe daqui e vira 404, não 403 — dizer "proibido" já entregaria que o
     # id corresponde a alguém em algum lugar.
@@ -206,9 +222,10 @@ def atualizar(
     membro_id: uuid.UUID,
     payload: MembroUpdate,
     db: Session = Depends(get_tenant_db),
-    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+    user: CurrentUser = Depends(get_current_user),
 ) -> MembroOut:
     membro = exigir(db, ProjetoMembro, membro_id, "membro")
+    exigir_coordenacao_do_projeto(db, membro.projeto_id, user)
     _exigir_que_nao_seja_voce(membro, user)
     for campo, valor in payload.model_dump(exclude_unset=True).items():
         setattr(membro, campo, valor)
@@ -220,7 +237,7 @@ def atualizar(
 def remover(
     membro_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    user: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+    user: CurrentUser = Depends(get_current_user),
 ) -> None:
     """Tira a pessoa do projeto. NÃO apaga a conta dela nem o que ela auditou.
 
@@ -232,6 +249,7 @@ def remover(
     trazer de volta.
     """
     membro = exigir(db, ProjetoMembro, membro_id, "membro")
+    exigir_coordenacao_do_projeto(db, membro.projeto_id, user)
     _exigir_que_nao_seja_voce(membro, user)
     lixeira.remover(db, membro)
     db.flush()

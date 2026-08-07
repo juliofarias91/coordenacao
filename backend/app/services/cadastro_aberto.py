@@ -5,23 +5,40 @@ aqui "o acesso é só por convite do admin", e o CLAUDE.md registrava que cadast
 aberto contradiz "SSO autentica, não provisiona". O que mudou foi o pedido; o
 que NÃO mudou é o motivo original da regra — e é ele que dá forma a este módulo.
 
-As três amarras que sobreviveram:
+**NÃO HÁ TRAVA (06/08/2026, a pedido).** Quem quiser cria a conta e entra. O
+recurso passou por três formas em dois dias, e vale saber que as duas primeiras
+foram retiradas de propósito, não esquecidas:
 
-1. **O cadastro não cria organização.** Quem se cadastra entra numa que já
-   existe, como usuário comum. Criar tenant continua sendo provisionamento, e
-   continua saindo do seed.
-2. **A organização precisa ter dito que aceita** (`cadastro_aberto`, migration
-   0016). O slug é semipúblico — está no endereço do convite —, então sem o
-   interruptor conhecê-lo bastaria para entrar no tenant.
-3. **A conta nasce no papel MENOS privilegiado.** Ninguém se autoconcede
-   permissão: `LEITOR` vê o que a organização já publicaria, e quem administra
-   promove depois. Nascer coordenador daria a um estranho com o slug o poder de
-   publicar round.
+1. Código da organização digitado no formulário — saiu porque ninguém ia usá-lo.
+2. `organizacao.cadastro_aberto`, um interruptor por tenant (migration 0016) —
+   saiu porque nascia desligado e respondia "peça um convite a quem administra" a
+   quem ERA quem administra. A migration 0017 derruba a coluna.
+
+O QUE SOBROU é o mínimo que um multi-tenant permite: a conta precisa de um
+`org_id`, e `organizacao_do_cadastro` o resolve sem perguntar nada a ninguém.
+
+Duas coisas continuam de pé, e nenhuma é trava — são o desenho:
+
+- **O cadastro não cria organização.** Criar tenant é provisionamento e sai do
+  seed. Uma rota pública que fabricasse tenants não teria nada que impedisse mil
+  deles.
+- **A conta nasce LEITOR**, o papel menos privilegiado, com `permissoes` vazia.
+  Sem nenhuma trava antes dela, o papel de entrada é o ÚNICO limite que resta
+  entre alguém que acabou de se cadastrar e o que a plataforma faz — nascer
+  coordenador daria a um desconhecido o poder de publicar round.
+
+**A CONTA NASCE SEM VÍNCULO DE PROJETO, e é o ponto do desenho** (06/08/2026, a
+pedido): quem liga a pessoa a um projeto é quem coordena, por
+`POST /projetos/{id}/membros`. Este módulo NÃO toca em `projeto_membro`, e não é
+omissão — é onde a autorização real acontece agora. Cadastrar-se responde "esta
+pessoa existe na organização"; o vínculo responde "esta pessoa trabalha neste
+projeto", e é ele que dá acesso a modelo, auditoria e relatório.
+`test_conta_nova_nao_entra_em_projeto_nenhum` tranca isso.
 
 O provisionamento pelo SSO (`api/v1/auth.py::oidc_callback`) passa POR AQUI, e
 é de propósito: são duas portas para o mesmo ato, e duas implementações
-divergiriam na primeira regra nova — a segunda esqueceria o interruptor, ou o
-papel, ou o e-mail em minúsculas.
+divergiriam na primeira regra nova — a segunda esqueceria o papel, ou o e-mail
+em minúsculas.
 """
 
 from __future__ import annotations
@@ -41,14 +58,13 @@ class CadastroRecusado(Exception):
     """Não dá para criar a conta, e a rota traduz o motivo em status HTTP."""
 
 
-class OrganizacaoNaoAceita(CadastroRecusado):
-    """Slug inexistente OU com o cadastro fechado — as duas na mesma exceção.
+class SemOrganizacao(CadastroRecusado):
+    """Não há NENHUMA organização no banco.
 
-    UMA EXCEÇÃO SÓ, E ISSO É A DECISÃO. Separá-las daria à rota pública como
-    responder "esta organização existe, mas não aceita cadastro" — que é
-    exatamente a frase que transforma o formulário num verificador de tenants:
-    quem quisesse saber quais organizações usam a plataforma teria só de digitar
-    nomes prováveis e ler a diferença entre as duas respostas.
+    Não é política, é instalação pela metade: a plataforma não foi semeada
+    (`scripts/seed.py`). Vale como exceção própria porque a resposta a dar é
+    outra — não adianta pedir convite a quem administra num sistema onde não há
+    organização para administrar.
     """
 
 
@@ -61,13 +77,33 @@ class LoginJaExiste(CadastroRecusado):
     """
 
 
-def organizacao_que_aceita(db: Session, slug: str) -> Organizacao:
-    """A organização deste código, se ela existir E aceitar cadastro."""
+def organizacao_do_cadastro(db: Session) -> Organizacao:
+    """A organização em que uma conta nova nasce: a MAIS ANTIGA.
+
+    Sem código digitado e sem interruptor, alguma regra tem de responder — a
+    conta precisa de `org_id`, que é NOT NULL. Esta é a mais simples que funciona
+    sem configuração e sem campo na tela, e ela acerta porque a PRIMEIRA
+    organização provisionada é a da própria SPBIM: as outras, se houver, vieram
+    depois dela.
+
+    ⚠ `ORDER BY created_at` NÃO É ENFEITE. As duas alternativas óbvias falham no
+    banco real do piloto, que hoje tem uma segunda linha (`org-2347b538`, resíduo
+    de teste de 30/07): "a única que existir" recusaria todo cadastro enquanto
+    aquela linha estiver lá, e "a primeira que vier" cairia dentro dela em parte
+    das execuções — SELECT sem ORDER BY não promete ordem nenhuma, e o Postgres
+    muda a sua conforme o plano.
+
+    ⚠ RISCO CONHECIDO, e é o preço do que se pediu: com um SEGUNDO tenant de
+    verdade, toda conta criada por conta própria continuará nascendo no primeiro,
+    em silêncio. Não sobrou nada na requisição que diga outro destino. Cadastro
+    por tenant exigiria um sinal novo — subdomínio, ou o código de volta — e isso
+    é decisão de produto, não ajuste deste arquivo.
+    """
     org = db.execute(
-        select(Organizacao).where(Organizacao.slug == slug.strip().lower())
+        select(Organizacao).order_by(Organizacao.created_at.asc()).limit(1)
     ).scalar_one_or_none()
-    if org is None or not org.cadastro_aberto:
-        raise OrganizacaoNaoAceita
+    if org is None:
+        raise SemOrganizacao
     return org
 
 

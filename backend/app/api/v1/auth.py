@@ -42,7 +42,13 @@ from app.schemas.auth import (
     UsuarioOut,
 )
 from app.schemas.usuario import SENHA_MINIMA
+
+# `correio` e não `email`: `oidc_callback` tem uma variável local com esse nome
+# (o e-mail vindo do provedor), e o módulo ficaria sombreado lá dentro. Hoje
+# aquela função não envia nada; o apelido é para que o dia em que ela precisar
+# enviar não comece com um `NoneType is not callable`.
 from app.services import acesso, cadastro_aberto
+from app.services import email as correio
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -193,8 +199,8 @@ def cadastrar(payload: CadastroRequest, db: Session = Depends(get_auth_db)) -> S
     """Cria a própria conta dentro de uma organização que aceita (05/08/2026).
 
     PÚBLICA, e por isso `get_auth_db`: quem chega aqui ainda não tem tenant para
-    o row-level security consultar — é o código da organização que faz o papel
-    do filtro, como o token faz nas rotas de senha.
+    o row-level security consultar. Quem resolve a organização é o interruptor,
+    do lado do servidor — o corpo da requisição não a informa e não pode.
 
     ENTRA JÁ AUTENTICADO (devolve `SessaoOut`, como o login). A alternativa era
     responder 201 e mandar para a tela de entrada, onde a pessoa digitaria pela
@@ -204,19 +210,21 @@ def cadastrar(payload: CadastroRequest, db: Session = Depends(get_auth_db)) -> S
     nenhuma.
 
     ⚠ NÃO HÁ LIMITE DE TENTATIVAS AQUI, pela mesma razão que não há no login —
-    é decisão em aberto registrada no CLAUDE.md. Com `cadastro_aberto` desligado
-    em toda organização, a superfície é uma rota que responde 404 rápido; ligado
-    num tenant, ela passa a merecer o limite tanto quanto o login.
+    é decisão em aberto registrada no CLAUDE.md. E desde 06/08/2026 ela ficou
+    mais afiada: enquanto houve interruptor, a rota respondia 404 rápido em toda
+    organização e quase não tinha superfície. Agora ela cria conta para quem
+    pedir, então o limite passou de "bom ter" a pendência de verdade.
     """
     try:
-        org = cadastro_aberto.organizacao_que_aceita(db, payload.org)
-    except cadastro_aberto.OrganizacaoNaoAceita:
+        org = cadastro_aberto.organizacao_do_cadastro(db)
+    except cadastro_aberto.SemOrganizacao:
+        # 503 e não 404: a plataforma não foi semeada, e isso é defeito de
+        # instalação, não resposta a um pedido malfeito. Um 404 mandaria quem se
+        # cadastra procurar convite, quando quem precisa agir é quem operou o
+        # deploy.
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=(
-                "código de organização inválido, ou esta organização não aceita "
-                "cadastro por conta própria — peça um convite a quem administra"
-            ),
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="a plataforma ainda não tem organização configurada",
         ) from None
 
     try:
@@ -344,13 +352,25 @@ def esqueci_a_senha(
     if len(candidatos) == 1:
         usuario = candidatos[0]
         if usuario.status == "ativo" and acesso.pedido_recente(db, usuario) is None:
-            acesso.criar(db, usuario=usuario, tipo=acesso.REDEFINICAO)
-            acesso.avisar_admins(db, usuario)
+            _, token = acesso.criar(db, usuario=usuario, tipo=acesso.REDEFINICAO)
+            # O E-MAIL PRIMEIRO, A NOTIFICAÇÃO SÓ SE ELE NÃO SAIR. Com envio
+            # configurado, avisar o admin de um pedido já atendido o mandaria
+            # gerar um segundo link para alguém que já recebeu o primeiro — e
+            # dois links vivos para a mesma conta é mais superfície sem ganho.
+            #
+            # ⚠ O TOKEN NÃO ENTRA NA RESPOSTA, e é o ponto do desenho: esta rota
+            # é pública e anônima. Devolvê-lo para o front despachar por EmailJS
+            # faria "esqueci minha senha" entregar a conta a quem digitasse o
+            # e-mail de outra pessoa. Ver `services/email.py`.
+            if not correio.enviar_redefinicao_de_senha(
+                para=usuario.login, nome=usuario.nome, token=token
+            ):
+                acesso.avisar_admins(db, usuario)
 
     return {
         "detalhe": (
-            "Se este e-mail tiver conta, quem administra a organização foi avisado "
-            "e vai enviar o link de definição de senha."
+            "Se este e-mail tiver conta, o link de definição de senha está a caminho. "
+            "Ele vale por 2 horas — confira também a caixa de spam."
         )
     }
 
@@ -425,27 +445,17 @@ def _exigir_oidc() -> None:
 
 
 @router.get("/oidc/login", response_model=OidcAuthorizeOut)
-async def oidc_login(
-    org: str | None = Query(
-        default=None,
-        description=(
-            "Código da organização, quando a intenção é CRIAR a conta pelo "
-            "provedor. Omitido, o callback só reconhece quem já existe."
-        ),
-    ),
-) -> OidcAuthorizeOut:
+async def oidc_login() -> OidcAuthorizeOut:
     """Devolve a URL de autorização do provedor.
 
     O `state` é um JWT curto que carrega o `code_verifier` do PKCE assinado
     pela própria API — evita depender de sessão no servidor para um passo que
     dura segundos.
 
-    O CÓDIGO DA ORGANIZAÇÃO VIAJA JUNTO, e precisa viajar assinado. Ele é o que
-    diz ao callback em que tenant a conta pode nascer, e o callback não tem
-    outro lugar de onde tirá-lo: o redirecionamento do provedor volta com
-    `code` e `state`, e mais nada nosso. Aceitá-lo como parâmetro solto do
-    callback deixaria qualquer pessoa trocar o tenant de destino no meio do
-    caminho — bastaria editar a URL de volta.
+    ELE VOLTOU A CARREGAR SÓ O VERIFIER (06/08/2026). Por um dia levou junto o
+    código da organização, que era o que dizia ao callback em que tenant a conta
+    podia nascer; sem código, não há o que carregar — quem resolve a organização
+    é o interruptor, no servidor, e o callback a consulta direto.
     """
     _exigir_oidc()
     verifier, challenge = oidc.new_pkce_pair()
@@ -453,30 +463,13 @@ async def oidc_login(
         usuario_id=uuid.uuid4(),
         org_id=uuid.uuid4(),
         papel="leitor",
-        # O verifier e o slug viajam assinados dentro do state. A lista é
-        # posicional — [0] verifier, [1] organização — porque `create_token` só
-        # tem este campo de carga livre; ver `_do_state`, abaixo, que é o único
-        # lugar que conhece as posições.
-        permissoes=[verifier, (org or "").strip().lower()],
+        permissoes=[verifier],   # o verifier viaja assinado dentro do state
         token_type="access",
     )
     return OidcAuthorizeOut(
         authorization_url=await oidc.authorization_url(state, challenge),
         state=state,
     )
-
-
-def _do_state(claims: dict[str, Any]) -> tuple[str, str]:
-    """(verifier, slug da organização) — o único lugar que sabe as posições.
-
-    Tolera o state de uma versão anterior, que trazia só o verifier: um
-    redirecionamento em voo no momento do deploy volta com o formato antigo, e
-    derrubá-lo com IndexError daria 500 a quem só teve o azar do minuto.
-    """
-    carga = claims.get("perms") or []
-    verifier = carga[0] if len(carga) > 0 else ""
-    org = carga[1] if len(carga) > 1 else ""
-    return verifier, org
 
 
 @router.get("/oidc/callback", response_model=SessaoOut)
@@ -493,7 +486,7 @@ async def oidc_callback(
             status_code=status.HTTP_400_BAD_REQUEST, detail="state inválido"
         ) from exc
 
-    verifier, org_slug = _do_state(state_claims)
+    verifier = (state_claims.get("perms") or [""])[0]
     tokens: dict[str, Any] = await oidc.exchange_code(code, verifier)
     claims = await oidc.validate_id_token(tokens["id_token"])
 
@@ -525,23 +518,29 @@ async def oidc_callback(
     # por formulário — quem as aplica é `services/cadastro_aberto.py`, o mesmo
     # módulo, para as duas portas não divergirem.
     #
-    # AS DUAS CONDIÇÕES SÃO O QUE SOBROU DA REGRA ANTIGA, e nenhuma é dispensável:
+    # NÃO SOBROU CONDIÇÃO NENHUMA (06/08/2026, a pedido): o código da organização
+    # saiu, e o interruptor `cadastro_aberto` saiu junto (migration 0017).
+    # Autenticar-se no provedor e não ter conta aqui passa a CRIAR a conta, no
+    # papel de leitor e sem projeto nenhum.
     #
-    # - **Tem de haver código de organização no state.** Sem ele não há em que
-    #   tenant criar, e não existe "o tenant padrão" numa plataforma multi-tenant.
-    #   Na prática: quem clicou no botão da tela de ENTRAR não manda código e só
-    #   entra se já existir; quem clicou no da tela de CADASTRO manda.
-    # - **A organização tem de aceitar cadastro aberto.** É o interruptor da
-    #   migration 0016. Sem ele, autenticar-se num provedor público — e o Google
-    #   é o mais público que há — daria a qualquer pessoa do mundo uma conta em
-    #   qualquer tenant cujo slug ela conhecesse.
+    # ⚠ ENTRAR E CADASTRAR PELO PROVEDOR SÃO O MESMO PEDIDO, e não há como
+    # separá-los: os dois botões mandam exatamente a mesma requisição, e nada no
+    # `state` diz de qual tela o clique veio. Separá-los de novo exigiria
+    # inventar um sinal para viajar assinado ali — ou seja, repor o que saiu.
+    #
+    # ⚠ E ISTO É A SUPERFÍCIE MAIS LARGA DO RECURSO: qualquer conta Google do
+    # mundo vira uma conta de leitor aqui. O que limita o estrago é o papel de
+    # entrada e a ausência de vínculo de projeto — quem acabou de entrar não
+    # alcança modelo, auditoria nem relatório enquanto um coordenador não o
+    # vincular. Se um dia isso não bastar, o lugar de apertar é `PAPEL_DE_ENTRADA`
+    # ou um domínio de e-mail permitido, não um interruptor por tenant.
     #
     # E o e-mail precisa vir: ele é o login. Um provedor que não devolva `email`
     # (escopo não concedido) cai no 403 de sempre, que é o certo — a conta não
     # teria como ser encontrada depois nem como receber redefinição de senha.
-    if usuario is None and org_slug and email:
+    if usuario is None and email:
         try:
-            org = cadastro_aberto.organizacao_que_aceita(db, org_slug)
+            org = cadastro_aberto.organizacao_do_cadastro(db)
             usuario = cadastro_aberto.criar(
                 db,
                 org=org,
@@ -554,11 +553,15 @@ async def oidc_callback(
                 oidc_sub=sub,
             )
         except cadastro_aberto.CadastroRecusado:
-            # Inclui o e-mail que JÁ TEM conta naquela organização — e aí ele
-            # não foi encontrado acima porque a busca por login exige que a
-            # identidade resolva para exatamente um usuário. Cair no 403 é o
-            # certo: a plataforma não sabe quem é, e criar por cima seria
-            # duplicar a pessoa.
+            # A CLASSE-BASE, de propósito: as três recusas — nenhuma organização
+            # aberta, duas abertas, e-mail que já tem conta — terminam no mesmo
+            # 403. Aqui não há a quem explicar a diferença: quem está do outro
+            # lado é um redirecionamento de provedor, não um formulário, e não há
+            # campo para corrigir nem decisão que a pessoa possa tomar.
+            #
+            # O e-mail que JÁ TEM conta cai aqui quando a busca por login não o
+            # resolveu para exatamente um usuário. Criar por cima duplicaria a
+            # pessoa; 403 é o certo — a plataforma não sabe quem ela é.
             usuario = None
 
     if usuario is None or usuario.status != "ativo":

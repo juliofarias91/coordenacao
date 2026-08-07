@@ -322,33 +322,95 @@ cadastro de conta própria (`/cadastro`) e a entrada pelo Google. Isto REVERTE
 lugares — mas a reversão é condicionada, e as condições são o recurso. O porquê
 longo está em `services/cadastro_aberto.py`; o resumo:
 
-- **O cadastro NÃO cria organização.** Quem chega entra numa que já existe, pelo
-  código dela. Criar tenant continua sendo provisionamento e continua saindo do
-  seed — se uma rota pública pudesse criar, nada impediria mil deles.
-- **`organizacao.cadastro_aberto` (migration 0016) é o interruptor, e nasce
-  DESLIGADO.** Sem ele o código seria o slug, e o slug não é segredo: ele está
-  no endereço do convite e a tela de login já o pede quando o mesmo e-mail está
-  em dois tenants. Ligar é decisão de quem administra, em `/admin/organizacao`.
-  Cheguei a desenhar um `codigo_cadastro` à parte — dois segredos a gerenciar e
-  a girar quando um vazasse, para resolver o que uma decisão resolve.
+**O CÓDIGO DA ORGANIZAÇÃO SAIU EM 06/08/2026, a pedido.** Ele durou um dia: era
+um campo obrigatório com o slug do tenant, e era o que dizia onde a conta
+nascia. Saiu porque ninguém ia usá-lo — e um campo obrigatório cuja resposta
+quem chega não tem trava o formulário na primeira linha. `POST /auth/cadastro`
+recebe **nome, e-mail e senha, e nada mais**; `oidc_login` voltou a carregar só
+o verifier no `state`.
+
+**O INTERRUPTOR SAIU NO MESMO DIA (migration 0017, a pedido).** Ele existiu entre
+a 0016 e a 0017 e nascia DESLIGADO — o que fazia `POST /auth/cadastro` responder
+*"peça um convite a quem administra"* a quem ERA quem administra. **Hoje não há
+trava nenhuma:** quem quiser cria a conta e entra.
+
+- **O DESTINO É A ORGANIZAÇÃO MAIS ANTIGA** (`organizacao_do_cadastro`), e o
+  `ORDER BY created_at` não é enfeite. As duas alternativas óbvias quebram no
+  banco real: "a única que existir" recusaria tudo enquanto houver a segunda
+  linha lá (`org-2347b538`, resíduo de teste de 30/07), e "a primeira que vier"
+  cairia dentro dela em parte das execuções — SELECT sem ordenação não promete
+  ordem. A mais antiga acerta porque a primeira organização provisionada é a da
+  própria SPBIM.
+- ⚠ **RISCO CONHECIDO, e é o preço do que se pediu:** com um SEGUNDO tenant de
+  verdade, toda conta criada por conta própria continuará nascendo no primeiro,
+  em silêncio. Não sobrou nada na requisição que diga outro destino. Cadastro por
+  tenant exigiria um sinal novo (subdomínio, ou o código de volta), e é decisão
+  de produto.
+- **Não existe organização padrão em `.env`**, e não deve passar a existir:
+  seria uma segunda fonte de verdade para a mesma decisão.
+- **O cadastro NÃO cria organização.** Criar tenant continua sendo
+  provisionamento e continua saindo do seed — se uma rota pública pudesse criar,
+  nada impediria mil deles.
+- **O QUE CONTROLA O ACESSO AGORA É O VÍNCULO DE PROJETO**, não a porta — e isso
+  passou a ser verdade só em 06/08/2026, ver logo abaixo. É onde apertar se um
+  dia o cadastro aberto incomodar, junto com `PAPEL_DE_ENTRADA`. Não reponha um
+  interruptor por tenant.
+
+**O VÍNCULO DE PROJETO PASSOU A LIMITAR O QUE SE ENXERGA** (06/08/2026, a
+pedido). Isto **corrige uma afirmação que eu fiz errado**: cheguei a escrever que
+uma conta recém-criada "não alcança modelo, auditoria nem relatório enquanto
+ninguém a vincular", e era falso — `ver_painel` sozinho listava TODO projeto da
+organização. Foi o que fez uma conta nova entrar e encontrar o CPQ11 na home.
+
+- **`exigir_projeto_do_usuario` e `projetos_visiveis`**, em `services/escopo.py`,
+  são o ponto único. Quem tem `admin_cadastro` vê tudo — é quem cria projeto e
+  vincula gente, e precisa enxergar o que ainda não tem ninguém dentro.
+- **ISTO NÃO CONTRADIZ `test_participacao_nao_e_permissao`**, e a distinção é a
+  decisão: vínculo **LIMITA alcance** e **nunca concede poder**. Ser coordenador
+  em `projeto_membro` continua não valendo `admin_cadastro`. As duas regras
+  apontam em direções opostas e por isso convivem — "o que posso fazer?" é
+  permissão, "sobre quais projetos?" é vínculo.
+- **A LISTA E AS SUB-ROTAS, não só a lista.** Filtrar só `GET /projetos` seria
+  esconder: o id vai na URL e `/projetos/<id>/painel` abriria do mesmo jeito. A
+  guarda entra nas 12 chamadas cuja permissão não é `admin_cadastro`; as que já
+  exigem essa permissão não precisam, porque ela ignora o vínculo.
+- **404, nunca 403**, como o resto de `escopo.py`: "proibido" confirmaria que o
+  projeto existe a quem só tem o id.
+- **`portal.py` ficou de fora de propósito** — é autenticado por token do
+  cliente, não tem `CurrentUser`, e continua usando `exigir_projeto`.
+- ⚠ **Consequência para papéis não-admin:** auditor e revisor sem vínculo passam
+  a não ver projeto nenhum. Hoje isso não regride nada (todas as contas do banco,
+  menos as de leitor, têm `admin_cadastro`), mas conta nova de auditor exige
+  vincular antes de ela ver qualquer coisa.
+
+**A ENGRENAGEM DE MEMBROS SÓ APARECE PARA `admin_cadastro`**
+(`components/TabelaMembros.tsx`). A gaveta dela edita papel, equipe e os
+interruptores de `PaginasVisiveis` — que decidem QUE TELAS a outra pessoa vê. Um
+visualizador recém-cadastrado a via em toda linha. A API já recusava (403), mas
+botão que só sabe falhar anuncia um poder que não existe; a coluna "Ações" some
+junto, e o `AdicionarMembro` também. **Isto é esconder, não proteger** — quem
+protege é o `requer_permissao` de cada rota.
+- **A CONTA NASCE SEM VÍNCULO DE PROJETO** (06/08/2026, a pedido): quem liga a
+  pessoa a um projeto é o gerente dele, em `projeto_membro`. Cadastrar-se
+  responde "esta pessoa existe na organização"; o vínculo responde "esta pessoa
+  trabalha neste projeto". O atalho tentador — pôr a conta nova em todos os
+  projetos, ou no primeiro, para ela "já ver alguma coisa" — daria a um
+  desconhecido os modelos e as auditorias de um cliente real. Home vazia é o
+  certo, e o subtítulo da tela de cadastro avisa que ela vem.
+  `test_conta_nova_nao_entra_em_projeto_nenhum` tranca isso.
 - **A conta nasce LEITOR**, o papel menos privilegiado, com `permissoes` VAZIA
   (que significa "usa o padrão do papel", e é o que a faz acompanhar uma
-  promoção). Nascer coordenador daria a um estranho de posse do código o poder
-  de publicar round — o ato que congela o resultado para o fornecedor.
-- **Slug inexistente e organização fechada respondem IGUAL** (404, mesma frase).
-  Respostas diferentes fariam do formulário público um verificador de tenants.
-  É a mesma razão do 202 fixo de `/auth/senha/esqueci`.
-- **O SSO passa pelo MESMO módulo.** `oidc_callback` provisiona sob as duas
-  condições acima — código no `state` **e** interruptor ligado —, e não com
-  código próprio. Duas implementações divergiriam, e a que esquecesse o
-  interruptor abriria todo tenant a qualquer conta do Google.
-- **O código da organização viaja ASSINADO dentro do `state`** (`oidc_login` →
-  `_do_state`). Ele diz ao callback em que tenant a conta pode nascer, e o
-  callback não tem outra fonte: o provedor devolve `code` e `state`, e nada mais
-  nosso. Como parâmetro solto do callback, qualquer pessoa trocaria o tenant de
-  destino editando a URL de volta.
-- **A tela de ENTRAR não manda o código; a de CADASTRO manda.** É o que mantém
-  `/` reconhecendo quem já existe e `/cadastro` sendo o único lugar que cria.
+  promoção). Sem trava alguma antes dela, este é o PRIMEIRO limite que existe
+  entre um desconhecido e a plataforma — não o segundo.
+- **O SSO passa pelo MESMO módulo, e agora sem condição nenhuma.**
+  `oidc_callback` chama `organizacao_do_cadastro` como a rota de cadastro chama.
+  Consequência a encarar de frente: **qualquer conta Google do mundo vira uma
+  conta de leitor aqui.** O que limita o estrago é o papel de entrada e a
+  ausência de vínculo de projeto.
+- **ENTRAR E CADASTRAR PELO PROVEDOR SÃO O MESMO PEDIDO**, e não há como
+  separá-los: os dois botões mandam a mesma requisição e nada no `state` diz de
+  qual tela o clique veio. Separá-los exigiria inventar um sinal para viajar
+  assinado ali — ou seja, repor o que saiu.
 
 **O `OIDC_REDIRECT_URI` APONTA PARA A TELA (`/entrar/sso`), NÃO PARA A API.**
 Quem chega ao redirect é o NAVEGADOR, e `GET /auth/oidc/callback` responde JSON —
@@ -452,12 +514,15 @@ canal entra em `esqueci_a_senha` e o resto não muda.
 **Ainda não existe, e é decisão em aberto:** limite de tentativas no login
 (cada tentativa paga um Argon2, então é vetor de DoS além de brute force),
 registro de falha de login, e exigir a senha atual ao trocar a própria.
-**O cadastro aberto entrou nessa mesma lista** (05/08/2026): `POST /auth/cadastro`
-é público e não tem limite, pela mesma razão que o login não tem. Com o
-interruptor desligado em toda organização, a superfície é uma rota que responde
-404 rápido; ligado num tenant, ela passa a merecer o limite tanto quanto o login.
-**Confirmação de e-mail também não existe** — sem SMTP não há como enviá-la, e é
-por isso que o cadastro já devolve sessão em vez de mandar confirmar.
+**O LIMITE NO CADASTRO É A PENDÊNCIA MAIS AFIADA DA LISTA** (06/08/2026).
+`POST /auth/cadastro` é público e não tem limite, pela mesma razão que o login
+não tem — mas a razão mudou de peso. Enquanto houve interruptor (migrations 0016
+a 0017), a rota respondia 404 rápido em toda organização e quase não tinha
+superfície; agora ela CRIA CONTA para quem pedir, e um laço trivial enche a
+tabela `usuario` do tenant. **Confirmação de e-mail também não existe** — sem
+SMTP não há como enviá-la, e é por isso que o cadastro devolve sessão em vez de
+mandar confirmar; junto do cadastro sem trava, isso significa que **nada prova
+que quem se cadastrou é dono do e-mail que digitou**.
 
 ## Importação de planilha — PONTE PROVISÓRIA (30/07/2026)
 
@@ -967,10 +1032,14 @@ categorias de elemento**, para STRC.
   sem seção nenhuma. Três faixas numa planilha de dezessete linhas dividem em
   três o que se lê de uma vez. Recorte novo só entra nesse conjunto se a planilha
   DELE tiver a coluna ELEMENT.
-- **`projeto_membro` registra participação e NÃO autoriza** (migration 0004).
-  Quem decide continua sendo `requer_permissao` sobre as permissões de
-  organização. `tests/test_membros.py::test_participacao_nao_e_permissao`
-  existe para que ligar as duas coisas seja uma decisão, não um acidente.
+- **`projeto_membro` registra participação e NÃO CONCEDE poder** (migration
+  0004). Quem decide o que se PODE FAZER continua sendo `requer_permissao` sobre
+  as permissões de organização, e `test_participacao_nao_e_permissao` existe
+  para que ligar as duas coisas seja uma decisão, não um acidente.
+  **Mas desde 06/08/2026 ele LIMITA o alcance:** quem não é membro não enxerga o
+  projeto (`exigir_projeto_do_usuario`, em `services/escopo.py`). As duas regras
+  apontam em direções opostas e por isso convivem — participar nunca amplia o
+  que se pode fazer; não participar restringe sobre o quê. Ver a seção "Acesso".
 - `backend/app/api/v1/` tem o padrão de rota (permissão via `requer_permissao`, sessão via `get_tenant_db`, 404 via `services/escopo.py`).
 - `backend/app/services/auditoria.py` concentra as regras da execução — leia antes de mexer em estado de round.
 - `backend/app/services/automacao/executor.py` tem o registro de verificadores: para automatizar um critério novo, acrescente uma entrada em `VERIFICADORES` ou dê a ele um `parametro_esperado`.
