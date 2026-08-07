@@ -217,12 +217,18 @@ aside {
 
 /* ESCOPADO EM `aside`, e não `nav` solto. Estas regras são da BARRA LATERAL, mas
    estavam num seletor de ELEMENTO — e pegavam em toda `<nav>` da aplicação. A
-   vítima era a fileira de abas da configuração do projeto (`<nav class="abas">`):
-   ela declara `display: flex` e ganha, mas NÃO declara `flex-direction`, então
-   herdava o `column` daqui e as cinco abas empilhavam uma sobre a outra,
-   cada uma com a largura inteira da página.
-   Bug de seletor de elemento em CSS global: a regra certa no lugar errado. O
-   dock não é afetado — ele é `<nav class="dock">` e tem `.dock a` completo. */
+   vítima era a fileira de abas da configuração do projeto (`<nav class="abas">`,
+   que não existe mais desde 07/08/2026): ela declarava `display: flex` e ganhava,
+   mas NÃO declarava `flex-direction`, então herdava o `column` daqui e as abas
+   empilhavam uma sobre a outra, cada uma com a largura inteira da página.
+   Bug de seletor de elemento em CSS global: a regra certa no lugar errado.
+
+   ⚠ O ESCOPO CONTINUA SENDO `aside`, e agora ele é LOAD-BEARING: os painéis de
+   página são `<aside class="pgside">` com um `<nav class="pglist">` dentro, e é
+   DAQUI que o `pglist` tira `display: flex`, `column` e o `gap: 2px` entre os
+   itens — ele próprio só declara rolagem e respiro. Estreitar este seletor para
+   `.side nav` desmancharia a lista dos três painéis de uma vez.
+   O dock não é afetado — ele é `<nav class="dock">` e tem `.dock a` completo. */
 aside nav {
   display: flex;
   flex-direction: column;
@@ -2775,291 +2781,6 @@ td.num {
 }
 
 /* ============================================================================
-   AUDITORIA DE ARQUIVOS — o módulo portado do Auditer.
-
-   Ele veio de um design system diferente (Tailwind/shadcn) e nada de lá
-   atravessou: só o comportamento. Aqui ele fala a mesma língua do resto.
-   ============================================================================ */
-.dropzone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 48px 20px;
-  text-align: center;
-  border: 1px dashed var(--line-2);
-  border-radius: var(--r-2xl);
-  background: var(--panel);
-  cursor: pointer;
-  transition: border-color var(--dur-fast), background var(--dur-fast);
-  margin-bottom: 16px;
-}
-
-.dropzone:hover,
-.dropzone.sobre {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.dropzone.off {
-  pointer-events: none;
-  opacity: 0.5;
-}
-
-.dropzone b {
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.dropzone span {
-  font-size: 13px;
-  color: var(--ink-2);
-}
-
-.aud-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.aud-kpi {
-  padding: 14px 16px;
-}
-
-.aud-kpi-rot {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-}
-
-/* O número NUNCA é colorido — quem carrega o tom é a bolinha à esquerda.
-   Ver a nota em "MÉTRICAS" acima. */
-.aud-kpi-num {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 24px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.5px;
-  margin-top: 6px;
-  color: var(--ink);
-}
-
-.aud-kpi-num.ok::before,
-.aud-kpi-num.ruim::before,
-.aud-kpi-num.alerta::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  flex: none;
-  border-radius: var(--r-full);
-}
-
-.aud-kpi-num.ok::before {
-  background: var(--ok);
-}
-
-.aud-kpi-num.ruim::before {
-  background: var(--bad);
-}
-
-.aud-kpi-num.alerta::before {
-  background: var(--wait);
-}
-
-.aud-item {
-  margin-bottom: 10px;
-  overflow: hidden;
-}
-
-.aud-cab {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  cursor: pointer;
-  transition: color var(--dur-fast);
-}
-
-.aud-cab:hover {
-  color: var(--ink);
-}
-
-.aud-seta {
-  flex: none;
-  color: var(--ink-3);
-}
-
-.aud-nome {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-}
-
-.aud-selos {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: none;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.aud-corpo {
-  border-top: 1px solid var(--line);
-  padding: 12px 16px 16px;
-}
-
-/* O primeiro título de seção dentro do corpo não precisa da margem de cima
-   que separa seções irmãs. */
-.aud-corpo .sectitle:first-child {
-  margin-top: 0;
-}
-
-.aud-lista {
-  margin: 0 0 10px;
-  padding: 0;
-  list-style: none;
-  font-size: 13px;
-}
-
-.aud-lista li {
-  padding: 3px 0;
-}
-
-.aud-bom {
-  color: var(--ok);
-  margin: 0 0 10px;
-  font-size: 13px;
-}
-
-.aud-ruim {
-  color: var(--bad);
-}
-
-.aud-orto-lista {
-  max-height: 380px;
-  overflow-y: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--r-xl);
-}
-
-.aud-orto {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 9px 12px;
-  font-size: 13px;
-  border-bottom: 1px solid var(--line);
-}
-
-.aud-orto:last-child {
-  border-bottom: 0;
-}
-
-.aud-orto-local {
-  flex: none;
-  width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-  color: var(--ink-3);
-}
-
-.aud-marca {
-  background: var(--bad-bg);
-  color: var(--bad);
-  font-weight: 600;
-  border-radius: 3px;
-  padding: 0 2px;
-}
-
-.aud-seg {
-  padding: 14px;
-  margin-bottom: 10px;
-  background: var(--panel-2);
-  border-radius: var(--r-xl);
-}
-
-.aud-seg-sep {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-3);
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid var(--line);
-}
-
-.aud-seg-cab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-
-.aud-seg-num {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-full);
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.aud-padrao-cab {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.aud-previa {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-
-.aud-previa-par {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.aud-regex {
-  margin: 8px 0 0;
-  padding: 10px 12px;
-  background: var(--panel-2);
-  border-radius: var(--r-lg);
-  font-size: 11px;
-  color: var(--ink-2);
-  overflow-x: auto;
-}
-
-/* ============================================================================
    RESPONSIVO — abaixo de 820px a sidebar sai e o dock entra.
    ============================================================================ */
 @media (max-width: 820px) {
@@ -5113,7 +4834,15 @@ td.num {
 
 /* Regra 1: ativo é COR + PESO, nunca pílula. Regra 6: hover é tinta.
    Num painel de seis itens o retângulo do ativo viraria o elemento mais pesado
-   da tela — e ele só precisa responder "onde eu estou". */
+   da tela — e ele só precisa responder "onde eu estou".
+
+   `text-decoration: none` NÃO É ZELO, é um defeito pago (07/08/2026). Desde que
+   a configuração do projeto virou painel, o `.pgitem` também é usado em `<a>` —
+   e não há regra global de `a` neste projeto (ver a seção AUTENTICAÇÃO). Sem
+   esta linha o navegador desenha o sublinhado dele em TODAS as seções, ativas ou
+   não, que foi exatamente o que aconteceu com `.aba` enquanto ela existiu: um
+   risco sob o texto que ninguém escolheu e que competia com o traço de accent
+   que dizia qual era a seção corrente. */
 .pgitem {
   display: block;
   width: 100%;
@@ -5125,6 +4854,7 @@ td.num {
   background: none;
   border: 0;
   border-radius: var(--r-md);
+  text-decoration: none;
   transition: color var(--dur-fast);
 }
 
@@ -5135,6 +4865,22 @@ td.num {
 .pgitem.on {
   color: var(--ink);
   font-weight: 700;
+}
+
+/* O TRAÇO ENTRE BLOCOS do painel — hoje só em Membros do projeto, separando as
+   equipes (que saem dos dados) do Portal do cliente (que é fixo). É a mesma
+   ideia do divisor do menu da conta: ele separa BLOCOS, não itens, senão dá ao
+   corte entre duas coisas sem relação o mesmo peso do corte entre duas
+   irmãs.
+   As margens laterais o encolhem para dentro do `--pad-x` dos itens: um traço
+   de borda a borda do painel leria como o fim da lista, e não como uma junta
+   dentro dela. */
+.pgsep {
+  display: block;
+  height: 1px;
+  flex: none;
+  margin: 8px var(--pad-x);
+  background: var(--line);
 }
 
 /* ---- o recorte como DROPDOWN dos modelos auditados (31/07/2026) ----------
@@ -5713,38 +5459,25 @@ td.num {
   border-color: var(--ink-3);
 }
 
-/* --- ABAS de página (configuração do projeto) ---------------------------- */
-/* Voltaram em 29/07/2026, quando a configuração deixou de ser área. Regra 1
-   outra vez: a aba ativa é tinta cheia e negrito, com um traço EMBAIXO — o
-   traço é o que diz "esta seção", e ele é a exceção prevista para quando tinta
-   sozinha não distingue numa fileira horizontal. Sem fundo, em nenhum estado. */
-.abas {
-  display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 22px;
-}
+/* --- ABAS de página: NÃO EXISTEM MAIS (07/08/2026, a pedido) -------------
+   `.abas`/`.aba` eram a fileira da configuração do projeto, e ela era a ÚNICA
+   consumidora — a configuração virou painel de página (`.pgsplit`) e as classes
+   ficaram sem ninguém. Quem desenha a seção corrente agora é `.pgitem`.
 
-.aba {
-  padding: 9px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-2);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: color var(--dur-fast), border-color var(--dur-fast);
-}
+   As duas coisas que este bloco deixa para trás, porque as duas custaram caro:
 
-.aba:hover {
-  color: var(--ink);
-}
+   1. O TRAÇO DE ACCENT era a exceção prevista para uma FILEIRA HORIZONTAL, onde
+      tinta e peso sozinhos não distinguem o item corrente. Numa COLUNA eles
+      distinguem, e o traço passaria a ser risco a mais na tela — é por isso que
+      `.pgitem.on` não tem nenhum.
+   2. O SUBLINHADO DO NAVEGADOR. `.aba` era um `<a>` e nunca declarou
+      `text-decoration`; como não há regra global de `a` neste projeto, as oito
+      abas viviam riscadas por baixo, ativas ou não. `.pgitem` declara `none`.
 
-.aba.on {
-  color: var(--ink);
-  font-weight: 700;
-  border-bottom-color: var(--accent);
-}
+   O prefixo `plan-` das abas de área da planilha (lá em cima neste arquivo)
+   nasceu de uma COLISÃO com estas classes, em 04/08. A colisão morreu junto com
+   elas; o prefixo fica, porque é o que o resto daquela tela usa.
+   Recuperável no histórico: `git log -S '.abas' -- frontend/src/styles/app.css`. */
 
 /* ============================================================================
    MEMBROS — a tabela das duas telas de membros (global e por projeto)

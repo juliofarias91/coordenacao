@@ -14,7 +14,14 @@ from sqlalchemy.orm import Session
 from app.core.deps import CurrentUser, get_tenant_db, requer_permissao
 from app.core.pagination import Page, ParamsPagina, aplicar_cursor, montar_pagina
 from app.models import Projeto
-from app.schemas.projeto import ProjetoCreate, ProjetoOut, ProjetoUpdate
+from app.schemas.projeto import (
+    AreaEscrita,
+    AreaOut,
+    ProjetoCreate,
+    ProjetoOut,
+    ProjetoUpdate,
+)
+from app.services import areas as svc_areas
 from app.services import lixeira
 from app.services.escopo import (
     conflito,
@@ -117,3 +124,72 @@ def remover(
     faria a restauração ter de adivinhar quais delas já estavam removidas antes.
     """
     lixeira.remover(db, exigir_projeto(db, projeto_id))
+
+
+# ------------------------------------------------------------------ áreas
+#
+# OS SETORES DA OBRA (migration 0019). Quatro rotas, e cada uma NOMEIA UM ATO —
+# a alternativa era `areas` em `ProjetoUpdate`, com o cliente mandando a lista
+# pronta. Da lista pronta não se deduz o que se quis fazer: trocar 'COLO1' por
+# 'TORRE 1' chega exatamente igual a apagar uma e criar outra, e as duas fazem
+# coisas opostas com a auditoria que já está preenchida ali dentro. As regras (e
+# a cascata) estão em `services/areas.py`.
+#
+# `admin_cadastro` para escrever, como disciplinas e projetos: definir setor é
+# cadastro, não execução de auditoria.
+
+
+@router.get("/{projeto_id}/areas", response_model=list[AreaOut])
+def listar_areas(
+    projeto_id: uuid.UUID,
+    db: Session = Depends(get_tenant_db),
+    user: CurrentUser = Depends(requer_permissao("ver_painel")),
+) -> list[AreaOut]:
+    """As áreas COM o que depende de cada uma.
+
+    Sem paginação, de propósito: são os setores de UMA obra — oito no CPQ11 —, a
+    tela os mostra todos, e o `uso()` já é uma consulta só para o conjunto.
+    """
+    projeto = exigir_projeto_do_usuario(db, projeto_id, user)
+    uso = svc_areas.uso(db, projeto)
+    return [
+        AreaOut(nome=nome, disciplinas=uso[nome][0], auditorias=uso[nome][1])
+        for nome in projeto.areas
+    ]
+
+
+@router.post("/{projeto_id}/areas", response_model=list[str], status_code=status.HTTP_201_CREATED)
+def criar_area(
+    projeto_id: uuid.UUID,
+    payload: AreaEscrita,
+    db: Session = Depends(get_tenant_db),
+    _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+) -> list[str]:
+    projeto = exigir_projeto(db, projeto_id)
+    svc_areas.acrescentar(db, projeto, payload.nome)
+    return list(projeto.areas)
+
+
+@router.patch("/{projeto_id}/areas/{nome}", response_model=list[str])
+def renomear_area(
+    projeto_id: uuid.UUID,
+    nome: str,
+    payload: AreaEscrita,
+    db: Session = Depends(get_tenant_db),
+    _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+) -> list[str]:
+    """Renomeia AQUI e em quem guarda o nome — disciplinas e auditorias."""
+    projeto = exigir_projeto(db, projeto_id)
+    svc_areas.renomear(db, projeto, nome, payload.nome)
+    return list(projeto.areas)
+
+
+@router.delete("/{projeto_id}/areas/{nome}", status_code=status.HTTP_204_NO_CONTENT)
+def remover_area(
+    projeto_id: uuid.UUID,
+    nome: str,
+    db: Session = Depends(get_tenant_db),
+    _: CurrentUser = Depends(requer_permissao("admin_cadastro")),
+) -> None:
+    """Recusa (409) se houver auditoria na área. Ver `services/areas.py`."""
+    svc_areas.remover(db, exigir_projeto(db, projeto_id), nome)

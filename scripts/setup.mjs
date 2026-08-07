@@ -12,7 +12,7 @@
  * O QUE ELE FAZ, e nada além disso:
  *   1. confere Python 3.12 e Node 20+, e PARA dizendo qual falta;
  *   2. cria `backend/.venv` e instala o backend em modo editável;
- *   3. instala o frontend (`npm install`, que já copia os dicionários);
+ *   3. instala o frontend (`npm install`);
  *   4. cria o `.env` a partir do `.env.example`, com um JWT_SECRET sorteado.
  *
  * O QUE ELE NÃO FAZ, de propósito:
@@ -147,7 +147,7 @@ ok('dependências do backend instaladas')
 // ----------------------------------------------------------------- 3. frontend
 passo('Frontend — dependências')
 
-console.log('  npm install (o postinstall copia os dicionários do corretor)…')
+console.log('  npm install…')
 if (!rodar('npm', ['install'], FRONTEND)) morrer('Falhou o npm install do frontend.')
 ok('dependências do frontend instaladas')
 
