@@ -70,8 +70,20 @@ def configurado() -> bool:
     O REMETENTE ENTRA NA CONTA porque quase todo provedor recusa mensagem cujo
     `From` não seja de domínio verificado — sem ele o envio falharia no servidor
     do provedor, que é o pior lugar para descobrir.
+
+    USUÁRIO SEM SENHA TAMBÉM É "NÃO CONFIGURADO", e esta linha custou uma
+    confusão: o `.env` nasce com `SMTP_USER=resend` preenchido e a senha vazia,
+    esperando a chave. Sem a conferência, `configurado()` respondia True, o
+    caminho degradado (o link na tela, o aviso ao admin) NÃO entrava, e o envio
+    ia morrer lá adiante no `login()` do provedor. Meio-caminho é pior do que
+    não estar configurado: promete um e-mail que não vai sair.
+
+    Senha vazia COM usuário vazio continua valendo — é relay interno sem
+    autenticação, que é legítimo e não deve ser barrado aqui.
     """
-    return bool(settings.smtp_host and settings.smtp_remetente)
+    if not (settings.smtp_host and settings.smtp_remetente):
+        return False
+    return bool(settings.smtp_password) if settings.smtp_user else True
 
 
 def _modelo(nome: str, variaveis: dict[str, str]) -> str:
@@ -98,6 +110,33 @@ def _modelo(nome: str, variaveis: dict[str, str]) -> str:
     return html
 
 
+def conectar() -> smtplib.SMTP:
+    """Abre a conexão CIFRADA e AUTENTICADA com o provedor. O chamador fecha.
+
+    PÚBLICA, e é o único ponto que sabe como se fala com o servidor. Quem mais a
+    usa é `scripts/verificar_email.py`, e é por isso que ela não ficou privada:
+    o script precisa provar a credencial SEM enviar nada, e uma segunda cópia
+    desta lógica lá dentro responderia sobre um jeito de conectar que não é o
+    que a aplicação usa — divergiria na primeira mudança de TLS ou de timeout, e
+    o diagnóstico passaria a mentir justamente quando fosse consultado.
+
+    `SMTP_SSL` é subclasse de `SMTP`, por isso o tipo de retorno cobre os dois.
+    """
+    contexto = ssl.create_default_context()
+    if settings.smtp_ssl:
+        s: smtplib.SMTP = smtplib.SMTP_SSL(
+            settings.smtp_host, settings.smtp_port, timeout=TIMEOUT, context=contexto
+        )
+    else:
+        s = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=TIMEOUT)
+        s.starttls(context=contexto)
+    # Sem usuário é relay interno sem autenticação — legítimo, e `login("")`
+    # seria recusado por um servidor que não pede credencial nenhuma.
+    if settings.smtp_user:
+        s.login(settings.smtp_user, settings.smtp_password)
+    return s
+
+
 def _enviar(*, para: str, assunto: str, html: str) -> bool:
     if not configurado():
         log.info("e-mail não enviado: SMTP não configurado (assunto=%s)", assunto)
@@ -116,20 +155,8 @@ def _enviar(*, para: str, assunto: str, html: str) -> bool:
     msg.add_alternative(html, subtype="html")
 
     try:
-        contexto = ssl.create_default_context()
-        if settings.smtp_ssl:
-            with smtplib.SMTP_SSL(
-                settings.smtp_host, settings.smtp_port, timeout=TIMEOUT, context=contexto
-            ) as s:
-                if settings.smtp_user:
-                    s.login(settings.smtp_user, settings.smtp_password)
-                s.send_message(msg)
-        else:
-            with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=TIMEOUT) as s:
-                s.starttls(context=contexto)
-                if settings.smtp_user:
-                    s.login(settings.smtp_user, settings.smtp_password)
-                s.send_message(msg)
+        with conectar() as s:
+            s.send_message(msg)
         return True
     except Exception as exc:  # noqa: BLE001 — e-mail nunca derruba o pedido
         # SEM O CORPO NO LOG: ele carrega o link, e link em log é a mesma

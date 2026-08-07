@@ -45,7 +45,32 @@ olhar quando um e-mail não chegar.
 
 ### 1. Escolher um provedor de SMTP
 
-Qualquer um serve — o código é genérico. Alguns com plano gratuito utilizável:
+**A SPBIM JÁ TEM O SEU** (resolvido em 07/08/2026): um SMTP em
+`smtp1.xmailer.com.br`, porta **465**, com a conta de serviço
+`no-reply@spbim.com.br`. Autenticação e remetente conferidos.
+
+⚠ **CONTA DE SERVIÇO, NÃO A CAIXA DE UMA PESSOA.** A primeira tentativa usou o
+e-mail de um colaborador — o que a VDCity usa — e foi recusada com
+`435 Unable to authenticate at present`. Mesmo que tivesse funcionado, seria a
+escolha errada: a plataforma passaria a guardar uma credencial capaz de **ler a
+correspondência** de alguém, e a troca de senha dessa pessoa derrubaria o envio.
+Se um dia alguém propuser voltar a um endereço pessoal, é isto que se responde.
+
+⚠ **O SMTP do painel do Supabase NÃO é este.** Aquele serve ao **Supabase Auth**,
+que esta plataforma não usa (ver a seção acima). Preencher lá e não aqui não faz
+e-mail nenhum sair — quem envia lê as variáveis do `.env`/do ambiente.
+
+⚠ **465 exige `SMTP_SSL=true`.** Com `false` o handshake falha com uma mensagem
+sobre *"wrong version number"*, que não menciona porta nenhuma e manda quem lê
+procurar no lugar errado.
+
+⚠ **A senha tem `#`, então vai entre aspas no `.env`.** Sem elas, um espaço antes
+do `#` transforma o resto da linha em comentário e a senha chega truncada — com
+um erro de autenticação que não explica nada. O `verificar_email` imprime o
+tamanho da senha carregada; confira que bate.
+
+Se um dia precisar de outra conta, qualquer provedor serve — o código é
+genérico:
 
 | Provedor | Nota |
 |---|---|
@@ -60,6 +85,20 @@ Qualquer um serve — o código é genérico. Alguns com plano gratuito utilizá
 cujo `From` não seja de domínio verificado na conta — ou entrega direto no spam.
 Verifique `spbim.com.br` (ou o domínio que for usar) no painel do provedor, com
 os registros SPF/DKIM que ele indicar, antes de testar.
+
+**Na conta da SPBIM isto está conferido:** o servidor aceita como remetente tanto
+`no-reply@spbim.com.br` quanto `noreply@spbim.com.br` (o painel do Supabase usa a
+segunda grafia, sem hífen). O `.env` usa a **primeira, igual ao usuário que
+autentica** — remetente igual a quem autenticou nunca depende de um alias
+configurado no provedor.
+
+Isso foi testado indo até o `MAIL FROM` e abortando com `RSET` antes do `DATA`:
+o servidor diz se aceita o remetente **sem que nada seja entregue**. Vale lembrar
+para a próxima vez que a pergunta aparecer — não é preciso mandar e-mail de
+verdade para descobrir se o `From` passa.
+
+⚠ Aceitar o remetente **não é** ter SPF/DKIM publicados. Se a mensagem chegar no
+spam, é isso que falta no DNS de `spbim.com.br`.
 
 ### 3. Preencher o `.env` da raiz
 
@@ -88,11 +127,26 @@ variável de e-mail em `frontend/.env`.
 ### 4. Conferir
 
 ```
-cd backend && .venv/Scripts/python.exe -c "from app.services import email; print(email.configurado())"
+cd backend
+.venv/Scripts/python.exe -m scripts.verificar_email                     # lê o .env
+.venv/Scripts/python.exe -m scripts.verificar_email --conectar          # autentica
+.venv/Scripts/python.exe -m scripts.verificar_email --enviar voce@x.com # envia
 ```
 
-`True` significa host e remetente preenchidos — não que o provedor aceita. O
-teste real é pedir uma redefinição em `/esqueci-senha` e ver o e-mail chegar.
+São três degraus, e cada um prova uma coisa diferente — porque as três causas de
+"o e-mail não chegou" falham em momentos distintos:
+
+| Modo | Prova | Não prova |
+|---|---|---|
+| padrão | os campos estão preenchidos e coerentes (587 com SSL ligado é o engano mais comum) | nada sobre o provedor — não há rede |
+| `--conectar` | a **credencial vale**: resolve o host, cifra e autentica | que a mensagem seja aceita |
+| `--enviar` | o provedor **aceitou** a mensagem — é o único que cobre a verificação de domínio | que tenha sido entregue: confira o spam |
+
+O script sai com código 1 em qualquer problema, então serve em cron ou no CI de
+um ambiente novo.
+
+⚠ **Chegou no spam?** Falta SPF/DKIM no DNS do domínio do remetente. Aceito pelo
+provedor e entregue na caixa são coisas diferentes, e essa é a etapa 2.
 
 ## Os modelos
 

@@ -257,6 +257,35 @@ class Settings(BaseSettings):
         if "*" in self.cors_origin_list:
             problemas.append("CORS_ORIGINS com curinga em produção")
 
+        # NÃO É SEGREDO, e mesmo assim entra aqui: é um valor de desenvolvimento
+        # que estraga em silêncio. `app_base_url` monta o link de TODO convite e
+        # de toda redefinição de senha; apontando para localhost, cada e-mail
+        # manda a pessoa para a máquina DELA — a página não abre, ninguém
+        # entende por quê, e o remetente jura que enviou. Some com uma classe de
+        # chamado que só aparece dias depois, quando o convite já foi mandado.
+        #
+        # ⚠ SÓ VALE COM SMTP CONFIGURADO, e a condição não é preciosismo: sem
+        # e-mail nenhum sendo enviado, `app_base_url` não é lido por ninguém (o
+        # único consumidor é `services/email.py::link`). Sem esta condição, a
+        # primeira publicação DEPOIS desta guarda derrubaria a API de um
+        # ambiente que ainda não configurou e-mail — trocando "os links saem
+        # errados" por "a aplicação não sobe", que é muito pior. A guarda passa a
+        # valer no mesmo instante em que passa a ter consequência.
+        #
+        # A condição é mais FROUXA que `email.configurado()` de propósito: aqui a
+        # pergunta é "alguém pretende mandar e-mail?", e não "dá para mandar
+        # agora". Importar o serviço aqui também fecharia um ciclo — ele importa
+        # este módulo.
+        smtp_pretendido = bool(self.smtp_host and self.smtp_remetente)
+        local = "localhost" in self.app_base_url or "127.0.0.1" in self.app_base_url
+        if smtp_pretendido and local:
+            problemas.append(
+                f"APP_BASE_URL aponta para a máquina local ({self.app_base_url}) "
+                "com o SMTP configurado — todo link de convite e de redefinição "
+                "levaria a pessoa ao próprio computador dela. Use o domínio "
+                "público da aplicação."
+            )
+
         return problemas
 
 
