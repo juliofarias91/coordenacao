@@ -32,7 +32,12 @@ from app.schemas.criterio import (
     LinhaGabarito,
 )
 from app.services import gabarito, gabarito_lod, lixeira
-from app.services.escopo import conflito, exigir, exigir_projeto, ja_existe
+from app.services.escopo import (
+    conflito,
+    exigir,
+    exigir_projeto_do_usuario,
+    ja_existe,
+)
 
 router = APIRouter(tags=["criterios"])
 
@@ -85,7 +90,7 @@ def criar_criterio(
     db: Session = Depends(get_tenant_db),
     user: CurrentUser = Depends(requer_permissao("editar_biblioteca")),
 ) -> CriterioOut:
-    exigir_projeto(db, payload.projeto_id)
+    exigir_projeto_do_usuario(db, payload.projeto_id, user)
     if payload.standard_id is not None:
         exigir(db, Standard, payload.standard_id, "standard")
 
@@ -174,9 +179,9 @@ def obter_checklist(
     checklist: ChecklistTipo,
     projeto_id: uuid.UUID = Query(...),
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+    user: CurrentUser = Depends(requer_permissao("ver_painel")),
 ) -> ChecklistOut:
-    exigir_projeto(db, projeto_id)
+    exigir_projeto_do_usuario(db, projeto_id, user)
     return ChecklistOut(
         checklist=checklist,
         projeto_id=projeto_id,
@@ -199,7 +204,7 @@ def definir_itens(
     PUT e não POST item a item: a tela edita a lista como um todo (arrasta,
     reordena, tira), e uma escrita atômica evita o estado meio-salvo.
     """
-    exigir_projeto(db, payload.projeto_id)
+    exigir_projeto_do_usuario(db, payload.projeto_id, user)
 
     ids = [i.criterio_id for i in payload.itens]
     if len(set(ids)) != len(ids):
@@ -329,7 +334,7 @@ def aplicar_gabarito(
     vezes não duplica, e aplicar depois de o projeto ajustar um item não desfaz
     o ajuste — ver `services/gabarito.py`.
     """
-    exigir_projeto(db, payload.projeto_id)
+    exigir_projeto_do_usuario(db, payload.projeto_id, user)
 
     try:
         resumo = gabarito.aplicar(

@@ -108,7 +108,38 @@ export default function TabelaMembros({
   onMudou: () => void
 }) {
   const { L } = useI18n()
-  const { usuario: logado } = useAuth()
+  const { usuario: logado, pode } = useAuth()
+  /** A ENGRENAGEM NÃO EXISTE PARA QUEM SÓ VISUALIZA (06/08/2026, a pedido), e
+   *  desde 07/08 ela EXISTE para quem coordena este projeto.
+   *
+   *  A gaveta que ela abre edita papel e equipe NO projeto. Um visualizador
+   *  recém-cadastrado a via em todas as linhas e podia abrir a de qualquer
+   *  colega; a API já recusava (403), mas botão que só sabe falhar anuncia um
+   *  poder que não existe. A coluna "Ações" some junto — uma coluna com todas as
+   *  células vazias é moldura sem conteúdo.
+   *
+   *  ISTO É ESCONDER, NÃO PROTEGER: quem protege é `exigir_coordenacao_do_
+   *  projeto`, no backend. Se esta linha sumir, volta o botão inútil — não volta
+   *  um buraco. */
+  /** COORDENA ESTE PROJETO — sai da própria lista, e não de uma prop.
+   *
+   *  A tabela já recebe os membros do projeto; procurar a própria linha nela é
+   *  mais barato e mais honesto que a página calcular e passar para baixo: uma
+   *  prop poderia divergir da lista que está desenhada na tela.
+   *
+   *  Na lista GLOBAL (`comProjeto`) isto é sempre falso, e é o certo — lá as
+   *  linhas são de vários projetos, e coordenar um não dá poder sobre os outros.
+   *  Quem administra o cadastro continua alcançando tudo. */
+  const coordenaEste =
+    !comProjeto &&
+    membros.some((m) => m.usuario_id === logado?.id && m.papel === 'coordenador')
+  const administra = pode('admin_cadastro') || coordenaEste
+  /** ⚠ AS PÁGINAS VISÍVEIS SÃO SÓ DE QUEM ADMINISTRA, e não de quem coordena
+   *  (07/08/2026). Elas moram em `usuario.permissoes` e valem na organização
+   *  INTEIRA: um coordenador do CPQ11 apagaria telas de alguém no DANTE 2, que é
+   *  exatamente o vazamento de alcance que a migration 0004 evitava. É a única
+   *  coisa da gaveta que o coordenador não alcança. */
+  const podeEsconderTelas = pode('admin_cadastro')
   /** QUEM a gaveta mostra. Sobrevive ao fechamento — ver o bloco que a monta. */
   const [naGaveta, setNaGaveta] = useState<Membro | null>(null)
   /** SE ela está aberta. `null` fecha e dispara a animação de saída. */
@@ -152,7 +183,7 @@ export default function TabelaMembros({
               <th>{L('Equipe', 'Team')}</th>
               <th>{L('Papel no projeto', 'Role in project')}</th>
               <th>{L('Status', 'Status')}</th>
-              <th className="memb-acoes-col">{L('Ações', 'Actions')}</th>
+              {administra && <th className="memb-acoes-col">{L('Ações', 'Actions')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -187,6 +218,7 @@ export default function TabelaMembros({
                       : L('Pendente', 'Pending')}
                   </span>
                 </td>
+                {administra && (
                 <td className="memb-acoes-col">
                   {/* ⚠ NINGUÉM EDITA O PRÓPRIO VÍNCULO (05/08/2026, a pedido).
                       Trocar o próprio papel ou se remover do projeto é mexer no
@@ -225,6 +257,7 @@ export default function TabelaMembros({
                     </svg>
                   </button>
                 </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -246,6 +279,7 @@ export default function TabelaMembros({
           key={abertura}
           aberta={!!editando}
           membro={naGaveta}
+          podeEsconderTelas={podeEsconderTelas}
           onFechar={() => setEditando(null)}
           onMudou={() => {
             setEditando(null)
@@ -274,13 +308,18 @@ export function AdicionarMembro({
   projetoId,
   jaMembros,
   onMudou,
+  podeMontarEquipe,
 }: {
   projetoId: string
   /** Os `usuario_id` que já têm vínculo — saem da lista de escolha. */
   jaMembros: string[]
   onMudou: () => void
+  /** `admin_cadastro` ou coordenar ESTE projeto. Calculado pela tabela, que já
+   *  tem a lista de membros na mão. */
+  podeMontarEquipe?: boolean
 }) {
   const { L } = useI18n()
+  const { pode } = useAuth()
   const [aberta, setAberta] = useState(false)
   const [contas, setContas] = useState<UsuarioCadastro[]>([])
   const [usuarioId, setUsuarioId] = useState('')
@@ -324,6 +363,15 @@ export function AdicionarMembro({
   }
 
   const rotulo = L('Adicionar membro', 'Add member')
+
+  /** VINCULAR ALGUÉM A UM PROJETO É ATO DE QUEM COORDENA (06/08/2026, a pedido).
+   *
+   *  `POST /projetos/{id}/membros` exige `admin_cadastro` e responderia 403 —
+   *  então o botão só sabia falhar para um visualizador. Ele fica no cabeçalho
+   *  do painel, ao lado da busca, e some inteiro: não há estado desabilitado que
+   *  explique melhor do que a ausência num lugar onde não há linha a que ele se
+   *  refira. */
+  if (!(podeMontarEquipe ?? pode('admin_cadastro'))) return null
 
   return (
     <>
@@ -428,6 +476,7 @@ export function AdicionarMembro({
 function GavetaMembro({
   aberta,
   membro,
+  podeEsconderTelas,
   onFechar,
   onMudou,
 }: {
@@ -435,6 +484,10 @@ function GavetaMembro({
    *  remonta a cada abertura é o `key` no chamador. */
   aberta: boolean
   membro: Membro
+  /** Só `admin_cadastro`. Quem apenas COORDENA o projeto edita papel e equipe,
+   *  mas não as telas visíveis — aquilo é da conta e vale na organização
+   *  inteira. Ver o bloco onde a prop é consumida. */
+  podeEsconderTelas: boolean
   onFechar: () => void
   onMudou: () => void
 }) {
@@ -558,14 +611,16 @@ function GavetaMembro({
           Sem esse aviso, a gaveta mentiria por contexto: tudo mais nela (papel,
           equipe) é por projeto, e quem lê de cima para baixo conclui que estes
           interruptores também são. */}
-      <PaginasVisiveis ocultas={ocultas} onMudar={setOcultas}>
-        <p className="hint">
-          {L(
-            'Estas telas são da CONTA da pessoa: o que se desligar aqui vale em todos os projetos, não só neste. E não é permissão — esconde o item do menu; quem barra a API é o papel dela na organização.',
-            'These screens belong to the person’s ACCOUNT: whatever you switch off here applies to every project, not just this one. And it is not a permission — it hides the menu item; what blocks the API is their organization role.',
-          )}
-        </p>
-      </PaginasVisiveis>
+      {podeEsconderTelas && (
+        <PaginasVisiveis ocultas={ocultas} onMudar={setOcultas}>
+          <p className="hint">
+            {L(
+              'Estas telas são da CONTA da pessoa: o que se desligar aqui vale em todos os projetos, não só neste. E não é permissão — esconde o item do menu; quem barra a API é o papel dela na organização.',
+              'These screens belong to the person’s ACCOUNT: whatever you switch off here applies to every project, not just this one. And it is not a permission — it hides the menu item; what blocks the API is their organization role.',
+            )}
+          </p>
+        </PaginasVisiveis>
+      )}
 
       <div className="memb-remover">
         {confirmando ? (

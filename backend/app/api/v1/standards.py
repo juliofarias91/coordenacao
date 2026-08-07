@@ -26,7 +26,7 @@ from app.schemas.standard import (
     StandardUpdate,
 )
 from app.services import lixeira, storage
-from app.services.escopo import exigir, exigir_projeto
+from app.services.escopo import exigir, exigir_projeto, exigir_projeto_do_usuario
 from app.services.storage import StorageError
 
 router = APIRouter(tags=["standards"])
@@ -188,9 +188,9 @@ def obter_url_da_imagem(
 def obter_nomenclatura(
     projeto_id: uuid.UUID,
     db: Session = Depends(get_tenant_db),
-    _: CurrentUser = Depends(requer_permissao("ver_painel")),
+    user: CurrentUser = Depends(requer_permissao("ver_painel")),
 ) -> NomenclaturaOut:
-    exigir_projeto(db, projeto_id)
+    exigir_projeto_do_usuario(db, projeto_id, user)
     padrao = (
         db.execute(
             select(NomenclaturaPadrao)

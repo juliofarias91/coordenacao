@@ -447,7 +447,7 @@ def test_trilha_nunca_guarda_senha(
         f"{API}/usuarios",
         json={
             "login": "rastreado@spbim.com.br",
-            "senha": "uma-senha-bem-longa-mesmo",
+            "senha": "uma-senha-bem-longa-mesmo-1",
             "papel": "auditor",
         },
     )
@@ -470,7 +470,7 @@ def test_trilha_nunca_guarda_senha(
     assert linhas, "a criação de usuário tem de estar na trilha"
     for linha in linhas:
         texto = str(linha.diff)
-        assert "uma-senha-bem-longa-mesmo" not in texto
+        assert "uma-senha-bem-longa-mesmo-1" not in texto
         assert "uma-segunda-senha-longa" not in texto
         assert "$argon2" not in texto
 

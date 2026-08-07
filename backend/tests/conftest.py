@@ -163,11 +163,21 @@ class Cenario:
         self.projeto = projeto
 
     def token(
-        self, *, papel: PapelUsuario | None = None, permissoes: list[str] | None = None
+        self,
+        *,
+        papel: PapelUsuario | None = None,
+        permissoes: list[str] | None = None,
+        usuario_id: uuid.UUID | None = None,
     ) -> str:
-        """Token do admin, ou de um papel/permissões fabricados para testar guardas."""
+        """Token do admin, ou de um papel/permissões fabricados para testar guardas.
+
+        `usuario_id` existe desde 06/08/2026, quando o vínculo de projeto passou
+        a LIMITAR o que se enxerga: dali em diante alguns testes precisam de um
+        token de OUTRA pessoa, e não do admin com permissões podadas — quem não
+        é membro é o usuário do token, não o papel dele.
+        """
         return create_token(
-            usuario_id=self.admin.id,
+            usuario_id=usuario_id or self.admin.id,
             org_id=self.org.id,
             papel=(papel or self.admin.papel).value,
             permissoes=list(PERMISSOES) if permissoes is None else permissoes,

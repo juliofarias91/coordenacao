@@ -10,14 +10,17 @@ import Importacao from '@/pages/Importacao'
 import Auditoria from '@/pages/auditoria'
 import Recorte from '@/pages/auditoria/Recorte'
 import BimMandate from '@/pages/BimMandate'
+import Cadastro from '@/pages/Cadastro'
 import Configuracao from '@/pages/configuracao'
 import CfgCliente from '@/pages/configuracao/Cliente'
 import CfgDisciplinas from '@/pages/configuracao/Disciplinas'
 import CfgNomenclaturas from '@/pages/configuracao/Nomenclaturas'
 import CfgProjetistas from '@/pages/configuracao/Projetistas'
 import Configuracoes from '@/pages/Configuracoes'
+import Convite, { ConviteDoCadastro, RetomarConvite } from '@/pages/Convite'
 import Ficha from '@/pages/Ficha'
 import Criterios from '@/pages/Criterios'
+import EsqueciSenha from '@/pages/EsqueciSenha'
 import DefinirSenha from '@/pages/DefinirSenha'
 import Home from '@/pages/Home'
 import Integracoes from '@/pages/Integracoes'
@@ -39,6 +42,7 @@ import Painel from '@/pages/Painel'
 import Peb from '@/pages/Peb'
 import Portal from '@/pages/Portal'
 import Relatorios from '@/pages/Relatorios'
+import RetornoSSO from '@/pages/RetornoSSO'
 import EscopoProjeto, { RotaLegada } from '@/projeto/EscopoProjeto'
 import { ProjetoProvider } from '@/projeto/ProjetoContext'
 
@@ -99,6 +103,24 @@ export default function App() {
           {/* A política também: ela informa sobre o tratamento de dados, e uma
               política que só se lê depois de entrar chega tarde demais. */}
           <Route path="/privacidade" element={<Privacidade />} />
+          {/* CRIAR A PRÓPRIA CONTA (05/08/2026). Rota própria e não um modo da
+              tela de login: são cinco campos contra dois, e alternar entre os
+              dois arranjos no mesmo endereço tiraria do cadastro a única coisa
+              que ele precisa ter — um link que se manda a alguém. */}
+          <Route path="/cadastro" element={<Cadastro />} />
+          {/* Recuperar acesso é público pelo mesmo motivo do definir-senha:
+              quem chega aqui é justamente quem não consegue entrar. */}
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+          {/* CONVITE DE EQUIPE, público pelo mesmo motivo do definir-senha:
+              quem abre o link pode ainda não ter conta, e mandá-lo ao login
+              seria mandá-lo à tela que ele não tem como usar. A própria página
+              guarda o token e o retoma depois do cadastro. */}
+          <Route path="/convite/:token" element={<Convite />} />
+          {/* O pouso do provedor externo. É para AQUI que o `OIDC_REDIRECT_URI`
+              aponta, e não para a API: quem chega ao redirect é o NAVEGADOR, e
+              a resposta do callback é JSON — apontá-lo para a API mostrava uma
+              página de JSON cru no fim do login. */}
+          <Route path="/entrar/sso" element={<RetornoSSO />} />
           <Route path="*" element={<Login />} />
         </Routes>
       </Suspense>
@@ -107,9 +129,21 @@ export default function App() {
 
   return (
     <ProjetoProvider>
+      {/* Quem entrou agora e tinha um convite guardado volta para ele. Fica
+          FORA das `Routes` de propósito: precisa rodar em qualquer rota em que
+          a sessão apareça — o cadastro cai na home, o SSO cai em `/entrar/sso`. */}
+      <RetomarConvite />
       <Suspense fallback={carregandoTela}>
         <Routes>
           <Route path="/portal/:token" element={<Portal />} />
+          {/* Também na árvore autenticada: quem JÁ tem sessão e abre o link
+              precisa chegar à mesma tela, e não ao catch-all da home. */}
+          <Route path="/convite/:token" element={<Convite />} />
+          {/* O LINK DO E-MAIL APONTA PARA `/cadastro`, e quem já entrou também
+              clica nele. Aqui `/cadastro` não existe — cairia no catch-all e a
+              pessoa perderia o convite sem saber. `ConviteDoCadastro` lê o
+              `?convite=` e manda para o aceite; sem ele, para a home. */}
+          <Route path="/cadastro" element={<ConviteDoCadastro />} />
           <Route element={<Shell />}>
             {/* GLOBAL — vale para a organização inteira. A porta de entrada é
                 a home: os projetos por cliente. Escolher o projeto é

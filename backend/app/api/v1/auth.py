@@ -29,6 +29,8 @@ from app.core.security import (
 from app.models.cadastro import Organizacao, Usuario
 from app.models.enums import PERMISSOES_POR_PAPEL, paginas_ocultas, permissoes_reais
 from app.schemas.auth import (
+    CadastroRequest,
+    ConfigPublicaOut,
     ConviteSenhaOut,
     EsqueciSenhaRequest,
     LoginRequest,
@@ -40,7 +42,13 @@ from app.schemas.auth import (
     UsuarioOut,
 )
 from app.schemas.usuario import SENHA_MINIMA
-from app.services import acesso
+
+# `correio` e não `email`: `oidc_callback` tem uma variável local com esse nome
+# (o e-mail vindo do provedor), e o módulo ficaria sombreado lá dentro. Hoje
+# aquela função não envia nada; o apelido é para que o dia em que ela precisar
+# enviar não comece com um `NoneType is not callable`.
+from app.services import acesso, cadastro_aberto
+from app.services import email as correio
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -170,6 +178,69 @@ def login(payload: LoginRequest, db: Session = Depends(get_auth_db)) -> SessaoOu
     return _sessao(usuario)
 
 
+@router.get("/config", response_model=ConfigPublicaOut)
+def config_publica() -> ConfigPublicaOut:
+    """O que a tela de entrada precisa saber antes de haver sessão.
+
+    Rota PÚBLICA e sem banco: ela responde sobre a CONFIGURAÇÃO do servidor, não
+    sobre nenhum tenant. É o que permite a tela desenhar o botão do provedor só
+    quando há provedor — um botão que só pode responder 501 promete um caminho
+    de entrada que não existe.
+    """
+    return ConfigPublicaOut(
+        sso=settings.oidc_enabled,
+        sso_rotulo=oidc.rotulo_do_provedor(),
+        senha_minima=SENHA_MINIMA,
+    )
+
+
+@router.post("/cadastro", response_model=SessaoOut, status_code=status.HTTP_201_CREATED)
+def cadastrar(payload: CadastroRequest, db: Session = Depends(get_auth_db)) -> SessaoOut:
+    """Cria a própria conta dentro de uma organização que aceita (05/08/2026).
+
+    PÚBLICA, e por isso `get_auth_db`: quem chega aqui ainda não tem tenant para
+    o row-level security consultar. Quem resolve a organização é o interruptor,
+    do lado do servidor — o corpo da requisição não a informa e não pode.
+
+    ENTRA JÁ AUTENTICADO (devolve `SessaoOut`, como o login). A alternativa era
+    responder 201 e mandar para a tela de entrada, onde a pessoa digitaria pela
+    segunda vez a senha que acabou de escolher — e sem SMTP não há confirmação
+    de e-mail para justificar o passo. As regras que protegem o tenant já foram
+    todas aplicadas antes desta linha; segurar a sessão não acrescentaria
+    nenhuma.
+
+    ⚠ NÃO HÁ LIMITE DE TENTATIVAS AQUI, pela mesma razão que não há no login —
+    é decisão em aberto registrada no CLAUDE.md. E desde 06/08/2026 ela ficou
+    mais afiada: enquanto houve interruptor, a rota respondia 404 rápido em toda
+    organização e quase não tinha superfície. Agora ela cria conta para quem
+    pedir, então o limite passou de "bom ter" a pendência de verdade.
+    """
+    try:
+        org = cadastro_aberto.organizacao_do_cadastro(db)
+    except cadastro_aberto.SemOrganizacao:
+        # 503 e não 404: a plataforma não foi semeada, e isso é defeito de
+        # instalação, não resposta a um pedido malfeito. Um 404 mandaria quem se
+        # cadastra procurar convite, quando quem precisa agir é quem operou o
+        # deploy.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="a plataforma ainda não tem organização configurada",
+        ) from None
+
+    try:
+        usuario = cadastro_aberto.criar(
+            db, org=org, login=payload.login, nome=payload.nome, senha=payload.senha
+        )
+    except cadastro_aberto.LoginJaExiste:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="este e-mail já tem conta nesta organização — entre, ou use "
+            "'Esqueci minha senha'",
+        ) from None
+
+    return _sessao(usuario)
+
+
 @router.post("/refresh", response_model=TokenPair)
 def refresh(payload: RefreshRequest, db: Session = Depends(get_auth_db)) -> TokenPair:
     try:
@@ -281,13 +352,25 @@ def esqueci_a_senha(
     if len(candidatos) == 1:
         usuario = candidatos[0]
         if usuario.status == "ativo" and acesso.pedido_recente(db, usuario) is None:
-            acesso.criar(db, usuario=usuario, tipo=acesso.REDEFINICAO)
-            acesso.avisar_admins(db, usuario)
+            _, token = acesso.criar(db, usuario=usuario, tipo=acesso.REDEFINICAO)
+            # O E-MAIL PRIMEIRO, A NOTIFICAÇÃO SÓ SE ELE NÃO SAIR. Com envio
+            # configurado, avisar o admin de um pedido já atendido o mandaria
+            # gerar um segundo link para alguém que já recebeu o primeiro — e
+            # dois links vivos para a mesma conta é mais superfície sem ganho.
+            #
+            # ⚠ O TOKEN NÃO ENTRA NA RESPOSTA, e é o ponto do desenho: esta rota
+            # é pública e anônima. Devolvê-lo para o front despachar por EmailJS
+            # faria "esqueci minha senha" entregar a conta a quem digitasse o
+            # e-mail de outra pessoa. Ver `services/email.py`.
+            if not correio.enviar_redefinicao_de_senha(
+                para=usuario.login, nome=usuario.nome, token=token
+            ):
+                acesso.avisar_admins(db, usuario)
 
     return {
         "detalhe": (
-            "Se este e-mail tiver conta, quem administra a organização foi avisado "
-            "e vai enviar o link de definição de senha."
+            "Se este e-mail tiver conta, o link de definição de senha está a caminho. "
+            "Ele vale por 2 horas — confira também a caixa de spam."
         )
     }
 
@@ -368,6 +451,11 @@ async def oidc_login() -> OidcAuthorizeOut:
     O `state` é um JWT curto que carrega o `code_verifier` do PKCE assinado
     pela própria API — evita depender de sessão no servidor para um passo que
     dura segundos.
+
+    ELE VOLTOU A CARREGAR SÓ O VERIFIER (06/08/2026). Por um dia levou junto o
+    código da organização, que era o que dizia ao callback em que tenant a conta
+    podia nascer; sem código, não há o que carregar — quem resolve a organização
+    é o interruptor, no servidor, e o callback a consulta direto.
     """
     _exigir_oidc()
     verifier, challenge = oidc.new_pkce_pair()
@@ -417,14 +505,64 @@ async def oidc_callback(
             detail="id_token sem 'sub' — identidade não identificável",
         )
 
-    # Usuário precisa estar previamente cadastrado: SSO autentica, não provisiona.
-    # (Provisionamento automático é decisão de produto — fica para a Fase 1.)
     usuario = _um_por_identidade(db, Usuario.oidc_sub, sub)
     if usuario is None and email:
         usuario = _um_por_identidade(db, Usuario.login, email)
         if usuario is not None:
             usuario.oidc_sub = sub
             db.add(usuario)
+
+    # O PROVISIONAMENTO PELO PROVEDOR (05/08/2026, a pedido). Até aqui a regra
+    # era "SSO autentica, não provisiona" e uma identidade sem conta levava 403;
+    # agora ela PODE criar a conta, e as condições são exatamente as do cadastro
+    # por formulário — quem as aplica é `services/cadastro_aberto.py`, o mesmo
+    # módulo, para as duas portas não divergirem.
+    #
+    # NÃO SOBROU CONDIÇÃO NENHUMA (06/08/2026, a pedido): o código da organização
+    # saiu, e o interruptor `cadastro_aberto` saiu junto (migration 0017).
+    # Autenticar-se no provedor e não ter conta aqui passa a CRIAR a conta, no
+    # papel de leitor e sem projeto nenhum.
+    #
+    # ⚠ ENTRAR E CADASTRAR PELO PROVEDOR SÃO O MESMO PEDIDO, e não há como
+    # separá-los: os dois botões mandam exatamente a mesma requisição, e nada no
+    # `state` diz de qual tela o clique veio. Separá-los de novo exigiria
+    # inventar um sinal para viajar assinado ali — ou seja, repor o que saiu.
+    #
+    # ⚠ E ISTO É A SUPERFÍCIE MAIS LARGA DO RECURSO: qualquer conta Google do
+    # mundo vira uma conta de leitor aqui. O que limita o estrago é o papel de
+    # entrada e a ausência de vínculo de projeto — quem acabou de entrar não
+    # alcança modelo, auditoria nem relatório enquanto um coordenador não o
+    # vincular. Se um dia isso não bastar, o lugar de apertar é `PAPEL_DE_ENTRADA`
+    # ou um domínio de e-mail permitido, não um interruptor por tenant.
+    #
+    # E o e-mail precisa vir: ele é o login. Um provedor que não devolva `email`
+    # (escopo não concedido) cai no 403 de sempre, que é o certo — a conta não
+    # teria como ser encontrada depois nem como receber redefinição de senha.
+    if usuario is None and email:
+        try:
+            org = cadastro_aberto.organizacao_do_cadastro(db)
+            usuario = cadastro_aberto.criar(
+                db,
+                org=org,
+                login=email,
+                nome=(claims.get("name") or "").strip() or None,
+                # SEM SENHA: a conta nasce só com a identidade do provedor.
+                # Inventar uma criaria uma credencial que ninguém conhece e que
+                # nunca seria trocada; quem quiser entrar por senha um dia usa
+                # "Esqueci minha senha", que é o caminho desenhado para isso.
+                oidc_sub=sub,
+            )
+        except cadastro_aberto.CadastroRecusado:
+            # A CLASSE-BASE, de propósito: as três recusas — nenhuma organização
+            # aberta, duas abertas, e-mail que já tem conta — terminam no mesmo
+            # 403. Aqui não há a quem explicar a diferença: quem está do outro
+            # lado é um redirecionamento de provedor, não um formulário, e não há
+            # campo para corrigir nem decisão que a pessoa possa tomar.
+            #
+            # O e-mail que JÁ TEM conta cai aqui quando a busca por login não o
+            # resolveu para exatamente um usuário. Criar por cima duplicaria a
+            # pessoa; 403 é o certo — a plataforma não sabe quem ela é.
+            usuario = None
 
     if usuario is None or usuario.status != "ativo":
         raise HTTPException(

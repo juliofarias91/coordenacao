@@ -1,112 +1,80 @@
 /** Convidar para o projeto — o botão do rodapé da sidebar de projeto.
  *
- *  O QUE ELE CONVIDA, E O QUE NÃO. A plataforma tem hoje UM tipo de convite que
- *  se envia: o do PORTAL DO CLIENTE — um link com token que dá acesso de
- *  leitura ao painel do projeto, com visibilidade definida campo a campo. É
- *  esse que este botão cria, e é por isso que ele pede nome e e-mail do cliente.
+ *  ═══ ELE MUDOU DE ASSUNTO EM 07/08/2026, a pedido
  *
- *  Convidar um MEMBRO DE TIME é outra coisa e ainda não existe: exigiria enviar
- *  e-mail e ter uma tela de definição de senha (o item 11 do CONTINUACAO —
- *  "acesso só por convite do admin"). Enquanto isso, quem já tem conta entra no
- *  projeto por `Membros do projeto`, e o painel aqui aponta para lá em vez de
- *  fingir que manda convite para quem ainda não tem conta.
+ *  Até aqui este botão convidava para o **PORTAL DO CLIENTE**: um link de
+ *  leitura, com visibilidade campo a campo, para quem não tem conta na
+ *  plataforma. E ele trazia escrito, no rodapé do próprio painel, que "convite
+ *  por e-mail para quem ainda não tem conta ainda não existe" — o que deixou de
+ *  ser verdade quando o convite de equipe foi portado da VDCity.
  *
- *  Fica no rodapé da barra, e não numa aba de Configuração, porque convidar é
- *  ato de rotina de quem coordena — a mesma posição em que a Home tem o Sair.
+ *  Agora ele abre a MESMA gaveta de `Membros do projeto` (`ConvidarPessoa`).
+ *  Duas telas para o mesmo ato divergiriam na primeira mudança, e "Convidar" no
+ *  rodapé da barra é o lugar em que se procura convidar gente — não convidar
+ *  cliente, que é o caso raro.
+ *
+ *  ⚠ O CONVITE DO PORTAL NÃO SE PERDEU, e é por isso que a troca é barata: ele
+ *  já tinha casa própria e MAIS COMPLETA em `Configuração › Cliente`, que lista,
+ *  cria, revoga e ajusta o que o cliente enxerga. Este botão era um atalho para
+ *  a metade daquilo. O `.hint` no fim da gaveta aponta para lá — a mesma
+ *  gentileza que este painel fazia ao contrário, quando mandava quem procurava
+ *  membro de time para `Membros do projeto`.
+ *
+ *  ═══ QUEM VÊ O BOTÃO
+ *
+ *  Só quem monta a equipe: `admin_cadastro`, ou coordenar ESTE projeto. A conta
+ *  é a mesma de `MembrosProjeto`, e sai da lista de membros — que é a única
+ *  fonte que diz o papel de alguém NUM projeto (o token só carrega o papel de
+ *  organização).
+ *
+ *  A LISTA É BUSCADA UMA VEZ POR PROJETO, e não a cada abertura: é uma
+ *  requisição pequena, e ela precisa ter respondido ANTES do clique — um botão
+ *  que aparece meio segundo depois da barra é pior do que um que não aparece.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
-import { Erro } from '@/components/ui'
+import { useAuth } from '@/auth/AuthContext'
+import ConvidarPessoa from '@/components/ConvidarPessoa'
 import { useI18n } from '@/i18n'
-import { ApiError, api } from '@/lib/api'
-import type { Convite, Projeto } from '@/lib/types'
-import { rotaProjeto } from '@/projeto/ProjetoContext'
-
-/** A URL que se manda ao cliente. Montada a partir da origem atual porque o
- *  token é a credencial e o portal é rota da própria aplicação. */
-function urlDoPortal(token: string): string {
-  return `${window.location.origin}/portal/${token}`
-}
+import { api } from '@/lib/api'
+import type { Projeto } from '@/lib/types'
 
 export default function Convidar({ projeto }: { projeto: Projeto }) {
   const { L } = useI18n()
-  const [aberto, setAberto] = useState(false)
-  const [convites, setConvites] = useState<Convite[]>([])
-  const [nome, setNome] = useState('')
-  const [email, setEmail] = useState('')
-  const [erro, setErro] = useState<string | null>(null)
-  const [salvando, setSalvando] = useState(false)
-  const [copiado, setCopiado] = useState<string | null>(null)
-  const caixa = useRef<HTMLDivElement>(null)
+  const { usuario, pode } = useAuth()
+  const [aberta, setAberta] = useState(false)
+  const [coordena, setCoordena] = useState(false)
 
-  const carregar = useCallback(async () => {
-    try {
-      setConvites(await api.convites.listar(projeto.id))
-    } catch (e) {
-      setErro(e instanceof ApiError ? e.message : String(e))
-    }
-  }, [projeto.id])
+  const admin = pode('admin_cadastro')
 
   useEffect(() => {
-    if (!aberto) return
-    carregar()
-
-    function fora(e: MouseEvent) {
-      if (caixa.current && !caixa.current.contains(e.target as Node)) setAberto(false)
-    }
-    function tecla(e: KeyboardEvent) {
-      if (e.key === 'Escape') setAberto(false)
-    }
-    document.addEventListener('mousedown', fora)
-    document.addEventListener('keydown', tecla)
-    return () => {
-      document.removeEventListener('mousedown', fora)
-      document.removeEventListener('keydown', tecla)
-    }
-  }, [aberto, carregar])
-
-  async function criar() {
-    setErro(null)
-    setSalvando(true)
-    try {
-      const criado = await api.convites.criar(projeto.id, {
-        cliente_nome: nome.trim() || null,
-        cliente_email: email.trim() || null,
+    // Quem já administra o cadastro não precisa da consulta: a resposta não
+    // mudaria nada, e é a maioria das contas que abrem um projeto hoje.
+    if (admin || !usuario) return
+    let ativo = true
+    api.membros
+      .listar(projeto.id)
+      .then((ms) => {
+        if (!ativo) return
+        setCoordena(ms.some((m) => m.usuario_id === usuario.id && m.papel === 'coordenador'))
       })
-      setNome('')
-      setEmail('')
-      await carregar()
-      // Copia na hora: o convite SÓ SERVE como link, e obrigar um segundo
-      // clique para pegá-lo seria pedir duas ações para uma intenção.
-      await copiar(criado.token)
-    } catch (e) {
-      setErro(e instanceof ApiError ? e.message : String(e))
-    } finally {
-      setSalvando(false)
+      // Falhar aqui é o mesmo que não coordenar: o botão não aparece, e a pessoa
+      // chega ao convite por `Membros do projeto`, que é o caminho de sempre.
+      .catch(() => undefined)
+    return () => {
+      ativo = false
     }
-  }
+  }, [projeto.id, usuario, admin])
 
-  async function copiar(token: string) {
-    try {
-      await navigator.clipboard.writeText(urlDoPortal(token))
-      setCopiado(token)
-      setTimeout(() => setCopiado(null), 2000)
-    } catch {
-      // Sem permissão de área de transferência (http, ou o navegador negou):
-      // o link continua visível na lista para ser copiado à mão.
-      setErro(L('Não consegui copiar — copie o link da lista.', 'Could not copy — copy from the list.'))
-    }
-  }
-
-  const ativos = convites.filter((c) => c.ativo)
+  if (!(admin || coordena)) return null
 
   return (
-    <div className="side-acao" ref={caixa}>
+    <div className="side-acao">
       <button
         type="button"
-        className={`side-botao${aberto ? ' on' : ''}`}
-        onClick={() => setAberto(!aberto)}
+        className={`side-botao${aberta ? ' on' : ''}`}
+        onClick={() => setAberta(true)}
         title={L('Convidar para o projeto', 'Invite to the project')}
       >
         <svg
@@ -125,77 +93,31 @@ export default function Convidar({ projeto }: { projeto: Projeto }) {
         <span className="nav-rot">{L('Convidar', 'Invite')}</span>
       </button>
 
-      {aberto && (
-        <div className="side-painel">
-          <div className="sinocab">
-            <b>{L('Convidar para o portal', 'Invite to the portal')}</b>
-          </div>
+      {/* A GAVETA, e não um `.side-painel` como antes. O painel da barra é para
+          o que se lê de relance (o sino, a conta); isto é formulário, e
+          formulário mora na gaveta — é a régua da seção "Sistema visual".
+          Reaproveitá-la também garante que os dois lugares de convidar não
+          divirjam: é o mesmo componente, com as mesmas regras.
 
-          <div style={{ padding: 12 }}>
-            <p className="hint" style={{ marginTop: 0 }}>
-              {L(
-                'Gera um link de leitura do painel deste projeto. Quem recebe não precisa de conta — o link é a credencial, e o que ele mostra se ajusta em Configurações do projeto.',
-                'Creates a read-only link to this project’s panel. The recipient needs no account — the link is the credential, and what it shows is set under Project setup.',
-              )}
-            </p>
+          ⚠ VAI PARA O `body` POR PORTAL, e é obrigatório aqui — não é
+          preferência. O `aside` é `position: sticky` COM `z-index`, o que faz
+          dele um contexto de empilhamento: uma gaveta renderizada lá dentro
+          ficaria presa no nível 50 da barra, por mais que declare 61. Hoje ela
+          ainda apareceria (a topbar é 30), mas por coincidência aritmética — e
+          o primeiro elemento que nascesse entre 50 e 61 passaria por cima dela
+          sem que nada no CSS da gaveta explicasse por quê.
 
-            <Erro mensagem={erro} />
-
-            <input
-              className="f"
-              style={{ marginBottom: 8 }}
-              placeholder={L('Nome do convidado', 'Guest name')}
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-            />
-            <input
-              className="f"
-              style={{ marginBottom: 10 }}
-              type="email"
-              placeholder={L('E-mail (opcional)', 'E-mail (optional)')}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <button className="btn pri block" onClick={criar} disabled={salvando}>
-              {salvando ? L('Gerando…', 'Creating…') : L('Gerar link e copiar', 'Create link and copy')}
-            </button>
-
-            {ativos.length > 0 && (
-              <div className="side-convites">
-                {ativos.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className="side-convite"
-                    onClick={() => copiar(c.token)}
-                    title={urlDoPortal(c.token)}
-                  >
-                    <span className="side-convite-nome">
-                      {c.cliente_nome || c.cliente_email || L('Sem nome', 'Unnamed')}
-                    </span>
-                    <span className="mmeta">
-                      {copiado === c.token ? L('copiado', 'copied') : L('copiar link', 'copy link')}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* A outra metade da pergunta "convidar quem?". Dizer onde fica é
-                mais útil do que deixar quem procura membro de time achar que
-                este painel não serviu. */}
-            <p className="hint" style={{ marginBottom: 0 }}>
-              {L('Para pôr alguém do time no projeto, use ', 'To put a teammate on the project, use ')}
-              <Link to={rotaProjeto(projeto.id, 'membros')} onClick={() => setAberto(false)}>
-                {L('Membros do projeto', 'Project members')}
-              </Link>
-              {L(
-                '. Convite por e-mail para quem ainda não tem conta ainda não existe.',
-                '. E-mail invites for people without an account do not exist yet.',
-              )}
-            </p>
-          </div>
-        </div>
+          Nos outros usos (`MembrosProjeto`, a home) a gaveta é filha do `main`,
+          que não abre contexto, e por isso lá o portal não faz falta. */}
+      {createPortal(
+        <ConvidarPessoa
+          projetoId={projeto.id}
+          projetoNome={`${projeto.codigo} · ${projeto.nome}`}
+          aberta={aberta}
+          onFechar={() => setAberta(false)}
+          onConvidou={() => undefined}
+        />,
+        document.body,
       )}
     </div>
   )

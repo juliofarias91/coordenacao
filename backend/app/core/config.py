@@ -77,6 +77,29 @@ class Settings(BaseSettings):
     oidc_redirect_uri: str = ""
     oidc_scopes: str = "openid profile email"
 
+    # --- E-mail (EmailJS pela API REST) -------------------------------------
+    # ⚠ O ENVIO É DO SERVIDOR, e não do navegador, e isto NÃO é preferência de
+    # arquitetura: o link de redefinição É a credencial. `POST
+    # /auth/senha/esqueci` é público e anônimo — se ele devolvesse o token para
+    # o front mandar por EmailJS, qualquer pessoa pediria a redefinição de
+    # qualquer e-mail e receberia de volta a chave da conta. O token não pode
+    # sair do servidor a não ser dentro do e-mail.
+    #
+    # Por isso a chave PRIVADA (`emailjs_private_key`): a API REST do EmailJS
+    # exige-a em chamada fora do navegador, e é ela que autoriza o envio. Ela
+    # nunca vai para o bundle.
+    emailjs_service: str = ""
+    emailjs_public_key: str = ""
+    emailjs_private_key: str = ""
+    emailjs_template_senha: str = ""
+    emailjs_template_convite: str = ""
+
+    # A URL pública da aplicação, para montar o link que vai no e-mail. O
+    # servidor não tem como adivinhá-la: ele responde em :8000 atrás de proxy, e
+    # `Host` é cabeçalho que o cliente controla — montar o link a partir dele
+    # deixaria um atacante escolher o domínio do link de redefinição.
+    app_base_url: str = "http://localhost:5173"
+
     # --- Storage -----------------------------------------------------------
     s3_endpoint_url: str = "http://localhost:9000"
     s3_region: str = "us-east-1"

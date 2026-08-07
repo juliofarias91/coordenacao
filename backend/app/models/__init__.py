@@ -13,6 +13,7 @@ from app.models.auditoria import (
 from app.models.cadastro import (
     Cliente,
     Contato,
+    ConviteEquipe,
     Disciplina,
     Empresa,
     NomenclaturaPadrao,
@@ -38,7 +39,8 @@ from app.models.modelos import Modelo, VersaoModelo
 __all__ = [
     "Base",
     # cadastro
-    "Organizacao", "Cliente", "Projeto", "ProjetoMembro", "Empresa", "Contato", "Usuario",
+    "Organizacao", "Cliente", "Projeto", "ProjetoMembro", "ConviteEquipe",
+    "Empresa", "Contato", "Usuario",
     "TokenAcesso", "Standard", "NomenclaturaPadrao", "Disciplina",
     # critérios
     "Criterio", "ChecklistItem",

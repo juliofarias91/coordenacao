@@ -46,6 +46,35 @@ async def _jwks() -> dict[str, Any]:
     return _jwks_cache
 
 
+# Os emissores que a plataforma sabe nomear na tela. É rótulo, NÃO é
+# autorização: quem decide se o SSO vale é `OIDC_ENABLED` + `OIDC_ISSUER`, e
+# apontar o issuer para um provedor fora desta lista continua funcionando — só
+# que o botão dirá "SSO" em vez do nome dele.
+#
+# Google entra aqui porque o pedido foi "entrar com o Google", e ele é um
+# provedor OIDC como qualquer outro: o cliente abaixo já servia, e o que faltava
+# era a tela ter como saber que nome escrever no botão.
+_PROVEDORES = {
+    "accounts.google.com": "Google",
+    "developer.api.autodesk.com": "Autodesk",
+    "login.microsoftonline.com": "Microsoft",
+}
+
+
+def rotulo_do_provedor() -> str:
+    """O nome do provedor configurado, para o rótulo do botão de entrada.
+
+    Casa por SUFIXO do host e não por igualdade: o issuer da Autodesk e o da
+    Microsoft carregam caminho (`/authentication/v2`, `/{tenant}/v2.0`), e o do
+    Google aparece tanto com `https://` quanto sem.
+    """
+    issuer = settings.oidc_issuer.strip().lower()
+    for host, nome in _PROVEDORES.items():
+        if host in issuer:
+            return nome
+    return "SSO"
+
+
 def new_pkce_pair() -> tuple[str, str]:
     """(verifier, challenge S256)."""
     verifier = secrets.token_urlsafe(64)[:128]
