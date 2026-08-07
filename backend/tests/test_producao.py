@@ -52,6 +52,12 @@ def _config(**kw: Any) -> Settings:
         # POSTGRES_PASSWORD e o teste passa a depender da máquina em que roda.
         "database_url": "",
         "app_database_url": "",
+        # Mesma razão, e passou a importar quando o SMTP foi configurado de
+        # verdade (07/08/2026): com o `.env` da máquina preenchido, a guarda do
+        # APP_BASE_URL ligaria sozinha aqui, e o teste que prova o contrário
+        # dependeria de quem o roda. Quem precisa de SMTP ligado passa explícito.
+        "smtp_host": "",
+        "smtp_remetente": "",
     }
     return Settings(**{**base, **kw})
 
@@ -104,10 +110,28 @@ def test_app_base_url_local_impede_a_aplicacao_de_subir(valor: str) -> None:
     o convite já entregue —, que é exatamente a classe de erro que esta função
     existe para pegar no start.
     """
-    cfg = _config(app_base_url=valor)
+    cfg = _config(
+        app_base_url=valor,
+        smtp_host="smtp1.exemplo.com.br",
+        smtp_remetente="no-reply@exemplo.com.br",
+    )
     assert any("APP_BASE_URL" in p for p in cfg.problemas_de_producao())
     with pytest.raises(RuntimeError, match="APP_BASE_URL"):
         verificar_producao(cfg)
+
+
+def test_sem_smtp_o_app_base_url_local_nao_derruba_nada() -> None:
+    """A guarda acima vale SÓ com e-mail configurado, e a distinção é o ponto.
+
+    Sem SMTP nada é enviado, e `app_base_url` não é lido por ninguém — o único
+    consumidor é `services/email.py::link`. Cobrá-lo assim mesmo faria a
+    primeira publicação depois desta guarda derrubar um ambiente que ainda não
+    configurou e-mail: trocaria "os links saem errados" por "a aplicação não
+    sobe", que é bem pior. Ela passa a valer quando passa a ter consequência.
+    """
+    cfg = _config(app_base_url="http://localhost:5173", smtp_host="", smtp_remetente="")
+    assert cfg.problemas_de_producao() == []
+    verificar_producao(cfg)
 
 
 @pytest.mark.parametrize("campo", ["database_url", "app_database_url"])
