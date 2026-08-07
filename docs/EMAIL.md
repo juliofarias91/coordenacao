@@ -100,16 +100,23 @@ Vivem em **`backend/app/emails/`** e são lidos pelo servidor no envio:
 
 | Arquivo | Quando |
 |---|---|
-| `convite.html` | convite para um projeto |
-| `redefinir-senha.html` | link de definição de senha |
+| `acesso/convite.html` | convite para um projeto |
+| `acesso/redefinir-senha.html` | link de definição de senha |
+| `acesso/trocar-email.html` | ⚠ nada envia este ainda — o fluxo não existe |
+
+**O README daquela pasta é a fonte sobre eles** — variáveis de cada um, o que
+mudou em relação aos originais da VDCity, e as quatro peças que faltam para a
+troca de e-mail sair do papel. Aqui fica só o que é de configuração.
 
 Os `{{campo}}` são trocados por `str.replace` — não há motor de template, porque
-os dois arquivos são texto com buracos, sem condicional nem laço.
+os arquivos são texto com buracos, sem condicional nem laço.
 
 ⚠ **Eles são DADOS DO PACOTE** (`[tool.setuptools.package-data]`, no
 `pyproject.toml`). Sem aquela seção o `pip install` do Dockerfile levaria só os
 `.py` e o envio morreria com `FileNotFoundError` **apenas em produção** — no
 desenvolvimento a aplicação roda do código-fonte, onde os arquivos existem.
+A lista precisa alcançar as SUBPASTAS: `emails/*.html` sozinho casa só com a
+raiz, e os modelos vivem em `emails/acesso/`.
 
 ## Quando não há SMTP configurado
 

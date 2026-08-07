@@ -84,6 +84,13 @@ def _modelo(nome: str, variaveis: dict[str, str]) -> str:
     A sintaxe `{{campo}}` é a que os arquivos já usavam quando eram colados no
     painel do EmailJS. Ficou porque não custa nada e porque quem abrir o HTML
     reconhece o formato.
+
+    ⚠ CAMPO QUE NÃO VIER NO `dict` SOBREVIVE LITERAL no corpo do e-mail — sem
+    erro e sem log, porque quem lê `{{validade}}` é o destinatário. Levantar
+    aqui seria pior: derrubaria o convite inteiro por causa de um buraco de
+    texto, e falhar no e-mail nunca derruba o pedido (ver o topo do módulo).
+    O `nome` é um caminho relativo a `app/emails/`, com a subpasta:
+    `"acesso/convite.html"`.
     """
     html = (_MODELOS / nome).read_text(encoding="utf-8")
     for chave, valor in variaveis.items():
@@ -150,7 +157,7 @@ def enviar_redefinicao_de_senha(*, para: str, nome: str | None, token: str) -> b
         para=para,
         assunto="Redefinir sua senha · SPBIM Coordenação",
         html=_modelo(
-            "redefinir-senha.html",
+            "acesso/redefinir-senha.html",
             {
                 "to_email": para,
                 "to_name": nome or para,
@@ -181,7 +188,7 @@ def enviar_convite(
         para=para,
         assunto=f"Convite para o projeto {projeto} · SPBIM Coordenação",
         html=_modelo(
-            "convite.html",
+            "acesso/convite.html",
             {
                 "to_email": para,
                 "project_name": projeto,
